@@ -407,15 +407,18 @@
             }
         }
 
-        // --- Función para llamar a nuestro Backend ---
+        // --- Función para llamar a nuestro Backend (CORREGIDO) ---
         async function callChatAPI(history) {
-            // La URL de nuestra Netlify Function. Netlify la crea automáticamente.
+            // La URL de nuestra Netlify Function
             const endpoint = '/.netlify/functions/chat';
+
+            // Enviar solo el historial REAL de la conversación (sin el mensaje de bienvenida)
+            const historyForGemini = history.slice(1); // <-- EL CAMBIO CLAVE
 
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: history })
+                body: JSON.stringify({ history: historyForGemini })
             });
 
             if (!response.ok) {

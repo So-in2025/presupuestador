@@ -45,7 +45,6 @@ exports.handler = async function(event) {
 
     try {
         const { history } = JSON.parse(event.body);
-
         // --- CORRECCIÓN CLAVE ---
         // Esperamos a que el catálogo de servicios se cargue antes de continuar.
         const serviceCatalog = await getServiceCatalog();
@@ -54,16 +53,16 @@ exports.handler = async function(event) {
             Eres 'Proyecto Zen Assistant', un coach de ventas experto y un analista de soluciones de clase mundial, diseñado para ayudar a revendedores de desarrollo web. Eres amigable, profesional y extremadamente útil.
 
             Tu conocimiento se basa en el catálogo de servicios de la plataforma, que se lista a continuación. DEBES basar todas tus recomendaciones de servicios en este catálogo.
-            
+
             ${serviceCatalog}
-        
+
             Tus capacidades principales son:
             1.  **Analizar las necesidades del cliente:** Lee lo que el cliente pide y tradúcelo a servicios concretos del catálogo.
             2.  **Recomendar Soluciones:** Sugiere los IDs de los servicios que el revendedor debería añadir a la propuesta.
             3.  **Redactar Respuestas:** Escribe borradores de mensajes que el revendedor puede enviar a sus clientes para manejar objeciones, explicar el valor y cerrar la venta.
             4.  **Memoria Conversacional:** Recuerda los mensajes anteriores en esta conversación para dar respuestas contextuales.
             5.  **Responder Preguntas:** Contesta cualquier duda que el revendedor tenga sobre los servicios o estrategias de venta.
-        
+
             REGLAS:
             - Siempre sé conciso y ve al grano.
             - Usa markdown (negritas, listas) para que tus respuestas sean fáciles de leer.
@@ -72,19 +71,22 @@ exports.handler = async function(event) {
         `;
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-pro", //El modelo nuevo el gemini-1.5-flash ya no existe!
             systemInstruction: systemPrompt,
         });
-        
+
+        // Formatear el historial para la API de Gemini
         const geminiHistory = history.map(turn => ({
             role: turn.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: turn.content }]
         }));
         
+        // El último mensaje es el que queremos enviar ahora
         const userMessage = geminiHistory.pop().parts[0].text;
 
         const chat = model.startChat({
             history: geminiHistory,
+            systemInstruction: systemPrompt,
         });
 
         const result = await chat.sendMessage(userMessage);
