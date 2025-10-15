@@ -22,7 +22,10 @@
             max-width: 1100px; width: 100%; padding: clamp(2rem, 5vw, 4rem) clamp(2rem, 6vw, 5rem);
             background: #1E293B; border: 1px solid #334155;
             box-shadow: 0 0 40px rgba(34, 211, 238, 0.2), 0 0 15px rgba(0,0,0,0.5);
-            border-radius: 12px; text-align: center; animation: fadeInScaleUp 1s ease-out forwards;
+            border-radius: 12px; text-align: center; 
+            z-index: 20; /* Añadido */
+            opacity: 0; /* Añadido */
+            animation: fadeInContainer 1s 2s ease-out forwards; /* Modificado */
         }
         h1 {
             font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem); /* Ajustado para el nuevo texto */
@@ -69,9 +72,56 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInScaleUp { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         @keyframes pulseButton { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+        /* === CÓDIGO A AÑADIR === */
+        .hero-background-text {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 10vw, 7rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5rem;
+            color: #F8FAFC;
+            text-shadow: 0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.3);
+            opacity: 0;
+            animation: fadeInHeroText 1.5s 0.5s ease-out forwards;
+        }
+        .brand-byline {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            color: #94A3B8;
+            letter-spacing: 2px;
+            margin-top: -0.5rem;
+            opacity: 0;
+            animation: fadeInHeroText 1.5s 0.8s ease-out forwards;
+        }
+        @keyframes fadeInHeroText {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInContainer {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- NUEVO: HERO ANIMADO EN EL FONDO -->
+    <div class="hero-background-text">
+        <h1 class="main-title">Proyecto Zen</h1>
+        <p class="brand-byline">by SO->IN</p>
+    </div>
+
     <div class="container">
         <div id="intro-screen">
             <!-- TÍTULO Y ESLOGAN CAMBIADOS SEGÚN TU PETICIÓN -->
