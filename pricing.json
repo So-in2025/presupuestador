@@ -1,0 +1,220 @@
+{
+  "allServices": {
+    "completeWebs": {
+      "name": "A. Soluciones Web Integrales (Paquetes)",
+      "isExclusive": true,
+      "items": [
+        {
+          "id": "p1",
+          "name": "Landing Page de Conversión",
+          "price": 20,
+          "description": "Una máquina de conversión. Página única diseñada para un solo objetivo: capturar leads, vender un producto o lanzar una campaña. Máxima persuasión, cero distracciones."
+        },
+        {
+          "id": "p2",
+          "name": "Sitio Web Presencial",
+          "price": 40,
+          "description": "Tu base de operaciones digital. Un sitio web profesional de hasta 5 secciones (Inicio, Servicios, etc.) para establecer autoridad, confianza y una sólida presencia en línea."
+        },
+        {
+          "id": "p3",
+          "name": "Portfolio de Alto Impacto",
+          "price": 60,
+          "description": "Una galería para impresionar y vender. Ideal para creativos, artistas y fotógrafos. Diseño centrado en la experiencia visual, con galerías avanzadas y animaciones que realzan tu trabajo."
+        },
+        {
+          "id": "p4",
+          "name": "Web Corporativa con Blog (Generadora de Leads)",
+          "price": 80,
+          "description": "Un imán de clientes potenciales. Incluye todo lo del sitio presencial más un blog autogestionable (CMS) y formularios avanzados, diseñado para atraer tráfico y convertirlo en negocio."
+        },
+        {
+          "id": "p5",
+          "name": "E-commerce de Venta Directa",
+          "price": 120,
+          "description": "El camino rápido a las ventas online. Un catálogo de hasta 15 productos con botones de pago directo (PayPal/Stripe). Ideal para vender servicios, cursos o productos específicos sin la complejidad de un carrito."
+        },
+        {
+          "id": "p6",
+          "name": "E-commerce Avanzado",
+          "price": 180,
+          "description": "Tu motor de ventas 24/7. Tienda online completa con carrito, gestión de pedidos y pasarelas de pago integradas. Diseñada para convertir visitantes en clientes y escalar tu negocio."
+        },
+        {
+          "id": "p7",
+          "name": "Puesta a Punto y Optimización",
+          "price": 30,
+          "description": "Un servicio de revitalización para sitios existentes. Incluye auditoría de seguridad, actualización de componentes, limpieza de base de datos y optimización de velocidad para un rendimiento óptimo."
+        },
+        {
+          "id": "p8",
+          "name": "Proyecto a Medida (Aplicación Web)",
+          "price": 0,
+          "description": "Para visiones que van más allá de una web estándar (plataformas SaaS, sistemas de reserva, etc.). El precio base indica que requiere un análisis detallado para una cotización personalizada."
+        }
+      ]
+    },
+    "ajustes": {
+      "name": "B. Mejoras de Experiencia de Usuario (UX)",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "b1",
+          "name": "Animaciones y Microinteracciones",
+          "price": 10,
+          "description": "Añade un toque 'premium'. Efectos visuales sutiles y profesionales que responden al usuario, mejorando la percepción de calidad y la experiencia de navegación."
+        },
+        {
+          "id": "b2",
+          "name": "Página de Aterrizaje Adicional",
+          "price": 15,
+          "description": "Expande tus campañas de marketing. Creación de una nueva landing page utilizando el branding y estilo existentes para lanzamientos o promociones rápidas."
+        },
+        {
+          "id": "b3",
+          "name": "Formularios Avanzados e Interactivos",
+          "price": 15,
+          "description": "Captura de datos inteligente. Formularios multi-paso, calculadoras o cuestionarios con lógica condicional para guiar al usuario y obtener información de mayor calidad."
+        },
+        {
+          "id": "b4",
+          "name": "Integración de Mapas o Gráficos",
+          "price": 15,
+          "description": "Visualización de datos enriquecida. Implementación de mapas interactivos (Google Maps) o gráficos estadísticos (Chart.js) para presentar información de forma clara y atractiva."
+        }
+      ]
+    },
+    "desarrollo": {
+      "name": "C. Módulos de Funcionalidad",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "c1",
+          "name": "Optimización de Velocidad (Core Web Vitals)",
+          "price": 20,
+          "description": "Una web que vuela. Optimización avanzada de imágenes, código y caché para mejorar drásticamente los tiempos de carga, el SEO y la retención de usuarios."
+        },
+        {
+          "id": "c2",
+          "name": "Diseño de Sistema Visual (Branding)",
+          "price": 20,
+          "description": "Consistencia y profesionalismo de marca. Creación de la guía de estilo visual (colores, tipografías, componentes) que define la identidad de la web en cada detalle."
+        },
+        {
+          "id": "c3",
+          "name": "Desarrollo de API (Backend)",
+          "price": 20,
+          "description": "El cerebro de la aplicación. Construcción de la API (REST/GraphQL) que conecta la interfaz con la base de datos, permitiendo la gestión de información de forma segura y eficiente."
+        },
+        {
+          "id": "c4",
+          "name": "Arquitectura de Base de Datos",
+          "price": 20,
+          "description": "El plano de tus datos. Diseño de la estructura lógica de la base de datos (SQL/NoSQL) para garantizar escalabilidad, rendimiento y seguridad a largo plazo."
+        },
+        {
+          "id": "c5",
+          "name": "Sistema de Usuarios (Login y Roles)",
+          "price": 30,
+          "description": "Control de acceso y personalización. Implementación de registro, inicio de sesión y gestión de perfiles de usuario con diferentes niveles de permisos (Admin, Usuario, etc.)."
+        },
+        {
+          "id": "c6",
+          "name": "Auditoría y Refuerzo de Seguridad",
+          "price": 60,
+          "description": "Un blindaje digital. Análisis proactivo de vulnerabilidades y aplicación de parches de seguridad contra ataques comunes (XSS, CSRF, Inyección SQL) para proteger la web y sus datos."
+        }
+      ]
+    },
+    "integraciones": {
+        "name": "D. Integraciones de Alto Nivel",
+        "isExclusive": false,
+        "items": [
+            {
+              "id": "d1",
+              "name": "Integración de Pasarela de Pagos",
+              "price": 100,
+              "description": "El corazón del e-commerce. Conexión robusta y segura con procesadores de pago (Stripe, PayPal, etc.) para automatizar transacciones, suscripciones y notificaciones."
+            },
+            {
+              "id": "d2",
+              "name": "Arquitectura de Microservicios",
+              "price": 70,
+              "description": "Escalabilidad infinita. Reestructuración del backend en servicios independientes para aplicaciones complejas, mejorando el rendimiento, la mantenibilidad y la velocidad de desarrollo futuro."
+            }
+        ]
+    }
+  },
+  "monthlyPlans": [
+    {
+      "id": 1,
+      "name": "Plan de Mantenimiento Esencial",
+      "maxItems": 3,
+      "price": 25,
+      "description": "La garantía de tranquilidad. Cobertura de hasta 3 tareas de mantenimiento o ajustes menores al mes para mantener la web segura, actualizada y funcionando sin problemas."
+    },
+    {
+      "id": 2,
+      "name": "Plan de Soporte Activo",
+      "maxItems": 5,
+      "price": 35,
+      "description": "Para webs dinámicas. Incluye hasta 5 tareas de ajustes y cambios de contenido al mes. Ideal para negocios que necesitan actualizaciones visuales y promocionales frecuentes."
+    },
+    {
+      "id": 3,
+      "name": "Plan de Evolución Continua",
+      "maxItems": 5,
+      "price": 50,
+      "description": "Mantenimiento más crecimiento. Incluye hasta 4 tareas de 'Ajustes' y 1 tarea de 'Desarrollo de Funcionalidades' al mes. Perfecto para empezar a añadir nuevas capacidades a tu web."
+    },
+    {
+      "id": 4,
+      "name": "Plan de Crecimiento Acelerado",
+      "maxItems": 7,
+      "price": 70,
+      "description": "El equilibrio ideal entre soporte y desarrollo. Incluye hasta 5 tareas de 'Ajustes' y 2 de 'Desarrollo' al mes para una evolución constante y visible del proyecto."
+    },
+    {
+      "id": 5,
+      "name": "Plan Business Pro",
+      "maxItems": 9,
+      "price": 90,
+      "description": "Desarrollo significativo y regular. Incluye hasta 6 tareas de 'Ajustes' y 3 de 'Desarrollo' al mes, permitiendo construir módulos y funcionalidades complejas de forma iterativa."
+    },
+    {
+      "id": 6,
+      "name": "Plan de Desarrollo Intensivo",
+      "maxItems": 10,
+      "price": 120,
+      "description": "Un 'sprint' de desarrollo mensual. Incluye hasta 5 tareas de 'Ajustes' y 5 de 'Desarrollo' al mes. Diseñado para construir aplicaciones web complejas a un ritmo rápido."
+    },
+    {
+      "id": 7,
+      "name": "Retainer de Agencia",
+      "maxItems": 15,
+      "price": 150,
+      "description": "Una alianza estratégica. Un bloque de hasta 15 tareas, con la flexibilidad de incluir 1 'Integración de Alto Nivel' por mes. Incluye consultoría técnica prioritaria."
+    },
+    {
+      "id": 8,
+      "name": "Retainer Corporativo",
+      "maxItems": 20,
+      "price": 225,
+      "description": "Para alto volumen o múltiples proyectos. Hasta 20 tareas, permitiendo hasta 2 'Integraciones de Alto Nivel' por mes, con soporte y comunicación dedicada."
+    },
+    {
+      "id": 9,
+      "name": "Retainer Enterprise",
+      "maxItems": 30,
+      "price": 350,
+      "description": "Tu equipo de desarrollo extendido. Un gran volumen de hasta 30 tareas, con la flexibilidad de consumir hasta 3 'Integraciones de Alto Nivel' y consultoría estratégica proactiva."
+    },
+    {
+      "id": 10,
+      "name": "Equipo Dedicado (A Medida)",
+      "maxItems": 99,
+      "price": 500,
+      "description": "Recursos de desarrollo exclusivos para tu proyecto. Un volumen de tareas ilimitado dentro de la capacidad del recurso, planificación conjunta (Roadmapping) y un servicio totalmente personalizado."
+    }
+  ]
+}

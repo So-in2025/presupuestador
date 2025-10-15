@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentación del Sistema: Tu Plataforma de Negocios Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; background: #0F172A; color: #E2E8F0; line-height: 1.7; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 2rem; overflow: hidden;
+            background-image: linear-gradient(rgba(34, 211, 238, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 211, 238, 0.07) 1px, transparent 1px);
+            background-size: 3rem 3rem;
+        }
+        .accent-color { color: #22D3EE; }
+        .accent-bg { background-color: #22D3EE; color: #0F172A; }
+        .accent-bg:hover { background-color: #06B6D4; }
+        .container {
+            max-width: 1100px; width: 100%; padding: clamp(2rem, 5vw, 4rem) clamp(2rem, 6vw, 5rem);
+            background: #1E293B; border: 1px solid #334155;
+            box-shadow: 0 0 40px rgba(34, 211, 238, 0.2), 0 0 15px rgba(0,0,0,0.5);
+            border-radius: 12px; text-align: center; animation: fadeInScaleUp 1s ease-out forwards;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem); /* Ajustado para el nuevo texto */
+            line-height: 1.1;
+            text-transform: uppercase; letter-spacing: 4px; text-shadow: 0 0 15px rgba(34, 211, 238, 0.6);
+            animation: fadeIn 1.5s 0.5s ease-out forwards; opacity: 0;
+        }
+        .tagline {
+            font-size: clamp(1.2rem, 2.5vw, 1.6rem); color: #E2E8F0; margin: 1.5rem auto;
+            max-width: 800px; font-weight: 400; animation: fadeIn 1.5s 0.8s ease-out forwards; opacity: 0;
+        }
+        .tagline strong { color: #67E8F9; font-weight: 700; }
+        .instructions { font-size: 1.1rem; margin-bottom: 2.5rem; color: #94a3b8; animation: fadeIn 1.5s 1.1s ease-out forwards; opacity: 0; }
+        #start-button {
+            padding: 20px 45px; font-size: 1.4rem; font-weight: 800; letter-spacing: 1.5px; border: none;
+            cursor: pointer; border-radius: 8px; box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeIn 1.5s 1.4s ease-out forwards, pulseButton 2.5s infinite; opacity: 0;
+        }
+        #start-button:hover { transform: translateY(-3px); }
+        #narration-screen { max-height: 80vh; overflow-y: auto; text-align: left; opacity: 0; transition: opacity 1s; padding-right: 1rem; scroll-behavior: smooth; }
+        
+        /* SCROLLBAR PERSONALIZADO */
+        #narration-screen::-webkit-scrollbar { width: 8px; }
+        #narration-screen::-webkit-scrollbar-track { background: #1E293B; }
+        #narration-screen::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        #narration-screen::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        .section-heading {
+            font-family: 'Inter', sans-serif; color: #67E8F9; text-transform: uppercase; font-size: 1.4rem;
+            font-weight: 700; letter-spacing: 1.5px; margin-bottom: 1.5rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;
+        }
+        #narration-header { font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+        .vocal-highlight { transition: color 0.3s, text-shadow 0.3s; }
+        .speaking { color: #F8FAFC; text-shadow: 0 0 8px rgba(34, 211, 238, 0.8); }
+        .business-pillar { margin-bottom: 1.5rem; padding-left: 1rem; border-left: 4px solid #334155; opacity: 0.5; transition: all 0.5s ease; }
+        .workflow-step { display: flex; align-items: flex-start; gap: 1.5rem; margin-bottom: 1.5rem; opacity: 0.5; transition: all 0.5s ease; }
+        .step-number { font-size: 3rem; font-weight: 800; color: #334155; line-height: 1; }
+        .highlighted { opacity: 1 !important; }
+        .highlighted .step-number { color: #22D3EE; }
+        .highlighted.business-pillar { border-left-color: #22D3EE !important; }
+        #auth-section { opacity: 0; transition: opacity 1s 0.5s; text-align: center; }
+        .google-btn-container { margin-top: 1rem; padding: 1rem; border: 1px solid #334155; border-radius: 8px; background-color: #0F172A; display: inline-block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInScaleUp { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulseButton { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="intro-screen">
+            <!-- TÍTULO Y ESLOGAN CAMBIADOS SEGÚN TU PETICIÓN -->
+            <h1 class="accent-color">DOMINA EL MERCADO WEB SIN INVERSIÓN NI CÓDIGO</h1>
+            <p class="tagline">Vende proyectos web profesionales sin experiencia técnica. <strong>Nosotros desarrollamos, tú ganas.</strong></p>
+            <p class="instructions">Pulsa 'Comenzar' para activar la guía por voz del sistema.</p>
+            
+            <!-- TEXTO DEL BOTÓN CAMBIADO SEGÚN TU PETICIÓN -->
+            <button id="start-button" class="accent-bg">▶ COMENZAR PRESENTACIÓN</button>
+        </div>
+
+        <div id="narration-screen" style="display: none;">
+            <p id="narration-header" style="text-align: center;" class="accent-color mb-8 text-lg">
+                [PRESENTACIÓN DEL SISTEMA ACTIVA]
+            </p>
+
+            <div class="mb-10">
+                <h3 class="section-heading">La Oportunidad: Los 3 Pilares del Negocio</h3>
+                <div id="pillar-1" class="business-pillar">
+                    <p><span class="vocal-highlight">Primero: Tu rol es estratégico, no técnico. Te encargas de la relación con el cliente y la negociación.</span></p>
+                </div>
+                <div id="pillar-2" class="business-pillar">
+                    <p><span class="vocal-highlight">Segundo: Tienes control total sobre la ganancia. Te mostramos nuestro costo de producción, y tú decides el porcentaje de ganancia.</span></p>
+                </div>
+                <div id="pillar-3" class="business-pillar">
+                    <p><span class="vocal-highlight">Tercero: Somos tu equipo de desarrollo invisible. Operamos como tu marca blanca para construir y entregar todo el proyecto.</span></p>
+                </div>
+            </div>
+
+            <!-- FLUJO DE TRABAJO EXPANDIDO A 5 PASOS SEGÚN TU PETICIÓN -->
+            <div>
+                <h3 class="section-heading">El Proceso: Tu Flujo de Trabajo en 5 Pasos</h3>
+                <div id="step-1" class="workflow-step">
+                    <div class="step-number">01</div>
+                    <p><span class="vocal-highlight"> Paso uno: Usas la plataforma para crear una propuesta profesional, eligiendo los servicios que tu cliente necesita.</span></p>
+                </div>
+                <div id="step-2" class="workflow-step">
+                    <div class="step-number">02</div>
+                    <p><span class="vocal-highlight">Paso dos: Defines tu margen de ganancia sobre nuestro costo. El sistema calcula el precio final para tu cliente automáticamente.</span></p>
+                </div>
+                 <div id="step-3" class="workflow-step">
+                    <div class="step-number">03</div>
+                    <p><span class="vocal-highlight">Paso tres: Generas un PDF con tu propia marca y se lo envías a tu cliente para cerrar el trato.</span></p>
+                </div>
+                <div id="step-4" class="workflow-step">
+                    <div class="step-number">04</div>
+                    <p><span class="vocal-highlight">Paso cuatro, el cobro: Le cobrás a tu cliente el 50% de anticipo. Con ese dinero, ya tenés tu primera ganancia en el bolsillo y los fondos para activar el proyecto.</span></p>
+                </div>
+                <div id="step-5" class="workflow-step">
+                    <div class="step-number">05</div>
+                    <p><span class="vocal-highlight">Y paso cinco, la activación: Nos transferís la mitad de nuestro costo para arrancar el desarrollo. El resto nos lo pagás recién cuando cobrás el 50% final de tu cliente. Tu riesgo es cero..</span></p>
+                </div>
+            </div>
+
+            <div id="auth-section" class="mt-12">
+                <h3 class="section-heading text-center border-none">ACCESO AL CENTRO DE OPERACIONES</h3>
+                <p class="text-slate-300 text-center">Tu plataforma de propuestas está lista. Valida tu acceso para empezar.</p>
+                <div class="google-btn-container">
+                    <div id="g_id_onload"
+                         data-client_id="TU_CLIENT_ID_DE_GOOGLE"
+                         data-callback="handleCredentialResponse"
+                         data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin"
+                         data-type="standard" data-size="large" data-theme="filled_blue" 
+                         data-text="continue_with" data-shape="rectangular" data-logo_alignment="left">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    // ESTE SCRIPT ES EL QUE FUNCIONA, NO SE TOCA
+    function handleCredentialResponse(response) {
+        console.log("Acceso concedido. Redirigiendo...");
+        window.speechSynthesis.cancel();
+        window.location.href = "presupuestador.html";
+    }
+
+    window.addEventListener('load', () => {
+        const synth = window.speechSynthesis;
+        const startButton = document.getElementById('start-button');
+        const introScreen = document.getElementById('intro-screen');
+        const narrationScreen = document.getElementById('narration-screen');
+        const authSection = document.getElementById('auth-section');
+
+        if (!startButton) {
+            console.error("ERROR CRÍTICO: El botón de inicio no se encontró.");
+            return;
+        }
+
+        let preferredVoice = null;
+        let narrationQueue = [];
+        let currentlySpeaking = false;
+        let lastHighlightedPoint = null;
+
+        function loadVoices() {
+            const voices = synth.getVoices();
+            preferredVoice = voices.find(v => v.name === 'Google español de Estados Unidos') || voices.find(v => v.name.includes('Google') && v.lang.startsWith('es')) || voices.find(v => v.lang.startsWith('es'));
+        }
+
+        loadVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        function processNarrationQueue() {
+            if (currentlySpeaking || narrationQueue.length === 0) {
+                if (!currentlySpeaking) {
+                    if (lastHighlightedPoint) lastHighlightedPoint.classList.add('highlighted');
+                    authSection.style.opacity = 1;
+                    authSection.scrollIntoView({ behavior: 'smooth' });
+                }
+                return;
+            }
+
+            currentlySpeaking = true;
+            const elementToSpeak = narrationQueue.shift();
+            const textToSpeak = elementToSpeak.textContent;
+            const parentPoint = elementToSpeak.closest('.business-pillar, .workflow-step');
+
+            if (parentPoint && parentPoint !== lastHighlightedPoint) {
+                if (lastHighlightedPoint) lastHighlightedPoint.classList.remove('highlighted');
+                parentPoint.classList.add('highlighted');
+                parentPoint.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                lastHighlightedPoint = parentPoint;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            if (preferredVoice) utterance.voice = preferredVoice;
+            utterance.lang = 'es-US';
+            utterance.rate = 1.15;
+            utterance.pitch = 1;
+
+            utterance.onstart = () => elementToSpeak.classList.add('speaking');
+            utterance.onend = () => {
+                elementToSpeak.classList.remove('speaking');
+                currentlySpeaking = false;
+                setTimeout(processNarrationQueue, 100);
+            };
+            utterance.onerror = (e) => {
+                console.error("Error al reproducir voz:", e);
+                currentlySpeaking = false;
+                showAllTextAndCTA();
+            };
+
+            synth.speak(utterance);
+        }
+
+        function showAllTextAndCTA() {
+            narrationQueue = [];
+            document.querySelectorAll('.business-pillar, .workflow-step').forEach(el => el.classList.add('highlighted'));
+            authSection.style.opacity = 1;
+            authSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        startButton.addEventListener('click', () => {
+            introScreen.style.opacity = '0';
+            introScreen.style.transition = 'opacity 0.5s ease-out';
+            
+            setTimeout(() => {
+                introScreen.style.display = 'none';
+                narrationScreen.style.display = 'block';
+                
+                setTimeout(() => {
+                    narrationScreen.style.opacity = 1;
+                    if (narrationQueue.length === 0) {
+                        document.querySelectorAll('.vocal-highlight').forEach(el => narrationQueue.push(el));
+                    }
+                    setTimeout(processNarrationQueue, 250);
+                }, 100);
+
+            }, 500);
+        });
+    });
+    </script>
+</body>
+</html>

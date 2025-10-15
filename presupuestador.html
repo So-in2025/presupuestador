@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Operaciones - Gestor de Propuestas</title>
+    <!-- Incluye Tailwind CSS CDN y jsPDF -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* --- ESTILOS COMPARTIDOS --- */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #0F172A; /* Slate-900: Azul marino oscuro */
+        }
+        .accent-color { 
+            color: #22D3EE; /* Cyan-400: Acento primario */
+        }
+        .accent-bg { 
+            background-color: #22D3EE; 
+            color: #0F172A; /* Texto oscuro sobre acento claro */
+        }
+        .accent-bg:hover {
+            background-color: #06B6D4; /* Cyan-500: Hover más oscuro */
+        }
+        .card-bg { 
+            background-color: #1E293B; /* Slate-800: Fondo de tarjeta */
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+        }
+        .item-disabled {
+            opacity: 0.3; 
+            pointer-events: none;
+            cursor: not-allowed;
+            background-color: #111827 !important; 
+            border-color: #334155 !important;
+        }
+        
+        /* --- CORRECCIÓN DE EXPERIENCIA DE USUARIO EN TARJETAS --- */
+        .item-card, .item-card label {
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; /* Standard syntax */
+        }
+        
+        .tooltip-container {
+            position: relative; 
+        }
+        .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            z-index: 100;
+            width: max-content; 
+            max-width: 380px;
+            padding: 10px 14px; 
+            border-radius: 8px;
+            background-color: #1E293B;
+            border: 1px solid #22D3EE;
+            color: #F8FAFC; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 1);
+            font-size: 0.875rem;
+            line-height: 1.5; 
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none; 
+            text-align: left;
+        }
+        .item-card:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip-content::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent #1E293B transparent;
+        }
+        .custom-checkbox, .custom-radio {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.375rem; 
+            border: 2px solid #64748B; 
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .custom-checkbox:checked, .custom-radio:checked {
+            background-color: #22D3EE; 
+            border-color: #22D3EE;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0F172A; 
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .custom-radio {
+            border-radius: 50%; 
+        }
+        .item-card:not(.item-disabled):hover {
+            background-color: #334155; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+            z-index: 20;
+        }
+        .styled-input, .styled-textarea {
+            padding: 0.75rem;
+            background-color: #1F2937; 
+            color: #94A3B8; 
+            border: 1px solid #374151; 
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .styled-input:focus, .styled-textarea:focus {
+            outline: none;
+            border-color: #22D3EE;
+            box-shadow: 0 0 0 1px #22D3EE;
+        }
+        .styled-textarea {
+            min-height: 80px;
+        }
+        .action-button {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+    </style>
+</head>
+<body class="text-slate-50 min-h-screen p-4 sm:p-6 md:p-10">
+
+    <!-- MODALES -->
+    <div id="notificationModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center">
+                <h3 id="notificationTitle" class="text-lg"></h3>
+                <button onclick="closeNotificationModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5">
+                <p id="notificationMessage" class="text-sm text-slate-300"></p>
+                <div class="mt-4 text-right">
+                    <button onclick="closeNotificationModal()" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition duration-300">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="customServiceModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-purple-600 flex justify-between items-center">
+                <h3 class="text-lg">Añadir Ítem Personalizado</h3>
+                <button onclick="closeCustomServiceModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label for="customServiceName" class="block text-sm font-medium text-slate-300 mb-1">Nombre del Servicio:</label>
+                    <input type="text" id="customServiceName" class="w-full styled-input" placeholder="Ej: Integración con API de terceros">
+                </div>
+                <div>
+                    <label for="customServicePrice" class="block text-sm font-medium text-slate-300 mb-1">Costo de Producción (USD):</label>
+                    <input type="number" id="customServicePrice" class="w-full styled-input" placeholder="0.00" min="0">
+                </div>
+                <div class="text-right pt-2">
+                    <button onclick="addCustomServiceToSelection()" class="bg-purple-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition">Añadir Ítem</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
+                <h3 class="text-lg">Generar Documentos de Propuesta</h3>
+                <button onclick="closePdfOptionsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div>
+                    <label for="pdfLogoInput" class="block text-sm font-medium text-slate-300 mb-1">Tu Logo (Marca Blanca):</label>
+                    <input type="file" id="pdfLogoInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800">
+                </div>
+                <div>
+                    <label for="pdfResellerInfo" class="block text-sm font-medium text-slate-300 mb-1">Tus Datos de Contacto:</label>
+                    <textarea id="pdfResellerInfo" class="w-full styled-textarea" rows="3" placeholder="Tu Nombre / Nombre de tu Agencia&#10;tupaginaweb.com&#10;tu@email.com"></textarea>
+                </div>
+                <div>
+                    <label for="pdfClientInfo" class="block text-sm font-medium text-slate-300 mb-1">Datos del Cliente Final:</label>
+                    <textarea id="pdfClientInfo" class="w-full styled-textarea" rows="3" placeholder="Nombre del Contacto del Cliente&#10;Nombre de la Empresa Cliente&#10;email@cliente.com"></textarea>
+                </div>
+                <div>
+                    <label for="pdfTerms" class="block text-sm font-medium text-slate-300 mb-1">Tus Términos y Condiciones:</label>
+                    <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
+                </div>
+                <div class="pt-2 space-y-3">
+                    <button onclick="generatePdf(true)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
+                        Generar Propuesta para Cliente
+                    </button>
+                    <button onclick="generatePdf(false)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition">
+                        Generar Reporte Interno (Para tu control)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TÍTULO PRINCIPAL -->
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center accent-color mb-2 tracking-wider">
+            Centro de Operaciones
+        </h1>
+        <p class="text-center text-slate-400 mb-8">Crea, gestiona y exporta propuestas de alto impacto.</p>
+
+
+        <!-- Contenedor Principal -->
+        <div id="appContainer" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            
+            <!-- COLUMNA 1 & 2: Formulario -->
+            <div class="lg:col-span-2 xl:col-span-3 space-y-6">
+                
+                <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">1. Iniciar Nueva Propuesta</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="clientName" placeholder="Nombre del Cliente" class="styled-input">
+                        <input type="text" id="webName" placeholder="Nombre del Proyecto" class="styled-input">
+                        <select id="serviceType" class="styled-input text-cyan-300">
+                            <option value="puntual">Proyecto de Pago Único</option>
+                            <option value="mensual">Servicio Mensual (Retainer)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">2. Configurar la Solución</h2>
+                    <p class="text-sm text-slate-400 mb-4">Elige una solución integral (Paquete/Plan) o selecciona ítems específicos.</p>
+                    
+                    <div id="modeIndicator" class="mb-4 p-3 rounded-lg border border-yellow-500 bg-yellow-900/20 text-yellow-300 font-bold text-center">
+                        Modo Activo: Selección Personalizada
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                        <button id="clearSelectionsBtn" class="hidden flex-grow bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg">
+                            Limpiar Selección y Activar Modo Personalizado
+                        </button>
+                        <button onclick="showCustomServiceModal()" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg">
+                            + Añadir Ítem Personalizado
+                        </button>
+                    </div>
+
+                    <div id="monthlyPlansContainer" class="hidden space-y-6"></div>
+                    <div id="servicesSelection" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <!-- COLUMNA 3 & 4: Resumen y Dashboard -->
+            <div class="lg:col-span-1 xl:col-span-1 space-y-6">
+                
+                <div id="summaryCard" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 top-4">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">3. Calcular Rentabilidad</h2>
+                    <div class="mb-4">
+                        <label for="marginPercentage" class="block text-sm font-medium text-slate-300 mb-2">Tu Margen de Ganancia (%)</label>
+                        <input type="number" id="marginPercentage" value="60" min="0" class="w-full styled-input text-cyan-300" oninput="updateSummary()">
+                        <p id="marginFeedback" class="text-xs mt-1 text-slate-400"></p>
+                    </div>
+                    <div class="text-lg font-bold space-y-2 pt-4 border-t border-slate-700">
+                        <p>Costo Producción: $<span id="totalDeveloperPrice">0.00</span> USD</p>
+                        <p class="text-cyan-400">Precio a Cliente: $<span id="totalClientPrice">0.00</span> USD</p>
+                    </div>
+                    <button id="addTask" class="w-full accent-bg text-slate-900 font-bold py-3 mt-4 rounded-lg hover:bg-cyan-500 transition shadow-xl">Guardar Propuesta</button>
+                    <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
+                    <div id="selectedItems" class="text-sm space-y-2 p-3 bg-slate-900 rounded-lg h-40 overflow-y-auto border border-slate-700">
+                        <p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>
+                    </div>
+                </div>
+
+                <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 text-pink-400">4. Propuestas Guardadas</h2>
+                    <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
+                    <div class="text-lg font-bold space-y-2 pt-4 mt-4 border-t border-slate-700">
+                        <p>COSTO TOTAL (Prod): $<span id="grandTotalDeveloperPrice">0.00</span> USD</p>
+                        <p class="text-green-400">VENTA TOTAL: $<span id="grandTotalClientPrice">0.00</span> USD</p>
+                        <p class="text-yellow-400">GANANCIA TOTAL: $<span id="totalProfit">0.00</span> USD</p>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button">Generar Documentos</button>
+                        <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button">Limpiar Todo</button>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-500 text-center border-t border-slate-700 pt-4">
+                        <a href="pricing.html" class="accent-color hover:underline">Gestionar Catálogo de Servicios</a>
+                    </div>
+                </div>
+                <div id="messageContainer" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+    <!-- =============== INICIO: Bloque de Chat IA Asistente de Ventas =============== -->
+    <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
+        <div class="flex items-center mb-4">
+            <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
+            <span class="ml-3 h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
+        </div>
+        
+        <!-- Área de Mensajes -->
+        <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto pr-2 mb-4">
+            <!-- Los mensajes del chat aparecerán aquí -->
+        </div>
+
+        <!-- Área de Entrada de Texto -->
+        <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
+            <input type="text" id="chat-input" class="w-full styled-input" placeholder="Pregúntale cualquier cosa a tu asistente...">
+            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                    <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <!-- =============== FIN: Bloque de Chat IA Asistente de Ventas =============== -->
+
+    <script>
+        // ==========================================================
+        // --- INICIO: LÓGICA DEL CHAT CONVERSACIONAL IA ---
+        // ==========================================================
+
+        // --- Selectores del DOM para el Chat ---
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+
+        // --- Memoria de la Conversación ---
+        let conversationHistory = [];
+
+        // --- Event Listeners ---
+        chatSendBtn.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                handleSendMessage();
+            }
+        });
+
+        // --- Función para añadir mensajes a la UI del chat ---
+        function appendMessage(sender, message) {
+            const messageWrapper = document.createElement('div');
+            const messageBubble = document.createElement('div');
+            
+            messageWrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            messageBubble.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow ${sender === 'user' ? 'bg-blue-600' : 'bg-slate-700'}`;
+            
+            // Convertir saltos de línea a <br> para el HTML
+            messageBubble.innerHTML = message.replace(/\n/g, '<br>');
+
+            messageWrapper.appendChild(messageBubble);
+            chatMessages.appendChild(messageWrapper);
+            
+            // Auto-scroll hacia el último mensaje
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // --- Lógica Principal para Enviar Mensaje ---
+        async function handleSendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+
+            // 1. Añadir mensaje del usuario a la UI y a la memoria
+            appendMessage('user', userMessage);
+            conversationHistory.push({ role: 'user', content: userMessage });
+            chatInput.value = '';
+
+            // 2. Mostrar indicador de "escribiendo..."
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.className = 'flex justify-start';
+            typingIndicator.innerHTML = `<div class="bg-slate-700 p-3 rounded-lg shadow">
+                <span class="animate-pulse">●</span><span class="animate-pulse delay-150">●</span><span class="animate-pulse delay-300">●</span>
+            </div>`;
+            chatMessages.appendChild(typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                // 3. Llamar al Backend (Netlify Function)
+                const aiResponse = await callChatAPI(conversationHistory);
+
+                // 4. Añadir respuesta de la IA a la memoria
+                conversationHistory.push({ role: 'assistant', content: aiResponse });
+
+                // 5. Quitar "escribiendo..." y mostrar respuesta de la IA
+                chatMessages.removeChild(typingIndicator);
+                appendMessage('assistant', aiResponse);
+
+            } catch (error) {
+                console.error("Error al contactar la API del chat:", error);
+                chatMessages.removeChild(typingIndicator);
+                appendMessage('assistant', "Lo siento, estoy teniendo problemas para conectar con mis circuitos. Por favor, inténtalo de nuevo en un momento.");
+            }
+        }
+
+        // --- Función para llamar a nuestro Backend ---
+        async function callChatAPI(history) {
+            // La URL de nuestra Netlify Function. Netlify la crea automáticamente.
+            const endpoint = '/.netlify/functions/chat';
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: history })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error del servidor: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.response;
+        }
+
+        // --- Mensaje de Bienvenida al cargar ---
+        window.addEventListener('load', () => {
+            const welcomeMessage = "¡Hola! Soy tu asistente de ventas. Estoy aquí para ayudarte a analizar las necesidades de tus clientes y a cerrar más tratos. ¿En qué puedo ayudarte hoy?";
+            conversationHistory.push({ role: 'assistant', content: welcomeMessage });
+            appendMessage('assistant', welcomeMessage);
+        });
+
+        // --- 0. CONSTANTES Y VARIABLES GLOBALES ---
+        const COMBO_DISCOUNT = 0.10;
+        let allServices = {};
+        let monthlyPlans = [];
+        let selectedServices = []; 
+        let customServices = [];
+        let tasks = [];            
+        let editingIndex = -1;     
+        
+        // --- 1. SELECTORES DEL DOM ---
+        const serviceTypeSelect = document.getElementById('serviceType');
+        const servicesSelectionDiv = document.getElementById('servicesSelection');
+        const monthlyPlansContainer = document.getElementById('monthlyPlansContainer');
+        const totalDevPriceSpan = document.getElementById('totalDeveloperPrice');
+        const totalClientPriceSpan = document.getElementById('totalClientPrice');
+        const marginPercentageInput = document.getElementById('marginPercentage');
+        const addTaskButton = document.getElementById('addTask');
+        const clearSelectionsBtn = document.getElementById('clearSelectionsBtn');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const selectedItemsDiv = document.getElementById('selectedItems');
+        const tasksDashboardDiv = document.getElementById('tasksDashboard');
+        const grandTotalDevSpan = document.getElementById('grandTotalDeveloperPrice');
+        const grandTotalClientSpan = document.getElementById('grandTotalClientPrice');
+        const totalProfitSpan = document.getElementById('totalProfit');
+        const messageContainer = document.getElementById('messageContainer');
+
+        // --- 2. LÓGICA DE DATOS (CARGA Y PERSISTENCIA) ---
+        async function loadPricingData() {
+            try {
+                const resp = await fetch('/pricing.json?v=' + new Date().getTime());
+                if (!resp.ok) throw new Error('Archivo "pricing.json" no encontrado o error de red.');
+                const data = await resp.json();
+                allServices = data.allServices || {};
+                monthlyPlans = data.monthlyPlans || [];
+                messageContainer.innerHTML = ''; 
+                initializeUI();
+            } catch (err) {
+                console.error('Error Crítico al cargar pricing.json:', err.message);
+                const appContainer = document.getElementById('appContainer');
+                appContainer.innerHTML = `<div class="col-span-full bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-2">Error Crítico de Carga</h2>
+                    <p>La aplicación no puede iniciarse porque no se pudo cargar o procesar el archivo <strong>pricing.json</strong>.</p>
+                    <p class="mt-2">Por favor, asegúrate de que el archivo se encuentre en la raíz del sitio y que su contenido sea un JSON válido.</p>
+                </div>`;
+            }
+        }
+        
+        function loadTasks() {
+            try {
+                const storedTasks = localStorage.getItem('webBudgetTasks');
+                if (storedTasks) tasks = JSON.parse(storedTasks);
+            } catch (e) {
+                console.error("Error al cargar tareas:", e);
+                tasks = [];
+            }
+            renderTasksDashboard();
+        }
+        
+        function saveTasks() {
+            localStorage.setItem('webBudgetTasks', JSON.stringify(tasks));
+            renderTasksDashboard();
+        }
+
+        // --- 3. RENDERIZADO DINÁMICO DE LA UI ---
+        function initializeUI() {
+            initializeServiceCheckboxes();
+            initializeMonthlyPlansSelection();
+            updateSummary();
+        }
+
+        function createServiceItem(svc, type, name, isExclusive) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700';
+            
+            const label = document.createElement('label');
+            label.className = 'flex-grow cursor-pointer text-sm pr-2';
+            label.textContent = svc.name;
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip-content';
+            tooltip.textContent = svc.description || 'Sin descripción.';
+            
+            const priceSpan = document.createElement('span');
+            priceSpan.className = 'font-bold text-red-400 ml-2';
+            priceSpan.textContent = `$${svc.price.toFixed(2)} USD`;
+            
+            const inputElement = document.createElement('input');
+            inputElement.type = isExclusive ? 'radio' : 'checkbox';
+            inputElement.name = name; 
+            inputElement.className = isExclusive ? 'custom-radio ml-4' : 'custom-checkbox ml-4';
+            inputElement.id = `${type}-${svc.id}`;
+            inputElement.value = svc.id;
+            inputElement.dataset.price = svc.price;
+            inputElement.dataset.name = svc.name;
+            inputElement.dataset.type = type;
+
+            itemDiv.addEventListener('click', () => inputElement.click());
+            
+            inputElement.addEventListener('change', () => {
+                if(inputElement.checked) {
+                    if(isExclusive) { 
+                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                        customServices = [];
+                    } else { 
+                        const radio = document.querySelector('input[name="selectionGroup"]:checked');
+                        if (radio) radio.checked = false;
+                    }
+                }
+                updateSelectedItems();
+            });
+
+            itemDiv.appendChild(label);
+            itemDiv.appendChild(priceSpan);
+            itemDiv.appendChild(tooltip);
+            itemDiv.appendChild(inputElement);
+            return itemDiv;
+        }
+
+        function initializeServiceCheckboxes() {
+            servicesSelectionDiv.innerHTML = '';
+            Object.keys(allServices).forEach(key => {
+                const category = allServices[key];
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'p-4 bg-slate-900 rounded-xl shadow-inner';
+                const title = document.createElement('h3');
+                title.className = 'text-xl font-semibold mb-3 text-cyan-500';
+                title.textContent = category.name;
+                categoryDiv.appendChild(title);
+                const itemsGrid = document.createElement('div');
+                itemsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+                category.items.forEach(svc => {
+                    const isStandard = !category.isExclusive;
+                    const itemType = isStandard ? 'standard' : 'package';
+                    const inputName = isStandard ? `item-${svc.id}` : 'selectionGroup';
+                    itemsGrid.appendChild(createServiceItem(svc, itemType, inputName, !isStandard));
+                });
+                categoryDiv.appendChild(itemsGrid);
+                servicesSelectionDiv.appendChild(categoryDiv);
+            });
+        }
+        
+        function initializeMonthlyPlansSelection() {
+            monthlyPlansContainer.innerHTML = '';
+            if (!monthlyPlans || monthlyPlans.length === 0) return;
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'p-4 bg-slate-900 rounded-xl shadow-inner';
+            const title = document.createElement('h3');
+            title.className = 'text-xl font-semibold mb-3 text-cyan-500';
+            title.textContent = 'Planes Mensuales (Exclusivos)';
+            categoryDiv.appendChild(title);
+            const itemsGrid = document.createElement('div');
+            itemsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+            monthlyPlans.forEach(plan => {
+                itemsGrid.appendChild(createServiceItem(plan, 'plan', 'selectionGroup', true));
+            });
+            categoryDiv.appendChild(itemsGrid);
+            monthlyPlansContainer.appendChild(categoryDiv);
+        }
+
+        function renderTasksDashboard() {
+            tasksDashboardDiv.innerHTML = tasks.length === 0 
+                ? '<p class="text-slate-400">Aún no hay propuestas guardadas.</p>'
+                : tasks.map((task, index) => {
+                    let serviceList = '';
+                    if (task.package) {
+                        serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
+                    } else if (task.plan) {
+                        serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${task.plan.name}</span>`;
+                    } else {
+                        serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
+                    }
+
+                    return `
+                        <div class="p-3 border border-slate-700 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="font-bold text-base text-white">${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Proyecto'}</h4>
+                                <div class="flex gap-2">
+                                    <button onclick="editTask(${index})" class="text-blue-400 hover:text-blue-300 text-sm action-button">Editar</button>
+                                    <button onclick="deleteTask(${index})" class="text-red-400 hover:text-red-300 text-sm action-button">Eliminar</button>
+                                </div>
+                            </div>
+                            ${serviceList}
+                            <p class="text-xs text-slate-400 mt-1">Margen: ${(task.margin * 100).toFixed(0)}%</p>
+                            <p class="text-xs text-red-300">Costo Prod: $${task.totalDev.toFixed(2)}</p>
+                            <p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>
+                        </div>`;
+                }).join('');
+
+            document.getElementById('exportPdfBtn').disabled = tasks.length === 0;
+            document.getElementById('clearAllTasksBtn').disabled = tasks.length === 0;
+
+            let grandTotalDev = tasks.reduce((sum, t) => sum + t.totalDev, 0);
+            let grandTotalClient = tasks.reduce((sum, t) => sum + t.totalClient, 0);
+            grandTotalDevSpan.textContent = grandTotalDev.toFixed(2);
+            grandTotalClientSpan.textContent = grandTotalClient.toFixed(2);
+            totalProfitSpan.textContent = (grandTotalClient - grandTotalDev).toFixed(2);
+        }
+
+        // --- 4. MANEJO DE ESTADO Y SELECCIONES ---
+        function toggleSelectionMode(mode) {
+            const isMonthly = mode === 'mensual';
+            monthlyPlansContainer.classList.toggle('hidden', !isMonthly);
+            servicesSelectionDiv.classList.toggle('hidden', isMonthly);
+            if (document.querySelector('input:checked')) {
+                clearAllSelections();
+            }
+        }
+
+        function clearAllSelections() {
+            document.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked').forEach(el => el.checked = false);
+            customServices = [];
+            updateSelectedItems();
+        }
+
+        function updateSelectedItems() {
+            selectedServices = [];
+            const radioChecked = document.querySelector('input[name="selectionGroup"]:checked');
+            if (radioChecked) {
+                 selectedServices.push({ name: radioChecked.dataset.name, price: parseFloat(radioChecked.dataset.price), id: radioChecked.value, type: radioChecked.dataset.type, description: findDescription(radioChecked.value, radioChecked.dataset.type) });
+            } else {
+                document.querySelectorAll('input[type="checkbox"]:checked').forEach(el => {
+                    selectedServices.push({ name: el.dataset.name, price: parseFloat(el.dataset.price), id: el.value, type: el.dataset.type, description: findDescription(el.value, 'standard') });
+                });
+            }
+            selectedServices.push(...customServices);
+            
+            const exclusiveSelection = selectedServices.find(s => s.type === 'package' || s.type === 'plan');
+            document.querySelectorAll('.item-card:has([data-type="standard"])').forEach(card => card.classList.toggle('item-disabled', !!exclusiveSelection));
+            
+            clearSelectionsBtn.classList.toggle('hidden', selectedServices.length === 0);
+            
+            if(exclusiveSelection) {
+                modeIndicator.className = 'mb-4 p-3 rounded-lg border border-green-500 bg-green-900/20 text-green-300 font-bold text-center';
+                modeIndicator.textContent = `Modo Activo: ${exclusiveSelection.type === 'package' ? 'Solución Paquete' : 'Plan Mensual'} (Exclusivo)`;
+            } else {
+                modeIndicator.className = 'mb-4 p-3 rounded-lg border border-yellow-500 bg-yellow-900/20 text-yellow-300 font-bold text-center';
+                modeIndicator.textContent = 'Modo Activo: Selección Personalizada';
+            }
+            
+            selectedItemsDiv.innerHTML = selectedServices.length === 0 ? '<p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>' : selectedServices.map(item => {
+                const prefix = item.type === 'package' ? '📦 ' : item.type === 'plan' ? '📅 ' : item.type === 'custom' ? '⭐ ' : '• ';
+                const color = (item.type === 'package' || item.type === 'plan' || item.type === 'custom') ? 'text-cyan-300 font-bold' : 'text-slate-200';
+                const removeButton = item.type === 'custom' ? `<button onclick="removeCustomService('${item.id}')" class="text-red-500 hover:text-red-400 ml-2 font-mono">[x]</button>` : '';
+                return `<div class="${color} flex justify-between items-center">${prefix}${item.name} ($${item.price.toFixed(2)})${removeButton}</div>`;
+            }).join('');
+            updateSummary();
+        }
+        
+        function findDescription(id, type) {
+            if (type === 'plan') {
+                const plan = monthlyPlans.find(p => p.id == id);
+                return plan ? plan.description : '';
+            }
+            for (const key in allServices) {
+                const category = allServices[key];
+                const item = category.items.find(i => i.id === id);
+                if (item) return item.description;
+            }
+            return '';
+        }
+
+        // --- 5. LÓGICA DE CÁLCULO Y RESUMEN ---
+        function updateSummary() {
+            let totalDevCost = 0;
+            const margin = parseFloat(marginPercentageInput.value) / 100 || 0;
+            let feedback = '';
+            
+            const exclusiveSelection = selectedServices.find(s => s.type === 'package' || s.type === 'plan');
+            const standardItems = selectedServices.filter(s => s.type === 'standard' || s.type === 'custom');
+            
+            if (exclusiveSelection) {
+                totalDevCost = exclusiveSelection.price;
+                feedback = `Costo fijo de ${exclusiveSelection.type}: $${totalDevCost.toFixed(2)}`;
+            } else {
+                totalDevCost = standardItems.reduce((sum, item) => sum + item.price, 0);
+                if (standardItems.filter(s => s.type === 'standard').length >= 3) {
+                    const discountAmount = totalDevCost * COMBO_DISCOUNT;
+                    totalDevCost *= (1 - COMBO_DISCOUNT);
+                    feedback = `Aplicado ${COMBO_DISCOUNT * 100}% Dcto. (Ahorro: $${discountAmount.toFixed(2)})`;
+                } else {
+                    feedback = `Total de ${standardItems.length} ítems. (3+ estándar para descuento)`;
+                }
+            }
+            
+            const totalClientPrice = margin < 1 ? totalDevCost / (1 - margin) : totalDevCost * (1 + margin);
+            totalDevPriceSpan.textContent = totalDevCost.toFixed(2);
+            totalClientPriceSpan.textContent = totalClientPrice.toFixed(2);
+            document.getElementById('marginFeedback').textContent = feedback;
+            addTaskButton.textContent = editingIndex !== -1 ? 'Guardar Cambios' : 'Guardar Propuesta';
+        }
+        
+        // --- 6. GESTIÓN DE TAREAS Y MODALES ---
+        function handleAddTask() {
+            if (selectedServices.length === 0) return showNotification('error', 'Error', 'Debes seleccionar al menos un servicio.');
+            
+            const exclusiveSelection = selectedServices.find(s => s.type === 'package' || s.type === 'plan');
+            const individualItems = selectedServices.filter(s => s.type !== 'package' && s.type !== 'plan');
+
+            let newTask = {
+                clientName: document.getElementById('clientName').value || 'Sin Cliente',
+                webName: document.getElementById('webName').value || 'Sin Proyecto',
+                margin: parseFloat(marginPercentageInput.value) / 100 || 0,
+                totalDev: parseFloat(totalDevPriceSpan.textContent),
+                totalClient: parseFloat(totalClientPriceSpan.textContent),
+                package: exclusiveSelection && exclusiveSelection.type === 'package' ? exclusiveSelection : null,
+                plan: exclusiveSelection && exclusiveSelection.type === 'plan' ? exclusiveSelection : null,
+                services: individualItems,
+                type: serviceTypeSelect.value,
+            };
+
+            if (editingIndex !== -1) {
+                tasks[editingIndex] = newTask;
+            } else {
+                tasks.push(newTask);
+            }
+            showNotification('success', 'Propuesta Guardada', `La propuesta para ${newTask.webName} ha sido guardada.`);
+            resetForm();
+            saveTasks();
+        }
+
+        function resetForm() {
+            editingIndex = -1;
+            document.getElementById('clientName').value = '';
+            document.getElementById('webName').value = '';
+            serviceTypeSelect.value = 'puntual';
+            marginPercentageInput.value = '60';
+            toggleSelectionMode('puntual');
+        }
+
+        function editTask(index) {
+            const task = tasks[index];
+            editingIndex = index;
+            
+            document.getElementById('clientName').value = task.clientName;
+            document.getElementById('webName').value = task.webName;
+            marginPercentageInput.value = (task.margin * 100).toFixed(0);
+            
+            const selectionType = task.plan ? 'mensual' : 'puntual';
+            serviceTypeSelect.value = selectionType;
+            toggleSelectionMode(selectionType);
+            
+            setTimeout(() => {
+                clearAllSelections();
+                if (task.package) document.getElementById(`package-${task.package.id}`).checked = true;
+                if (task.plan) document.getElementById(`plan-${task.plan.id}`).checked = true;
+                
+                customServices = task.services.filter(s => s.type === 'custom');
+                task.services.filter(s => s.type === 'standard').forEach(svc => {
+                    const el = document.getElementById(`standard-${svc.id}`);
+                    if (el) el.checked = true;
+                });
+
+                updateSelectedItems();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 50);
+        }
+        
+        function deleteTask(index) {
+             tasks.splice(index, 1);
+             saveTasks();
+             showNotification('info', 'Propuesta Eliminada', `La propuesta ha sido eliminada.`);
+             if (index === editingIndex) resetForm(); 
+        }
+
+        // --- 7. EVENT LISTENERS Y SETUP INICIAL ---
+        serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));
+        clearSelectionsBtn.addEventListener('click', clearAllSelections);
+        addTaskButton.addEventListener('click', handleAddTask);
+        
+        document.getElementById('clearAllTasksBtn').addEventListener('click', () => {
+             if (tasks.length > 0 && confirm("¿Confirmas que deseas eliminar TODAS las propuestas guardadas? Esta acción no se puede deshacer.")) {
+                 tasks = [];
+                 saveTasks();
+                 resetForm();
+                 showNotification('info', 'Propuestas Eliminadas', 'Todas las propuestas han sido eliminadas.');
+             }
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPricingData();
+            loadTasks();
+            resetForm();
+        });
+
+        // --- MODALES Y PDF ---
+        function showNotification(type, title, message) {
+            document.getElementById('notificationTitle').textContent = title;
+            document.getElementById('notificationMessage').innerHTML = message;
+            const header = document.querySelector('#notificationModal .modal-header');
+            header.className = 'modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center';
+            const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-cyan-600' };
+            header.classList.add(colors[type] || 'bg-cyan-600');
+            document.getElementById('notificationModal').classList.remove('hidden');
+        }
+        function closeNotificationModal() { document.getElementById('notificationModal').classList.add('hidden'); }
+        function showCustomServiceModal() {
+            if (document.querySelector('input[name="selectionGroup"]:checked')) {
+                 return showNotification('error', 'Modo Exclusivo Activo', 'No puedes añadir ítems personalizados cuando un Paquete o Plan está seleccionado.');
+            }
+            document.getElementById('customServiceName').value = '';
+            document.getElementById('customServicePrice').value = '';
+            document.getElementById('customServiceModal').classList.remove('hidden');
+        }
+        function closeCustomServiceModal() { document.getElementById('customServiceModal').classList.add('hidden'); }
+        function showPdfOptionsModal() { 
+            if (tasks.length === 0) return showNotification('info', 'Sin Propuestas', 'No hay propuestas guardadas para generar documentos.');
+            document.getElementById('pdfOptionsModal').classList.remove('hidden'); 
+        }
+        function closePdfOptionsModal() { document.getElementById('pdfOptionsModal').classList.add('hidden'); }
+        
+        async function generatePdf(isForClient) {
+            const logoFile = document.getElementById('pdfLogoInput').files[0];
+            const reader = new FileReader();
+            const logoPromise = new Promise((resolve) => {
+                if (logoFile) {
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.readAsDataURL(logoFile);
+                } else {
+                    resolve(null);
+                }
+            });
+
+            const logoDataUrl = await logoPromise;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 20;
+            const pageHeight = doc.internal.pageSize.height;
+            const leftMargin = 15;
+            const rightMargin = 195;
+            const contentWidth = rightMargin - leftMargin;
+
+            const addPageNumbers = () => {
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor('#64748B');
+                    doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width / 2, pageHeight - 10, { align: 'center' });
+                }
+            };
+            
+            const checkPageBreak = (spaceNeeded = 10) => {
+                if (y + spaceNeeded > pageHeight - 20) {
+                    doc.addPage();
+                    y = 20;
+                }
+            };
+
+            // --- ENCABEZADO ---
+            if (logoDataUrl) {
+                try { doc.addImage(logoDataUrl, 'PNG', leftMargin, y-5, 30, 15); }
+                catch (e) { console.error("Error al añadir logo:", e); }
+            }
+            const resellerInfo = document.getElementById('pdfResellerInfo').value.split('\n');
+            doc.setFontSize(9);
+            doc.setTextColor('#94A3B8');
+            doc.text(resellerInfo, rightMargin, y, { align: 'right' });
+            
+            y += 20;
+            const clientInfo = document.getElementById('pdfClientInfo').value.split('\n');
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor('#F8FAFC');
+            doc.text("Propuesta para:", leftMargin, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(clientInfo, leftMargin, y + 6);
+            
+            const date = new Date().toLocaleDateString('es-ES');
+            doc.setFont('helvetica', 'bold');
+            doc.text("Fecha de Emisión:", rightMargin, y, { align: 'right' });
+            doc.setFont('helvetica', 'normal');
+            doc.text(date, rightMargin, y + 6, { align: 'right' });
+            
+            y += 20;
+            doc.setDrawColor('#334155');
+            doc.line(leftMargin, y, rightMargin, y);
+            y += 10;
+            
+            // --- CUERPO ---
+            tasks.forEach((task, index) => {
+                checkPageBreak(40);
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor('#22D3EE');
+                doc.text(`Proyecto: ${task.webName}`, leftMargin, y);
+                y += 8;
+
+                const item = task.package || task.plan;
+                if (item) {
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor('#F8FAFC');
+                    doc.text(item.name, leftMargin, y);
+                    if (isForClient) {
+                         doc.text(`$${task.totalClient.toFixed(2)}`, rightMargin, y, { align: 'right' });
+                    }
+                    y += 6;
+                    doc.setFontSize(9);
+                    doc.setTextColor('#94A3B8');
+                    const descriptionLines = doc.splitTextToSize(item.description, contentWidth);
+                    doc.text(descriptionLines, leftMargin, y);
+                    y += descriptionLines.length * 4 + 4;
+                } else {
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor('#F8FAFC');
+                    doc.text("Desglose de la Solución:", leftMargin, y);
+                    y += 7;
+                    doc.setFontSize(10);
+                    task.services.forEach(svc => {
+                        checkPageBreak();
+                        const serviceNameLines = doc.splitTextToSize(`• ${svc.name}`, contentWidth - 30);
+                        const clientPrice = svc.price / (1-task.margin); // Recalculate price for client
+                        doc.setTextColor('#CBD5E1');
+                        doc.text(serviceNameLines, leftMargin + 2, y);
+                        doc.text(`$${clientPrice.toFixed(2)}`, rightMargin, y, { align: 'right' });
+                        y += serviceNameLines.length * 5;
+                    });
+                    y += 2;
+                }
+
+                if (!isForClient) { // Reporte Interno
+                    checkPageBreak(25);
+                    doc.setDrawColor('#1E293B');
+                    doc.line(leftMargin + 80, y, rightMargin, y);
+                    y += 6;
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor('#E64E4E');
+                    doc.text('Costo Producción:', rightMargin - 40, y, { align: 'right' });
+                    doc.text(`$${task.totalDev.toFixed(2)}`, rightMargin, y, { align: 'right' });
+                    y += 5;
+                    doc.setTextColor('#FBBF24');
+                    doc.text(`Margen de Ganancia:`, rightMargin - 40, y, { align: 'right' });
+                    doc.text(`${(task.margin * 100).toFixed(0)}%`, rightMargin, y, { align: 'right' });
+                    y += 5;
+                }
+                
+                checkPageBreak(15);
+                doc.setDrawColor('#334155');
+                doc.line(leftMargin + 80, y, rightMargin, y);
+                y += 6;
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor('#4ADE80');
+                doc.text("Inversión Total:", rightMargin - 40, y, { align: 'right' });
+                doc.text(`$${task.totalClient.toFixed(2)}`, rightMargin, y, { align: 'right' });
+                y += 20;
+
+                if (index < tasks.length - 1) {
+                    doc.setDrawColor('#334155');
+                    doc.line(leftMargin, y - 5, rightMargin, y - 5);
+                }
+            });
+            
+            // --- PIE DE PÁGINA ---
+            const terms = document.getElementById('pdfTerms').value;
+            if(terms){
+                checkPageBreak(40);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor('#F8FAFC');
+                doc.text("Términos y Condiciones", leftMargin, y);
+                y += 5;
+                doc.setFontSize(8);
+                doc.setTextColor('#94A3B8');
+                const termsLines = doc.splitTextToSize(terms, contentWidth);
+                doc.text(termsLines, leftMargin, y);
+            }
+
+            addPageNumbers();
+            const fileName = isForClient ? `Propuesta-${tasks[0]?.webName || 'Proyecto'}.pdf` : `ReporteInterno-${tasks[0]?.webName || 'Proyecto'}.pdf`;
+            doc.save(fileName);
+            showNotification('success', 'PDF Generado', `El documento '${fileName}' ha sido exportado.`);
+            closePdfOptionsModal();
+        }
+
+        function addCustomServiceToSelection() {
+            const name = document.getElementById('customServiceName').value;
+            const price = parseFloat(document.getElementById('customServicePrice').value);
+            if (!name || isNaN(price) || price <= 0) {
+                return showNotification('error', 'Datos incompletos', 'Por favor, introduce un nombre y un costo válido.');
+            }
+            customServices.push({ id: `custom-${Date.now()}`, name: name, price: price, type: 'custom' });
+            updateSelectedItems();
+            closeCustomServiceModal();
+        }
+        function removeCustomService(id) {
+            customServices = customServices.filter(s => s.id !== id);
+            updateSelectedItems();
+        }
+    </script>
+</body>
+</html>
