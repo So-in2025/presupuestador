@@ -1,60 +1,33 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// *** NUEVO: DEFINE EL CATÁLOGO DE SERVICIOS RESUMIDO AQUÍ ***
-const SERVICE_CATALOG = [
-    { category: "Paquetes Web", 
-      items: [
-        { id: "p1", name: "Landing Page", description: "Conversión directa" },
-        { id: "p2", name: "Web Presencial", description: "Sitio profesional (hasta 5 secciones)" },
-        { id: "p3", name: "Portfolio", description: "Web visual para creativos" },
-        { id: "p4", name: "Web+Blog", description: "Generación de leads con blog" },
-        { id: "p5", name: "E-commerce Básico", description: "Venta directa (15 productos)" },
-        { id: "p6", name: "E-commerce Avanzado", description: "Tienda completa con carrito" },
-        { id: "p7", name: "Optimización Web", description: "Mejora velocidad y seguridad" },
-        { id: "p8", name: "App Web", description: "Proyecto a medida" }
-      ] 
-    },
-    { category: "Mejoras UX",
-      items: [
-        { id: "b1", name: "Animaciones", description: "Microinteracciones sutiles" },
-        { id: "b2", name: "Landing Extra", description: "Página de aterrizaje adicional" },
-        { id: "b3", name: "Formulario Inteligente", description: "Captura datos avanzada" },
-        { id: "b4", name: "Mapas/Gráficos", description: "Visualización enriquecida" }
-      ]
-    },
-    { category: "Funcionalidad",
-      items: [
-        { id: "c1", name: "Velocidad (Web Vitals)", description: "Optimización de carga" },
-        { id: "c2", name: "Diseño Visual (Branding)", description: "Guía de estilo" },
-        { id: "c3", name: "API (Backend)", description: "Conexión interfaz/datos" },
-        { id: "c4", name: "Base de Datos", description: "Estructura de datos" },
-        { id: "c5", name: "Sistema de Usuarios", description: "Login y roles" },
-        { id: "c6", name: "Seguridad (Auditoría)", description: "Refuerzo contra ataques" }
-      ]
-    },
-    { category: "Integraciones",
-      items: [
-        { id: "d1", name: "Pasarela de Pagos", description: "Conexión con Stripe/PayPal" },
-        { id: "d2", name: "Microservicios", description: "Backend escalable" }
-      ]
-    },
-    { category: "Planes Mensuales",
-      items: [
-        { id: "1", name: "Mantenimiento Esencial", description: "3 tareas/mes" },
-        { id: "2", name: "Soporte Activo", description: "5 tareas/mes (ajustes)" },
-        { id: "3", name: "Evolución Continua", description: "4 Ajustes + 1 Desarrollo" },
-        { id: "4", name: "Crecimiento Acelerado", description: "5 Ajustes + 2 Desarrollo" },
-        { id: "5", name: "Business Pro", description: "6 Ajustes + 3 Desarrollo" },
-        { id: "6", name: "Desarrollo Intensivo", description: "5 Ajustes + 5 Desarrollo" },
-        { id: "7", name: "Retainer Agencia", description: "15 tareas (1 Integración)" },
-        { id: "8", name: "Retainer Corporativo", description: "20 tareas (2 Integraciones)" },
-        { id: "9", name: "Retainer Enterprise", description: "30 tareas (3 Integraciones)" },
-        { id: "10", name: "Equipo Dedicado", description: "Tareas ilimitadas" }
-      ]
+async function getServiceCatalog() {
+    try {
+        const response = await fetch(`${process.env.URL}/pricing.json`);
+        if (!response.ok) throw new Error(`Error al cargar pricing.json: ${response.statusText}`);
+        const pricingData = await response.json();
+        return pricingData;
+    } catch (error) {
+        console.error("Error en getServiceCatalog:", error);
+        return "Error: No se pudo cargar el catálogo de servicios.";
     }
-];
+}
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+function formatServicesForPrompt(pricingData) {
+    let serviceList = "\n--- CATÁLOGO DE SERVICIOS ---\n";
+    for (const key in pricingData.allServices) {
+        serviceList += `\n**CATEGORÍA**: ${pricingData.allServices[key].name}\n`;
+        pricingData.allServices[key].items.forEach(item => {
+            serviceList += `- **${item.name}** (ID: ${item.id}): ${item.description}\n`;
+        });
+    }
+    if (pricingData.monthlyPlans) {
+        serviceList += `\n**PLANES MENSUALES**\n`;
+        pricingData.monthlyPlans.forEach(plan => {
+            serviceList += `- **${plan.name}** (ID: ${plan.id}): ${plan.description}\n`;
+        });
+    }
+    return serviceList;
+}
 
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
@@ -63,24 +36,28 @@ exports.handler = async function(event) {
 
     try {
         const { history } = JSON.parse(event.body);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const pricingData = await getServiceCatalog();
+        if (typeof pricingData === 'string') return { statusCode: 500, body: JSON.stringify({ response: pricingData }) };
+        const serviceCatalog = formatServicesForPrompt(pricingData);
 
-        // NUEVO PROMPT ULTRA-EFICIENTE
+        // NUEVO PROMPT ULTRA-CORTO
         const systemPrompt = `
             Eres 'Proyecto Zen Assistant', experto en ventas web.
-            
-            Conoces estos servicios:
-            ${formatServicesForPrompt()}
 
-            Analiza la necesidad del cliente y responde:
+            Conoces estos servicios. Cuando recomiendes algo, incluye siempre el Nombre y el ID (entre parentesis):
+             ${formatServicesForPrompt(pricingData)}
+
+            Analiza la necesidad del cliente (sin repetir sus palabras) y responde:
             1. **Servicios:** [IDs exactos, separados por coma]
-            2. **Respuesta:** [Texto de venta, MAX 3 oraciones]
+            2. **Respuesta:** [Texto de venta, MAX 3 oraciones]. Cierra siempre preguntando "¿Qué te parece?"
 
             **EJEMPLO:**
             **Servicios:** p4, c5
-            **Respuesta:** Para tu web con blog y sistema de usuarios, te recomiendo la Web Corporativa (p4) y el Sistema de Usuarios (c5) para gestionar roles y acceso. ¡Esto atraerá leads y te dará control!
+            **Respuesta:** Para una web con blog y sistema de usuarios, te recomiendo la Web Corporativa (p4) y el Sistema de Usuarios (c5). Esto atraerá leads y te dará control. ¿Qué te parece?
         `;
 
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const geminiHistory = history.map(turn => ({
             role: turn.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: turn.content }]
@@ -98,13 +75,3 @@ exports.handler = async function(event) {
         return { statusCode: 500, body: JSON.stringify({ error: `Error en la IA: ${error.message}` }) };
     }
 };
-
-// Formatear servicios para el prompt (mucho más corto)
-function formatServicesForPrompt() {
-    let serviceList = "\n";
-    SERVICE_CATALOG.forEach(category => {
-        serviceList += `\n**${category.category}**: `;
-        serviceList += category.items.map(item => `**${item.name}** (ID: ${item.id})`).join(', ');
-    });
-    return serviceList;
-}
