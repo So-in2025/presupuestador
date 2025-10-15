@@ -25,7 +25,7 @@
             border-radius: 12px; text-align: center; 
             z-index: 20; /* Añadido */
             opacity: 0; /* Añadido */
-            animation: fadeInContainer 1s 2s ease-out forwards; /* Modificado */
+            animation: fadeInContainer 1s 2.5s ease-out forwards; /* Modificado */
         }
         h1 {
             font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem); /* Ajustado para el nuevo texto */
@@ -73,7 +73,7 @@
         @keyframes fadeInScaleUp { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         @keyframes pulseButton { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
 
-        /* === CÓDIGO A AÑADIR === */
+        /* === NUEVO CSS DEL HERO ANIMADO (REEMPLAZAR EL ANTERIOR) === */
         .hero-background-text {
             position: absolute;
             top: 20%;
@@ -83,17 +83,15 @@
             z-index: 10;
             pointer-events: none;
         }
-        .main-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: clamp(3rem, 10vw, 7rem);
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5rem;
-            color: #F8FAFC;
-            text-shadow: 0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.3);
+
+        .main-title span {
+            position: relative;
+            display: inline-block;
             opacity: 0;
-            animation: fadeInHeroText 1.5s 0.5s ease-out forwards;
+            animation: revealLetter 1s forwards;
+            animation-delay: calc(0.1s * var(--i)); /* La magia del retraso secuencial */
         }
+
         .brand-byline {
             font-family: 'Inter', sans-serif;
             font-size: clamp(0.9rem, 2vw, 1.2rem);
@@ -101,24 +99,65 @@
             letter-spacing: 2px;
             margin-top: -0.5rem;
             opacity: 0;
-            animation: fadeInHeroText 1.5s 0.8s ease-out forwards;
+            animation: fadeInGeneric 1.5s 1.5s ease-out forwards;
         }
-        @keyframes fadeInHeroText {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        /* Animación de revelación de letras */
+        @keyframes revealLetter {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.8);
+                text-shadow: none;
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                text-shadow: 0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.3);
+                animation: breathingGlow 4s ease-in-out infinite alternate 2s; /* Inicia la animación de resplandor después de revelarse */
+            }
         }
+
+        /* Animación de resplandor "Zen" */
+        @keyframes breathingGlow {
+            from {
+                text-shadow: 0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.3);
+            }
+            to {
+                text-shadow: 0 0 25px rgba(34, 211, 238, 0.8), 0 0 50px rgba(34, 211, 238, 0.5);
+            }
+        }
+
+        /* Animación genérica para otros elementos */
+        @keyframes fadeInGeneric {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Animación del contenedor principal (ahora con más retraso) */
         @keyframes fadeInContainer {
             from { opacity: 0; transform: scale(0.98); }
             to { opacity: 1; transform: scale(1); }
         }
-
     </style>
 </head>
 <body>
 
     <!-- NUEVO: HERO ANIMADO EN EL FONDO -->
     <div class="hero-background-text">
-        <h1 class="main-title">Proyecto Zen</h1>
+        <!-- CÓDIGO A REEMPLAZAR -->
+        <h1 class="main-title">
+            <span style="--i:1;">P</span>
+            <span style="--i:2;">r</span>
+            <span style="--i:3;">o</span>
+            <span style="--i:4;">y</span>
+            <span style="--i:5;">e</span>
+            <span style="--i:6;">c</span>
+            <span style="--i:7;">t</span>
+            <span style="--i:8;">o</span>
+            <span style="--i:9; margin-left: 2rem;">Z</span>
+            <span style="--i:10;">e</span>
+            <span style="--i:11;">n</span>
+        </h1>
         <p class="brand-byline">by SO->IN</p>
     </div>
 
