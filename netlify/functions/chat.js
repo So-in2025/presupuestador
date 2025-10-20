@@ -38,10 +38,9 @@ exports.handler = async function(event) {
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         
-        // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
-        // Cambiamos 'gemini-pro' por el nombre del modelo de producción 'gemini-1.0-pro'
+        // --- CORRECCIÓN FINAL BASADA EN TU CAPTURA DE PANTALLA ---
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.0-pro",
+            model: "gemini-2.5-flash", // <-- EL NOMBRE CORRECTO DEL MODELO (¡POR FIN!)
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
         
