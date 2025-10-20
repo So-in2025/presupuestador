@@ -59,40 +59,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function sendMessage() {
-        const userMessage = chatInput.value.trim();
-        if (userMessage === '') return;
+   async function sendMessage() {
+    const userMessage = chatInput.value.trim();
+    if (userMessage === '') return;
 
-        addMessageToChat(userMessage, 'user');
-        chatHistory.push({ role: 'user', content: userMessage });
-        
-        chatInput.value = '';
-        chatInput.focus();
-        toggleTypingIndicator(true);
+    addMessageToChat(userMessage, 'user');
+    // --- AÑADIMOS CONTEXTO AL MENSAJE DEL USUARIO ---
+    const enhancedUserMessage = `
+        Por favor, analiza esta necesidad y recomienda servicios específicos del catálogo.
+        Necesidad del cliente: ${userMessage}
+    `;
 
-        try {
-            const response = await fetch('/.netlify/functions/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: chatHistory })
-            });
+    chatHistory.push({ role: 'user', content: enhancedUserMessage }); // Usamos el mensaje enriquecido
+    
+    // El resto de la función no cambia
+    chatInput.value = '';
+    chatInput.focus();
+    toggleTypingIndicator(true);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Hubo un error en la respuesta del servidor.');
-            }
+    try {
+        const response = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ history: chatHistory })
+        });
 
-            const data = await response.json();
-            addMessageToChat(data.response, 'assistant');
-            chatHistory.push({ role: 'assistant', content: data.response });
-
-        } catch (error) {
-            console.error("Error al enviar mensaje:", error);
-            addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Intenta de nuevo.`, 'assistant');
-        } finally {
-            toggleTypingIndicator(false);
+        if (!response.ok) {
+             const errorText = await response.text();
+             throw new Error(errorText || 'Hubo un error en la respuesta del servidor.');
         }
+
+        const data = await response.json();
+        addMessageToChat(data.response, 'assistant');
+        chatHistory.push({ role: 'assistant', content: data.response });
+
+    } catch (error) {
+        console.error("Error al enviar mensaje:", error);
+        addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Intenta de nuevo.`, 'assistant');
+    } finally {
+        toggleTypingIndicator(false);
     }
+}
     
     function initChat() {
         // Limpia cualquier contenido previo y el historial en memoria cada vez que se carga.
