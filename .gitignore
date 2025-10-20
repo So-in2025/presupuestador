@@ -1,7 +1,3 @@
-# Node.js dependencies
-# Esta es la línea más importante. Evita subir miles de archivos.
-node_modules/
-
 # Environment variables
 # Nunca subas tus claves de API u otros secretos al repositorio.
 .env
