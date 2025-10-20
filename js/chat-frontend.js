@@ -3,12 +3,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
-    const sendChatBtn = document.getElementById('chat-send-btn');
+    const sendChatBtn = document.getElementById('sendChatBtn');
     const summaryCard = document.getElementById('summaryCard');
 
     if (!chatMessagesContainer || !chatInput || !sendChatBtn) return;
     
-    // El historial es temporal y solo vive mientras la página está abierta.
     let chatHistory = [];
 
     function addMessageToChat(message, role) {
@@ -59,15 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-   async function sendMessage() {
+    async function sendMessage() {
         const userMessage = chatInput.value.trim();
         if (userMessage === '') return;
 
         addMessageToChat(userMessage, 'user');
-
-        // Formatea el mensaje para la API de Google
-        chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
-
+         // Formatea el mensaje para la API de Google con el campo 'data'
+        chatHistory.push({ role: 'user', parts: [{ data: { text: userMessage } }] });
+        
         chatInput.value = '';
         chatInput.focus();
         toggleTypingIndicator(true);
@@ -86,8 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             addMessageToChat(data.response, 'model');
-             // Formatea la respuesta de la IA para la API de Google
-            chatHistory.push({ role: 'model', parts: [{ text: data.response }] });
+            // Formatea la respuesta de la IA con el campo 'data'
+            chatHistory.push({ role: 'model', parts: [{ data: { text: data.response } }] });
 
         } catch (error) {
             console.error("Error al enviar mensaje:", error);
@@ -103,9 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory = [];
 
         const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-        chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
+        // Formatea el mensaje de bienvenida con el campo 'data'
+        chatHistory.push({ role: 'model', parts: [{ data: { text: welcomeMessage } }] });
         
-        chatHistory.forEach(turn => addMessageToChat(turn.parts[0].text, turn.role));
+        chatHistory.forEach(turn => addMessageToChat(turn.parts[0].data.text, turn.role));
 
         sendChatBtn.addEventListener('click', sendMessage);
         
