@@ -31,18 +31,23 @@ exports.handler = async function(event) {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
     try {
+        console.log("1. Inicio de la función chat.js"); // [A]
         const { history } = JSON.parse(event.body);
+        console.log("2. Body parseado:", history); // [B]
+
         if (!history || !Array.isArray(history)) {
+            console.log("3. Error: Historial inválido."); // [C]
             return { statusCode: 400, body: JSON.stringify({ error: "El historial es inválido." }) };
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         
-        // --- CORRECCIÓN FINAL BASADA EN TU CAPTURA DE PANTALLA ---
+        // --- MODELO CORRECTO (asegúrate de que este exista en tu cuenta) ---
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash", // <-- EL NOMBRE CORRECTO DEL MODELO (¡POR FIN!)
+            model: "gemini-2.5-pro", // <-- ¡Este debe ser correcto!
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
+        console.log("4. Modelo de IA inicializado."); // [D]
         
         const instructions = {
             role: "user",
@@ -64,30 +69,39 @@ exports.handler = async function(event) {
         }));
         
         const fullHistory = [instructions, ...geminiHistory];
+        console.log("5. Historial formateado:", fullHistory); // [E]
         const chat = model.startChat({ history: fullHistory });
         const userMessage = history.length > 0 ? history[history.length - 1].content : "";
 
         if (userMessage === "") {
+             console.log("6. Error: No se recibió un mensaje de usuario."); // [F]
              return { statusCode: 400, body: JSON.stringify({ error: "No se recibió un mensaje de usuario para procesar." }) };
         }
+        console.log("7. Mensaje del usuario:", userMessage); // [G]
 
         let result = await chat.sendMessage(userMessage);
+        console.log("8. Respuesta de la IA (inicial):", result); // [H]
         let response = result.response;
 
         const functionCalls = response.functionCalls();
         if (functionCalls && functionCalls.length > 0) {
+            console.log("9. La IA solicita llamar a la herramienta:", functionCalls[0].name); // [I]
             const call = functionCalls[0];
             const toolResult = tools[call.name](call.args);
+            console.log("10. Resultado de la herramienta:", toolResult); // [J]
             result = await chat.sendMessage([{ functionResponse: { name: call.name, response: toolResult } }]);
             response = result.response;
+            console.log("11. Respuesta de la IA (después de la herramienta):", response); // [K]
         }
         
         if (!response || !response.text) {
+             console.log("12. Error: La respuesta de la IA fue inválida o nula."); // [L]
              throw new Error("La respuesta de la IA fue inválida o nula.");
         }
         const responseText = response.text();
+        console.log("13. Respuesta final:", responseText); // [M]
 
-        return { statusCode: 200, body: JSON.stringify({ response: responseText }) };
+        return { statusCode: 200, body: JSON.stringify({ response: responseText }) }; // [N]
 
     } catch (error) {
         console.error("Error en la función de Netlify:", error);
