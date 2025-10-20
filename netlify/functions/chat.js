@@ -66,7 +66,7 @@ exports.handler = async function(event) {
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-pro-latest", // Usamos el modelo más reciente y capaz para herramientas.
+            model: "gemini-2.0-flash", // Usamos el modelo más reciente y capaz para herramientas.
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
         
