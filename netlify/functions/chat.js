@@ -1,16 +1,15 @@
 // /netlify/functions/chat.js
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const fs = require('fs');
-const path = require('path');
 
-// --- Nivel 2: Mejora de Inteligencia ---
-// La función ahora construye un resumen detallado del catálogo para la IA.
+// --- SECCIÓN CORREGIDA ---
+// Se eliminan 'fs' y 'path' que ya no son necesarios.
+// Ahora usamos require() para cargar el JSON, que es la forma estándar y más segura en Node.js.
 function getCatalogContext() {
     try {
-        const filePath = path.resolve(__dirname, '../../pricing.json');
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const pricingData = JSON.parse(fileContent);
+        // require() busca el archivo relativo a este script (chat.js).
+        // Por eso es crucial que 'pricing.json' esté en la misma carpeta.
+        const pricingData = require('./pricing.json');
 
         let catalogSummary = "Tu conocimiento se basa exclusivamente en este catálogo de servicios:\n\n";
 
@@ -39,11 +38,13 @@ function getCatalogContext() {
         return catalogSummary;
 
     } catch (error) {
-        console.error("Error crítico al leer y procesar pricing.json:", error);
-        return "Error: No se pudo cargar el contexto del catálogo de servicios.";
+        console.error("Error crítico al cargar o procesar pricing.json:", error);
+        // Mensaje de error más útil para el log.
+        return "Error: No se pudo cargar el contexto del catálogo de servicios. Asegúrate de que una copia de 'pricing.json' esté en la misma carpeta que 'chat.js'.";
     }
 }
 
+// --- EL RESTO DEL ARCHIVO PERMANECE EXACTAMENTE IGUAL ---
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };

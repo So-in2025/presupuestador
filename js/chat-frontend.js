@@ -8,16 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!chatMessagesContainer || !chatInput || !sendChatBtn) return;
     
-    // --- Nivel 3: Persistencia de la Conversación ---
-    // Carga el historial desde localStorage o empieza uno nuevo.
     let chatHistory = JSON.parse(localStorage.getItem('zenChatHistory')) || [];
 
     function saveHistory() {
         localStorage.setItem('zenChatHistory', JSON.stringify(chatHistory));
     }
 
-    // --- Nivel 1: Recomendaciones Accionables ---
-    // Esta función ahora crea botones clicables para los servicios recomendados.
     function addMessageToChat(message, sender) {
         const messageWrapper = document.createElement('div');
         messageWrapper.className = 'chat-message flex flex-col';
@@ -45,17 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Click para añadir):</p>
                             <div class="flex flex-wrap gap-2">
                                 ${serviceIDs.map(id => {
-                                    // Determina el tipo de servicio para encontrar el input correcto
                                     let type = 'standard';
                                     if (/^p\d+/.test(id)) type = 'package';
-                                    else if (/^\d+$/.test(id)) type = 'plan'; // Si es solo número, es un plan
-                                    
+                                    else if (/^\d+$/.test(id)) type = 'plan';
                                     return `<button class="px-2 py-1 text-xs font-mono bg-slate-900 text-cyan-300 rounded cursor-pointer hover:bg-cyan-800 transition" 
-                                              data-action="add-service"
-                                              data-service-id="${id}" 
-                                              data-service-type="${type}">
-                                        + ${id}
-                                    </button>`;
+                                              data-action="add-service" data-service-id="${id}" data-service-type="${type}">+ ${id}</button>`;
                                 }).join('')}
                             </div>
                         </div>
@@ -68,7 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        messageWrapper.appendChild(messageWrapper.appendChild(messageBubble));
+        messageWrapper.appendChild(messageBubble);
+        chatMessagesContainer.appendChild(messageWrapper);
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
@@ -94,18 +85,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         addMessageToChat(userMessage, 'user');
         chatHistory.push({ role: 'user', content: userMessage });
-        saveHistory(); // Nivel 3: Guarda el historial
+        saveHistory();
         chatInput.value = '';
         chatInput.focus();
         toggleTypingIndicator(true);
 
         try {
+            // El backend NO debe recibir el historial que empieza con 'assistant',
+            // así que filtramos el mensaje de bienvenida antes de enviar.
+            const historyForAPI = chatHistory.filter(turn => !(turn.role === 'assistant' && turn.isWelcomeMessage));
+
             const response = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: chatHistory })
+                body: JSON.stringify({ history: historyForAPI })
             });
-            toggleTypingIndicator(false);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -115,23 +109,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             addMessageToChat(data.response, 'ai');
             chatHistory.push({ role: 'assistant', content: data.response });
-            saveHistory(); // Nivel 3: Guarda el historial
+            saveHistory();
 
         } catch (error) {
             console.error("Error al enviar mensaje:", error);
-            toggleTypingIndicator(false);
             addMessageToChat(`Lo siento, hubo un error de conexión con el asistente: ${error.message}`, 'ai');
+        } finally {
+            toggleTypingIndicator(false);
         }
     }
 
     function initChat() {
-        // Nivel 3: Reconstruye el chat al cargar la página
-        if (chatHistory.length > 0) {
-            chatHistory.forEach(turn => addMessageToChat(turn.content, turn.role === 'user' ? 'user' : 'ai'));
-        } else {
+        // --- CORRECCIÓN DEL MENSAJE DE BIENVENIDA ---
+        if (chatHistory.length === 0) {
             const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-            addMessageToChat(welcomeMessage, 'ai');
+            // 1. Añade el mensaje al estado del chat CON UN MARCADOR
+            chatHistory.push({ role: 'assistant', content: welcomeMessage, isWelcomeMessage: true });
+            // 2. Guarda el historial que ahora incluye el mensaje de bienvenida
+            saveHistory();
         }
+
+        // Siempre redibuja el chat completo desde el historial guardado
+        chatMessagesContainer.innerHTML = ''; // Limpia el chat antes de redibujar
+        chatHistory.forEach(turn => addMessageToChat(turn.content, turn.role === 'user' ? 'user' : 'ai'));
+        
+        // --- FIN DE LA CORRECCIÓN ---
 
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
@@ -141,29 +143,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // --- Nivel 1: Listener para los botones de servicio ---
         chatMessagesContainer.addEventListener('click', (event) => {
             const target = event.target.closest('[data-action="add-service"]');
             if (target) {
                 const { serviceId, serviceType } = target.dataset;
                 let elementId;
 
-                // Construye el ID del elemento input basado en el tipo
-                if (serviceType === 'plan') {
-                    elementId = `plan-${serviceId}`;
-                } else {
-                    elementId = `${serviceType}-${serviceId}`;
-                }
+                if (serviceType === 'plan') elementId = `plan-${serviceId}`;
+                else elementId = `${serviceType}-${serviceId}`;
                 
                 const serviceElement = document.getElementById(elementId);
                 
                 if (serviceElement) {
-                    serviceElement.click(); // Simula el clic
-                    
-                    if(summaryCard) {
-                        summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    
+                    serviceElement.click();
+                    if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800');
                     target.classList.add('bg-green-700', 'text-white', 'cursor-default');
                     target.textContent = `Añadido ✔️`;
