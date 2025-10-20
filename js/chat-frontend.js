@@ -101,10 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory = [];
 
         const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-        // Formatea el mensaje de bienvenida con el campo 'data'
-        chatHistory.push({ role: 'model', parts: [{ data: { text: welcomeMessage } }] });
+        addMessageToChat(welcomeMessage, 'model');
+        chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
         
-        chatHistory.forEach(turn => addMessageToChat(turn.parts[0].data.text, turn.role));
 
         sendChatBtn.addEventListener('click', sendMessage);
         
