@@ -65,9 +65,10 @@ async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
         Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
       },
       body: JSON.stringify({
-        input: messages.map((m) => m.content).join("\n"),
-        max_tokens: 500,
+        model: "deepseek-chat",  // o "r1" según tu plan
+        messages: messages,      // PASAR EL ARRAY DE MENSAJES
         temperature: 0.7,
+        max_tokens: 500
       }),
     });
 
@@ -77,7 +78,7 @@ async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
     }
 
     const data = await response.json();
-    return data.output_text || "DeepSeek no devolvió respuesta";
+    return data.choices?.[0]?.message?.content || "DeepSeek no devolvió respuesta";
   } catch (err) {
     console.error("Error comunicándose con DeepSeek:", err.message);
     throw new Error("No se pudo conectar con el motor DeepSeek.");
