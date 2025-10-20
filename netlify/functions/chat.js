@@ -3,18 +3,13 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
-// --- HERRAMIENTA COMPLETA ---
 const tools = {
     find_relevant_services: function(args) {
         const { project_description } = args;
         if (!project_description) return { error: "Se necesita una descripción del proyecto." };
-
         console.log(`Ejecutando herramienta con descripción: "${project_description}"`);
         const keywords = project_description.toLowerCase().match(/\b(\w{3,})\b/g) || [];
-        if (keywords.length === 0) {
-            return { relevant_ids: [], status: "NO_KEYWORDS_FOUND" };
-        }
-
+        if (keywords.length === 0) return { relevant_ids: [], status: "NO_KEYWORDS_FOUND" };
         let scores = {};
         Object.values(pricingData.allServices).forEach(category => {
             category.items.forEach(item => {
@@ -24,16 +19,9 @@ const tools = {
                 if (score > 0) scores[item.id] = { score };
             });
         });
-
-        const relevant_ids = Object.entries(scores)
-            .sort((a, b) => b[1].score - a[1].score)
-            .slice(0, 4)
-            .map(entry => entry[0]);
-            
+        const relevant_ids = Object.entries(scores).sort((a, b) => b[1].score - a[1].score).slice(0, 4).map(entry => entry[0]);
         console.log("IDs relevantes encontrados:", relevant_ids);
-        if (relevant_ids.length === 0) {
-            return { relevant_ids: [], status: "NO_MATCHING_SERVICES" };
-        }
+        if (relevant_ids.length === 0) return { relevant_ids: [], status: "NO_MATCHING_SERVICES" };
         return { relevant_ids, status: "SUCCESS" };
     }
 };
@@ -49,12 +37,14 @@ exports.handler = async function(event) {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        
+        // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
+        // Cambiamos 'gemini-pro' por el nombre del modelo de producción 'gemini-1.0-pro'
         const model = genAI.getGenerativeModel({
-            model: "gemini-pro",
+            model: "gemini-1.0-pro",
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
-
-        // --- INSTRUCCIONES COMPLETAS ---
+        
         const instructions = {
             role: "user",
             parts: [{ text: `
@@ -69,9 +59,8 @@ exports.handler = async function(event) {
             `}]
         };
 
-        // --- CORRECCIÓN DEFINITIVA: Traducir 'assistant' a 'model' ---
         const geminiHistory = history.map(turn => ({
-            role: turn.role === 'assistant' ? 'model' : 'user', // Aquí está la traducción
+            role: turn.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: turn.content }]
         }));
         

@@ -8,10 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!chatMessagesContainer || !chatInput || !sendChatBtn) return;
     
+    // El historial es temporal y solo vive mientras la página está abierta.
     let chatHistory = [];
-
-    function saveHistory() { localStorage.setItem('zenChatHistory', JSON.stringify(chatHistory)); }
-    function loadHistory() { chatHistory = JSON.parse(localStorage.getItem('zenChatHistory')) || []; }
 
     function addMessageToChat(message, role) {
         const sender = (role === 'user') ? 'user' : 'ai';
@@ -67,13 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         addMessageToChat(userMessage, 'user');
         chatHistory.push({ role: 'user', content: userMessage });
-        saveHistory();
+        
         chatInput.value = '';
         chatInput.focus();
         toggleTypingIndicator(true);
 
         try {
-            // Pasamos el historial completo, que ahora usa 'assistant'
             const response = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -88,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             addMessageToChat(data.response, 'assistant');
             chatHistory.push({ role: 'assistant', content: data.response });
-            saveHistory();
 
         } catch (error) {
             console.error("Error al enviar mensaje:", error);
@@ -99,19 +95,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function initChat() {
-        loadHistory();
+        // Limpia cualquier contenido previo y el historial en memoria cada vez que se carga.
         chatMessagesContainer.innerHTML = '';
+        chatHistory = [];
 
-        if (chatHistory.length === 0) {
-            const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-            chatHistory.push({ role: 'assistant', content: welcomeMessage });
-            saveHistory();
-        }
+        // Muestra siempre el mensaje de bienvenida.
+        const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
+        addMessageToChat(welcomeMessage, 'assistant');
         
-        chatHistory.forEach(turn => addMessageToChat(turn.content, turn.role));
+        // Lo añadimos al historial de la sesión actual para que la IA tenga contexto.
+        chatHistory.push({ role: 'assistant', content: welcomeMessage });
 
         sendChatBtn.addEventListener('click', sendMessage);
-        
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
