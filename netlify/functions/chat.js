@@ -3,16 +3,20 @@
  * Backend de producción del Asistente Zen.
  * Motor: DeepSeek R1.
  * Propósito: recibir historial, analizar proyecto, y devolver recomendación estructurada.
- * Usando fetch global (Node 18+) para Netlify.
+ * Configurado para Netlify Node 18+ usando fetch global.
  */
 
 const pricingData = require("./pricing.json");
 
 // --- CONFIGURACIÓN DE DEEPSEEK ---
-const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || "https://api.deepseek.ai/v1/r1/generate";
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "TU_API_KEY_DEEPSEEK";
+const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
-// --- FUNCIÓN DE BÚSQUEDA REAL ---
+if (!DEEPSEEK_API_URL || !DEEPSEEK_API_KEY) {
+  console.error("❌ DEEPSEEK_API_URL o DEEPSEEK_API_KEY no están definidas en variables de entorno.");
+}
+
+// --- FUNCIÓN DE BÚSQUEDA DE SERVICIOS ---
 function findRelevantServices(project_description) {
   if (!project_description) throw new Error("Descripción de proyecto vacía.");
 
@@ -40,6 +44,10 @@ function findRelevantServices(project_description) {
 
 // --- FUNCION PARA COMUNICARSE CON DEEPSEEK ---
 async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
+  if (!DEEPSEEK_API_URL || !DEEPSEEK_API_KEY) {
+    throw new Error("DeepSeek API no configurada correctamente.");
+  }
+
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map((msg) => ({
@@ -49,26 +57,31 @@ async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
     { role: "user", content: userPrompt },
   ];
 
-  const response = await fetch(DEEPSEEK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      input: messages.map(m => m.content).join("\n"),
-      max_tokens: 500,
-      temperature: 0.7,
-    }),
-  });
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        input: messages.map((m) => m.content).join("\n"),
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Error al comunicarse con DeepSeek: ${response.status}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`DeepSeek API responded with ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    return data.output_text || "DeepSeek no devolvió respuesta";
+  } catch (err) {
+    console.error("Error comunicándose con DeepSeek:", err.message);
+    throw new Error("No se pudo conectar con el motor DeepSeek.");
   }
-
-  const data = await response.json();
-  // Ajusta según la estructura real de la respuesta de DeepSeek R1
-  return data.output_text || "DeepSeek no devolvió respuesta";
 }
 
 // --- HANDLER PRINCIPAL ---
@@ -118,18 +131,15 @@ Si no hay coincidencias, pide más información profesionalmente.
 
     const userPrompt =
       relevantIds.length > 0
-        ? `El cliente describe: "${userMessage}".
-Servicios relevantes encontrados: ${formattedServices}.
-Formula una respuesta usando el formato estricto.`
-        : `El cliente describe: "${userMessage}".
-No se encontraron coincidencias. Pide más detalles de forma profesional.`;
+        ? `El cliente describe: "${userMessage}".\nServicios relevantes encontrados: ${formattedServices}.\nFormula una respuesta usando el formato estricto.`
+        : `El cliente describe: "${userMessage}".\nNo se encontraron coincidencias. Pide más detalles de forma profesional.`;
 
     const responseText = await sendMessageToDeepSeek(systemPrompt, history, userPrompt);
 
     console.log(`[${invocationId}] OK`);
     return { statusCode: 200, body: JSON.stringify({ response: responseText }) };
   } catch (err) {
-    console.error(`[${invocationId}] FATAL:`, err);
+    console.error(`[${invocationId}] FATAL:`, err.message);
     return {
       statusCode: 500,
       body: JSON.stringify({
