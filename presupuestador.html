@@ -159,6 +159,15 @@
         .points-display span {
             color: #22D3EE;
         }
+
+        /* --- ESTILOS CHAT IA --- */
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        .animate-bounce {
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen p-4 sm:p-6 md:p-10">
@@ -300,7 +309,7 @@
                     <h2 class="text-2xl font-semibold mb-4 accent-color">3. Calcular Rentabilidad</h2>
                     <div class="mb-4">
                         <label for="marginPercentage" class="block text-sm font-medium text-slate-300 mb-2">Tu Margen de Ganancia (%)</label>
-                        <input type="number" id="marginPercentage" value="60" min="0" class="w-full styled-input text-cyan-300" oninput="updateSummary()">
+                        <input type="number" id="marginPercentage" value="60" min="0" class="w-full styled-input text-cyan-300">
                         <p id="marginFeedback" class="text-xs mt-1 text-slate-400"></p>
                     </div>
                     <div class="text-lg font-bold space-y-2 pt-4 border-t border-slate-700">
@@ -335,6 +344,7 @@
         </div>
     </div>
     
+    <!-- CONTENEDOR DEL CHAT IA -->
     <div class="max-w-7xl mx-auto mt-8">
         <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
             <div class="flex items-center mb-4">
@@ -342,10 +352,12 @@
                 <span class="ml-3 h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
             </div>
             
-            <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto pr-2 mb-4"></div>
+            <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto p-2 bg-slate-900/50 rounded-lg border border-slate-700">
+                <!-- Los mensajes del chat aparecerán aquí dinámicamente -->
+            </div>
 
             <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
-                <input type="text" id="chat-input" class="w-full styled-input" placeholder="Pregúntale cualquier cosa a tu asistente...">
+                <input type="text" id="chat-input" class="w-full styled-input" placeholder="Ej: 'Necesito una web para un fotógrafo que quiere mostrar su trabajo y vender copias online'">
                 <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                         <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
@@ -354,8 +366,12 @@
             </div>
         </div>
     </div>
+
 <script type="module" src="js/main.js"></script>
 <script type="module" src="js/modals.js"></script>
 <script type="module" src="js/pdf.js"></script>
+<!-- SCRIPT PARA EL CHAT CON IA (FRONTEND) -->
+<script src="js/chat-frontend.js"></script> 
+
 </body>
 </html>
