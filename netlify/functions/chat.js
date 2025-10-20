@@ -1,19 +1,20 @@
 // /netlify/functions/chat.js
 /**
  * Backend de producción del Asistente Zen.
- * Motor: DeepSeek R1.
+ * Motor: Gemini 2.5 Flash Lite.
  * Propósito: recibir historial, analizar proyecto, y devolver recomendación estructurada.
  * Configurado para Netlify Node 18+ usando fetch global.
  */
 
 const pricingData = require("./pricing.json");
 
-// --- CONFIGURACIÓN DE DEEPSEEK ---
-const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+// --- CONFIGURACIÓN DE GEMINI ---
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_API_URL = `https://gemini.googleapis.com/v1/models/${GEMINI_MODEL}:generate`;
 
-if (!DEEPSEEK_API_URL || !DEEPSEEK_API_KEY) {
-  console.error("❌ DEEPSEEK_API_URL o DEEPSEEK_API_KEY no están definidas en variables de entorno.");
+if (!GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY no está definida en variables de entorno.");
 }
 
 // --- FUNCIÓN DE BÚSQUEDA DE SERVICIOS ---
@@ -42,11 +43,9 @@ function findRelevantServices(project_description) {
     .map(([id]) => id);
 }
 
-// --- FUNCION PARA COMUNICARSE CON DEEPSEEK ---
-async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
-  if (!DEEPSEEK_API_URL || !DEEPSEEK_API_KEY) {
-    throw new Error("DeepSeek API no configurada correctamente.");
-  }
+// --- FUNCIÓN PARA COMUNICARSE CON GEMINI ---
+async function sendMessageToGemini(systemPrompt, history, userPrompt) {
+  if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -58,30 +57,29 @@ async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
   ];
 
   try {
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "deepseek-chat",  // o "r1" según tu plan
-        messages: messages,      // PASAR EL ARRAY DE MENSAJES
+        prompt: messages.map((m) => m.content).join("\n"),
+        max_output_tokens: 500,
         temperature: 0.7,
-        max_tokens: 500
       }),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`DeepSeek API responded with ${response.status}: ${text}`);
+      throw new Error(`Gemini API responded with ${response.status}: ${text}`);
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "DeepSeek no devolvió respuesta";
+    return data.candidates?.[0]?.content || "Gemini no devolvió respuesta";
   } catch (err) {
-    console.error("Error comunicándose con DeepSeek:", err.message);
-    throw new Error("No se pudo conectar con el motor DeepSeek.");
+    console.error("Error comunicándose con Gemini:", err.message);
+    throw new Error("No se pudo conectar con el motor Gemini.");
   }
 }
 
@@ -135,7 +133,7 @@ Si no hay coincidencias, pide más información profesionalmente.
         ? `El cliente describe: "${userMessage}".\nServicios relevantes encontrados: ${formattedServices}.\nFormula una respuesta usando el formato estricto.`
         : `El cliente describe: "${userMessage}".\nNo se encontraron coincidencias. Pide más detalles de forma profesional.`;
 
-    const responseText = await sendMessageToDeepSeek(systemPrompt, history, userPrompt);
+    const responseText = await sendMessageToGemini(systemPrompt, history, userPrompt);
 
     console.log(`[${invocationId}] OK`);
     return { statusCode: 200, body: JSON.stringify({ response: responseText }) };
