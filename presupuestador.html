@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro de Operaciones - Gestor de Propuestas</title>
+    <title>Centro de Operaciones - Gestor de Propuestas (v14 - Puntos Fijos)</title>
     <!-- Incluye Tailwind CSS CDN y jsPDF -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -142,6 +142,23 @@
             border-radius: 0.5rem;
             transition: background-color 0.2s;
         }
+
+        /* --- ESTILOS SISTEMA DE PUNTOS --- */
+        .points-display {
+            background-color: #0F172A;
+            border: 1px solid #22D3EE;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #F8FAFC;
+        }
+
+        .points-display span {
+            color: #22D3EE;
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen p-4 sm:p-6 md:p-10">
@@ -261,6 +278,17 @@
                     </div>
 
                     <div id="monthlyPlansContainer" class="hidden space-y-6"></div>
+
+                     <!-- ESTRUCTURA PARA SERVICIOS MENSUALES (SISTEMA DE PUNTOS) -->
+                     <div id="monthlyServicesContainer" class="hidden space-y-6">
+                        <div id="pointsDisplay" class="points-display">
+                            Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span>
+                        </div>
+                        <div id="servicesTabs" class="space-y-4">
+                            <!-- Categorías se insertarán dinámicamente aquí -->
+                        </div>
+                    </div>
+
                     <div id="servicesSelection" class="space-y-6"></div>
                 </div>
             </div>
@@ -306,136 +334,32 @@
             </div>
         </div>
     </div>
-    <!-- =============== INICIO: Bloque de Chat IA Asistente de Ventas =============== -->
-    <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
-        <div class="flex items-center mb-4">
-            <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
-            <span class="ml-3 h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
-        </div>
-        
-        <!-- Área de Mensajes -->
-        <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto pr-2 mb-4">
-            <!-- Los mensajes del chat aparecerán aquí -->
-        </div>
+    
+    <div class="max-w-7xl mx-auto mt-8">
+        <div class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
+            <div class="flex items-center mb-4">
+                <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
+                <span class="ml-3 h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
+            </div>
+            
+            <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto pr-2 mb-4"></div>
 
-        <!-- Área de Entrada de Texto -->
-        <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
-            <input type="text" id="chat-input" class="w-full styled-input" placeholder="Pregúntale cualquier cosa a tu asistente...">
-            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                    <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
-                </svg>
-            </button>
+            <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
+                <input type="text" id="chat-input" class="w-full styled-input" placeholder="Pregúntale cualquier cosa a tu asistente...">
+                <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                        <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
-    <!-- =============== FIN: Bloque de Chat IA Asistente de Ventas =============== -->
 
     <script>
         // ==========================================================
-        // --- INICIO: LÓGICA DEL CHAT CONVERSACIONAL IA ---
+        // --- LÓGICA DEL PRESUPUESTADOR ---
         // ==========================================================
-
-        // --- Selectores del DOM para el Chat ---
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const chatSendBtn = document.getElementById('chat-send-btn');
-
-        // --- Memoria de la Conversación ---
-        let conversationHistory = [];
-
-        // --- Event Listeners ---
-        chatSendBtn.addEventListener('click', handleSendMessage);
-        chatInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                handleSendMessage();
-            }
-        });
-
-        // --- Función para añadir mensajes a la UI del chat ---
-        function appendMessage(sender, message) {
-            const messageWrapper = document.createElement('div');
-            const messageBubble = document.createElement('div');
-            
-            messageWrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-            messageBubble.className = `max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg shadow ${sender === 'user' ? 'bg-blue-600' : 'bg-slate-700'}`;
-            
-            // Convertir saltos de línea a <br> para el HTML
-            messageBubble.innerHTML = message.replace(/\n/g, '<br>');
-
-            messageWrapper.appendChild(messageBubble);
-            chatMessages.appendChild(messageWrapper);
-            
-            // Auto-scroll hacia el último mensaje
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // --- Lógica Principal para Enviar Mensaje ---
-        async function handleSendMessage() {
-            const userMessage = chatInput.value.trim();
-            if (!userMessage) return;
-
-            // 1. Añadir mensaje del usuario a la UI y a la memoria
-            appendMessage('user', userMessage);
-            conversationHistory.push({ role: 'user', content: userMessage });
-            chatInput.value = '';
-
-            // 2. Mostrar indicador de "escribiendo..."
-            const typingIndicator = document.createElement('div');
-            typingIndicator.id = 'typing-indicator';
-            typingIndicator.className = 'flex justify-start';
-            typingIndicator.innerHTML = `<div class="bg-slate-700 p-3 rounded-lg shadow">
-                <span class="animate-pulse">●</span><span class="animate-pulse delay-150">●</span><span class="animate-pulse delay-300">●</span>
-            </div>`;
-            chatMessages.appendChild(typingIndicator);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            try {
-                // 3. Llamar al Backend (Netlify Function)
-                const aiResponse = await callChatAPI(conversationHistory);
-
-                // 4. Añadir respuesta de la IA a la memoria
-                conversationHistory.push({ role: 'assistant', content: aiResponse });
-
-                // 5. Quitar "escribiendo..." y mostrar respuesta de la IA
-                chatMessages.removeChild(typingIndicator);
-                appendMessage('assistant', aiResponse);
-
-            } catch (error) {
-                console.error("Error al contactar la API del chat:", error);
-                chatMessages.removeChild(typingIndicator);
-                appendMessage('assistant', "Lo siento, estoy teniendo problemas para conectar con mis circuitos. Por favor, inténtalo de nuevo en un momento.");
-            }
-        }
-
-        // --- Función para llamar a nuestro Backend (CORREGIDO) ---
-        async function callChatAPI(history) {
-            // La URL de nuestra Netlify Function
-            const endpoint = '/.netlify/functions/chat';
-
-            // Enviar solo el historial REAL de la conversación (sin el mensaje de bienvenida)
-            const historyForGemini = history.slice(1); // <-- EL CAMBIO CLAVE
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: historyForGemini })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error del servidor: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            return data.response;
-        }
-
-        // --- Mensaje de Bienvenida al cargar ---
-        window.addEventListener('load', () => {
-            const welcomeMessage = "¡Hola! Soy tu asistente de ventas. Estoy aquí para ayudarte a analizar las necesidades de tus clientes y a cerrar más tratos. ¿En qué puedo ayudarte hoy?";
-            conversationHistory.push({ role: 'assistant', content: welcomeMessage });
-            appendMessage('assistant', welcomeMessage);
-        });
-
+        
         // --- 0. CONSTANTES Y VARIABLES GLOBALES ---
         const COMBO_DISCOUNT = 0.10;
         let allServices = {};
@@ -445,10 +369,19 @@
         let tasks = [];            
         let editingIndex = -1;     
         
+        // Estado del sistema de puntos
+        let totalPlanPoints = 0;
+        let usedPlanPoints = 0;
+        let selectedPlanId = null;
+        let selectedPlanServices = [];
+
         // --- 1. SELECTORES DEL DOM ---
         const serviceTypeSelect = document.getElementById('serviceType');
         const servicesSelectionDiv = document.getElementById('servicesSelection');
         const monthlyPlansContainer = document.getElementById('monthlyPlansContainer');
+        const monthlyServicesContainer = document.getElementById('monthlyServicesContainer');
+        const servicesTabsDiv = document.getElementById('servicesTabs');
+        const planPointsCounterSpan = document.getElementById('planPointsCounter');
         const totalDevPriceSpan = document.getElementById('totalDeveloperPrice');
         const totalClientPriceSpan = document.getElementById('totalClientPrice');
         const marginPercentageInput = document.getElementById('marginPercentage');
@@ -465,7 +398,7 @@
         // --- 2. LÓGICA DE DATOS (CARGA Y PERSISTENCIA) ---
         async function loadPricingData() {
             try {
-                const resp = await fetch('/pricing.json?v=' + new Date().getTime());
+                const resp = await fetch('pricing.json?v=' + new Date().getTime());
                 if (!resp.ok) throw new Error('Archivo "pricing.json" no encontrado o error de red.');
                 const data = await resp.json();
                 allServices = data.allServices || {};
@@ -478,7 +411,7 @@
                 appContainer.innerHTML = `<div class="col-span-full bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-xl">
                     <h2 class="text-2xl font-bold mb-2">Error Crítico de Carga</h2>
                     <p>La aplicación no puede iniciarse porque no se pudo cargar o procesar el archivo <strong>pricing.json</strong>.</p>
-                    <p class="mt-2">Por favor, asegúrate de que el archivo se encuentre en la raíz del sitio y que su contenido sea un JSON válido.</p>
+                    <p class="mt-2">Por favor, asegúrate de que el archivo se encuentre en el mismo directorio que este HTML y que su contenido sea un JSON válido.</p>
                 </div>`;
             }
         }
@@ -505,94 +438,55 @@
             initializeMonthlyPlansSelection();
             updateSummary();
         }
-
-        function createServiceItem(svc, type, name, isExclusive) {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700';
-            
-            const label = document.createElement('label');
-            label.className = 'flex-grow cursor-pointer text-sm pr-2';
-            label.textContent = svc.name;
-            
-            const tooltip = document.createElement('div');
-            tooltip.className = 'tooltip-content';
-            tooltip.textContent = svc.description || 'Sin descripción.';
-            
-            const priceSpan = document.createElement('span');
-            priceSpan.className = 'font-bold text-red-400 ml-2';
-            priceSpan.textContent = `$${svc.price.toFixed(2)} USD`;
-            
-            const inputElement = document.createElement('input');
-            inputElement.type = isExclusive ? 'radio' : 'checkbox';
-            inputElement.name = name; 
-            inputElement.className = isExclusive ? 'custom-radio ml-4' : 'custom-checkbox ml-4';
-            inputElement.id = `${type}-${svc.id}`;
-            inputElement.value = svc.id;
-            inputElement.dataset.price = svc.price;
-            inputElement.dataset.name = svc.name;
-            inputElement.dataset.type = type;
-
-            itemDiv.addEventListener('click', () => inputElement.click());
-            
-            inputElement.addEventListener('change', () => {
-                if(inputElement.checked) {
-                    if(isExclusive) { 
-                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-                        customServices = [];
-                    } else { 
-                        const radio = document.querySelector('input[name="selectionGroup"]:checked');
-                        if (radio) radio.checked = false;
-                    }
-                }
-                updateSelectedItems();
-            });
-
-            itemDiv.appendChild(label);
-            itemDiv.appendChild(priceSpan);
-            itemDiv.appendChild(tooltip);
-            itemDiv.appendChild(inputElement);
-            return itemDiv;
+        
+        function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null) {
+            const pointCostHTML = svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
+            return `
+                <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
+                    <label class="flex-grow cursor-pointer text-sm pr-2">${svc.name}</label>
+                    <div class="flex items-center gap-3">
+                        ${pointCostHTML}
+                        <span class="font-bold text-red-400">${svc.price > 0 ? `$${svc.price.toFixed(2)} USD` : ''}</span>
+                        <input type="${isExclusive ? 'radio' : 'checkbox'}" name="${name}" class="${isExclusive ? 'custom-radio' : 'custom-checkbox'} ml-4"
+                            id="${type}-${svc.id}" value="${svc.id}" data-price="${svc.price}" data-name="${svc.name}" data-type="${type}"
+                            data-point-cost="${svc.pointCost || 0}" data-category-key="${categoryKey || ''}">
+                    </div>
+                    <div class="tooltip-content">${svc.description || 'Sin descripción.'}</div>
+                </div>`;
         }
-
+        
         function initializeServiceCheckboxes() {
-            servicesSelectionDiv.innerHTML = '';
-            Object.keys(allServices).forEach(key => {
+            servicesSelectionDiv.innerHTML = Object.keys(allServices).map(key => {
                 const category = allServices[key];
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'p-4 bg-slate-900 rounded-xl shadow-inner';
-                const title = document.createElement('h3');
-                title.className = 'text-xl font-semibold mb-3 text-cyan-500';
-                title.textContent = category.name;
-                categoryDiv.appendChild(title);
-                const itemsGrid = document.createElement('div');
-                itemsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-                category.items.forEach(svc => {
-                    const isStandard = !category.isExclusive;
-                    const itemType = isStandard ? 'standard' : 'package';
-                    const inputName = isStandard ? `item-${svc.id}` : 'selectionGroup';
-                    itemsGrid.appendChild(createServiceItem(svc, itemType, inputName, !isStandard));
-                });
-                categoryDiv.appendChild(itemsGrid);
-                servicesSelectionDiv.appendChild(categoryDiv);
-            });
+                const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, category.isExclusive ? 'package' : 'standard', category.isExclusive ? 'selectionGroup' : `item-${svc.id}`, category.isExclusive, key)).join('');
+                return `
+                    <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
+                        <h3 class="text-xl font-semibold mb-3 text-cyan-500">${category.name}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+                    </div>`;
+            }).join('');
         }
         
         function initializeMonthlyPlansSelection() {
             monthlyPlansContainer.innerHTML = '';
             if (!monthlyPlans || monthlyPlans.length === 0) return;
-            const categoryDiv = document.createElement('div');
-            categoryDiv.className = 'p-4 bg-slate-900 rounded-xl shadow-inner';
-            const title = document.createElement('h3');
-            title.className = 'text-xl font-semibold mb-3 text-cyan-500';
-            title.textContent = 'Planes Mensuales (Exclusivos)';
-            categoryDiv.appendChild(title);
-            const itemsGrid = document.createElement('div');
-            itemsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-            monthlyPlans.forEach(plan => {
-                itemsGrid.appendChild(createServiceItem(plan, 'plan', 'selectionGroup', true));
-            });
-            categoryDiv.appendChild(itemsGrid);
-            monthlyPlansContainer.appendChild(categoryDiv);
+
+            const plansHTML = monthlyPlans.map(plan => {
+                return `
+                <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
+                    <label class="flex-grow cursor-pointer text-sm pr-2">${plan.name}</label>
+                    <span class="font-bold text-red-400 ml-2">$${plan.price.toFixed(2)} USD</span>
+                    <input type="radio" name="monthlyPlanSelection" class="custom-radio ml-4" id="plan-${plan.id}" value="${plan.id}"
+                        data-price="${plan.price}" data-name="${plan.name}" data-points="${plan.points}">
+                    <div class="tooltip-content">${plan.description || 'Sin descripción.'}</div>
+                </div>`;
+            }).join('');
+
+            monthlyPlansContainer.innerHTML = `
+                <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
+                    <h3 class="text-xl font-semibold mb-3 text-cyan-500">Elige un Plan Mensual (Retainer)</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${plansHTML}</div>
+                </div>`;
         }
 
         function renderTasksDashboard() {
@@ -603,7 +497,9 @@
                     if (task.package) {
                         serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
                     } else if (task.plan) {
-                        serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${task.plan.name}</span>`;
+                        const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
+                        const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
+                        serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
                     } else {
                         serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
                     }
@@ -639,6 +535,8 @@
             const isMonthly = mode === 'mensual';
             monthlyPlansContainer.classList.toggle('hidden', !isMonthly);
             servicesSelectionDiv.classList.toggle('hidden', isMonthly);
+            monthlyServicesContainer.classList.toggle('hidden', !isMonthly);
+            
             if (document.querySelector('input:checked')) {
                 clearAllSelections();
             }
@@ -647,24 +545,38 @@
         function clearAllSelections() {
             document.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked').forEach(el => el.checked = false);
             customServices = [];
+            
+            selectedPlanId = null;
+            selectedPlanServices = [];
+            totalPlanPoints = 0;
+            usedPlanPoints = 0;
+            updatePointSystemUI();
+            
             updateSelectedItems();
         }
-
+        
         function updateSelectedItems() {
             selectedServices = [];
-            const radioChecked = document.querySelector('input[name="selectionGroup"]:checked');
-            if (radioChecked) {
-                 selectedServices.push({ name: radioChecked.dataset.name, price: parseFloat(radioChecked.dataset.price), id: radioChecked.value, type: radioChecked.dataset.type, description: findDescription(radioChecked.value, radioChecked.dataset.type) });
+            const packageChecked = document.querySelector('input[name="selectionGroup"]:checked');
+            const planChecked = document.querySelector('input[name="monthlyPlanSelection"]:checked');
+
+            if (packageChecked) {
+                selectedServices.push({ name: packageChecked.dataset.name, price: parseFloat(packageChecked.dataset.price), id: packageChecked.value, type: 'package' });
+            } else if (planChecked) {
+                selectedServices.push({ name: planChecked.dataset.name, price: parseFloat(planChecked.dataset.price), id: planChecked.value, type: 'plan' });
+                selectedServices.push(...selectedPlanServices);
             } else {
-                document.querySelectorAll('input[type="checkbox"]:checked').forEach(el => {
-                    selectedServices.push({ name: el.dataset.name, price: parseFloat(el.dataset.price), id: el.value, type: el.dataset.type, description: findDescription(el.value, 'standard') });
+                document.querySelectorAll('input[data-type="standard"]:checked').forEach(el => {
+                    selectedServices.push({ name: el.dataset.name, price: parseFloat(el.dataset.price), id: el.value, type: 'standard' });
                 });
             }
+            
             selectedServices.push(...customServices);
             
             const exclusiveSelection = selectedServices.find(s => s.type === 'package' || s.type === 'plan');
             document.querySelectorAll('.item-card:has([data-type="standard"])').forEach(card => card.classList.toggle('item-disabled', !!exclusiveSelection));
-            
+            document.querySelector('button[onclick="showCustomServiceModal()"]').disabled = !!exclusiveSelection;
+
             clearSelectionsBtn.classList.toggle('hidden', selectedServices.length === 0);
             
             if(exclusiveSelection) {
@@ -679,22 +591,10 @@
                 const prefix = item.type === 'package' ? '📦 ' : item.type === 'plan' ? '📅 ' : item.type === 'custom' ? '⭐ ' : '• ';
                 const color = (item.type === 'package' || item.type === 'plan' || item.type === 'custom') ? 'text-cyan-300 font-bold' : 'text-slate-200';
                 const removeButton = item.type === 'custom' ? `<button onclick="removeCustomService('${item.id}')" class="text-red-500 hover:text-red-400 ml-2 font-mono">[x]</button>` : '';
-                return `<div class="${color} flex justify-between items-center">${prefix}${item.name} ($${item.price.toFixed(2)})${removeButton}</div>`;
+                const pointText = item.pointCost ? ` (${item.pointCost} Pts)` : '';
+                return `<div class="${color} flex justify-between items-center">${prefix}${item.name}${pointText}${removeButton}</div>`;
             }).join('');
             updateSummary();
-        }
-        
-        function findDescription(id, type) {
-            if (type === 'plan') {
-                const plan = monthlyPlans.find(p => p.id == id);
-                return plan ? plan.description : '';
-            }
-            for (const key in allServices) {
-                const category = allServices[key];
-                const item = category.items.find(i => i.id === id);
-                if (item) return item.description;
-            }
-            return '';
         }
 
         // --- 5. LÓGICA DE CÁLCULO Y RESUMEN ---
@@ -708,7 +608,7 @@
             
             if (exclusiveSelection) {
                 totalDevCost = exclusiveSelection.price;
-                feedback = `Costo fijo de ${exclusiveSelection.type}: $${totalDevCost.toFixed(2)}`;
+                feedback = `Costo fijo de ${exclusiveSelection.type === 'package' ? 'Paquete' : 'Plan'}: $${totalDevCost.toFixed(2)}`;
             } else {
                 totalDevCost = standardItems.reduce((sum, item) => sum + item.price, 0);
                 if (standardItems.filter(s => s.type === 'standard').length >= 3) {
@@ -731,8 +631,9 @@
         function handleAddTask() {
             if (selectedServices.length === 0) return showNotification('error', 'Error', 'Debes seleccionar al menos un servicio.');
             
-            const exclusiveSelection = selectedServices.find(s => s.type === 'package' || s.type === 'plan');
-            const individualItems = selectedServices.filter(s => s.type !== 'package' && s.type !== 'plan');
+            const packageSelection = selectedServices.find(s => s.type === 'package');
+            const planSelection = selectedServices.find(s => s.type === 'plan');
+            const individualItems = selectedServices.filter(s => s.type === 'standard' || s.type === 'custom');
 
             let newTask = {
                 clientName: document.getElementById('clientName').value || 'Sin Cliente',
@@ -740,8 +641,14 @@
                 margin: parseFloat(marginPercentageInput.value) / 100 || 0,
                 totalDev: parseFloat(totalDevPriceSpan.textContent),
                 totalClient: parseFloat(totalClientPriceSpan.textContent),
-                package: exclusiveSelection && exclusiveSelection.type === 'package' ? exclusiveSelection : null,
-                plan: exclusiveSelection && exclusiveSelection.type === 'plan' ? exclusiveSelection : null,
+                package: packageSelection || null,
+                plan: planSelection ? { 
+                    id: selectedPlanId, 
+                    selectedServiceIds: selectedPlanServices.map(s => s.id),
+                    pointsUsed: usedPlanPoints,
+                    totalPointsInBudget: totalPlanPoints,
+                    remainingPoints: totalPlanPoints - usedPlanPoints
+                } : null,
                 services: individualItems,
                 type: serviceTypeSelect.value,
             };
@@ -763,6 +670,7 @@
             serviceTypeSelect.value = 'puntual';
             marginPercentageInput.value = '60';
             toggleSelectionMode('puntual');
+            clearAllSelections();
         }
 
         function editTask(index) {
@@ -779,15 +687,18 @@
             
             setTimeout(() => {
                 clearAllSelections();
-                if (task.package) document.getElementById(`package-${task.package.id}`).checked = true;
-                if (task.plan) document.getElementById(`plan-${task.plan.id}`).checked = true;
-                
-                customServices = task.services.filter(s => s.type === 'custom');
-                task.services.filter(s => s.type === 'standard').forEach(svc => {
-                    const el = document.getElementById(`standard-${svc.id}`);
-                    if (el) el.checked = true;
-                });
-
+                if (task.package) {
+                    document.getElementById(`package-${task.package.id}`).checked = true;
+                } else if (task.plan) {
+                    document.getElementById(`plan-${task.plan.id}`).checked = true;
+                    handlePlanSelection(task.plan.id, task.plan.selectedServiceIds);
+                } else {
+                    customServices = task.services.filter(s => s.type === 'custom');
+                    task.services.filter(s => s.type === 'standard').forEach(svc => {
+                        const el = document.getElementById(`standard-${svc.id}`);
+                        if (el) el.checked = true;
+                    });
+                }
                 updateSelectedItems();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }, 50);
@@ -800,7 +711,80 @@
              if (index === editingIndex) resetForm(); 
         }
 
-        // --- 7. EVENT LISTENERS Y SETUP INICIAL ---
+        // --- 7. SISTEMA DE PUNTOS ---
+        function handlePlanSelection(planId, preSelectedIds = []) {
+            const plan = monthlyPlans.find(p => p.id == planId);
+            if (!plan) return;
+
+            selectedPlanId = planId;
+            totalPlanPoints = plan.points;
+            usedPlanPoints = 0;
+            selectedPlanServices = [];
+
+            servicesTabsDiv.innerHTML = Object.keys(allServices).filter(k => !allServices[k].isExclusive).map(key => {
+                const category = allServices[key];
+                const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, 'plan-service', `plan-service-${key}`, false, key)).join('');
+                return `
+                    <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
+                        <h3 class="text-xl font-semibold mb-3 text-cyan-500">${category.name}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+                    </div>`;
+            }).join('');
+            
+            if (preSelectedIds.length > 0) {
+                preSelectedIds.forEach(serviceId => {
+                    const checkbox = document.getElementById(`plan-service-${serviceId}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const pointCost = parseInt(checkbox.dataset.pointCost);
+                        usedPlanPoints += pointCost;
+                        selectedPlanServices.push({ id: checkbox.value, name: checkbox.dataset.name, type: 'plan-service', price: 0, pointCost: pointCost });
+                    }
+                });
+            }
+
+            updatePointSystemUI();
+        }
+
+        function handleServiceSelection(checkbox, isChecked) {
+            const pointCost = parseInt(checkbox.dataset.pointCost);
+            const serviceId = checkbox.value;
+            const serviceName = checkbox.dataset.name;
+            
+            if (isChecked) {
+                usedPlanPoints += pointCost;
+                selectedPlanServices.push({ id: serviceId, name: serviceName, type: 'plan-service', price: 0, pointCost: pointCost });
+            } else {
+                usedPlanPoints -= pointCost;
+                selectedPlanServices = selectedPlanServices.filter(s => s.id !== serviceId);
+            }
+            updatePointSystemUI();
+        }
+
+        function updatePointSystemUI() {
+            planPointsCounterSpan.textContent = `${usedPlanPoints} / ${totalPlanPoints}`;
+            const remainingPoints = totalPlanPoints - usedPlanPoints;
+
+            const allServiceCheckboxes = monthlyServicesContainer.querySelectorAll('input[type="checkbox"]');
+            allServiceCheckboxes.forEach(cb => {
+                const servicePointCost = parseInt(cb.dataset.pointCost);
+                if (!cb.checked && servicePointCost > remainingPoints) {
+                    cb.disabled = true;
+                    cb.closest('.item-card').classList.add('item-disabled');
+                } else {
+                    cb.disabled = false;
+                    cb.closest('.item-card').classList.remove('item-disabled');
+                }
+            });
+        }
+        
+        // --- 8. EVENT LISTENERS Y SETUP INICIAL ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPricingData();
+            loadTasks();
+            resetForm();
+        });
+
         serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));
         clearSelectionsBtn.addEventListener('click', clearAllSelections);
         addTaskButton.addEventListener('click', handleAddTask);
@@ -814,10 +798,44 @@
              }
         });
         
-        document.addEventListener('DOMContentLoaded', () => {
-            loadPricingData();
-            loadTasks();
-            resetForm();
+        // Delegación de eventos para todos los checkboxes y radios
+        document.getElementById('appContainer').addEventListener('change', (e) => {
+            const target = e.target;
+            if (target.matches('input[name="selectionGroup"], input[data-type="standard"]')) {
+                if (document.querySelector('input[name="monthlyPlanSelection"]:checked')) {
+                    clearAllSelections();
+                }
+                if (target.name === 'selectionGroup') {
+                    document.querySelectorAll('input[data-type="standard"]').forEach(cb => cb.checked = false);
+                } else {
+                    if(document.querySelector('input[name="selectionGroup"]:checked')) {
+                         document.querySelector('input[name="selectionGroup"]:checked').checked = false;
+                    }
+                }
+                target.checked = true;
+                updateSelectedItems();
+            } else if (target.matches('input[name="monthlyPlanSelection"]')) {
+                if(document.querySelector('input[name="selectionGroup"]:checked')) {
+                    document.querySelector('input[name="selectionGroup"]:checked').checked = false;
+                }
+                document.querySelectorAll('input[data-type="standard"]:checked').forEach(cb => cb.checked = false);
+                target.checked = true;
+                handlePlanSelection(target.value);
+                updateSelectedItems();
+            } else if (target.matches('input[name^="plan-service-"]')) {
+                handleServiceSelection(target, target.checked);
+                updateSelectedItems();
+            }
+        });
+
+        document.getElementById('appContainer').addEventListener('click', (e) => {
+            const card = e.target.closest('.item-card');
+            if (card && !e.target.matches('input')) {
+                const input = card.querySelector('input');
+                if (input && !input.disabled) {
+                    input.click();
+                }
+            }
         });
 
         // --- MODALES Y PDF ---
@@ -832,7 +850,7 @@
         }
         function closeNotificationModal() { document.getElementById('notificationModal').classList.add('hidden'); }
         function showCustomServiceModal() {
-            if (document.querySelector('input[name="selectionGroup"]:checked')) {
+            if (document.querySelector('input[name="selectionGroup"]:checked, input[name="monthlyPlanSelection"]:checked')) {
                  return showNotification('error', 'Modo Exclusivo Activo', 'No puedes añadir ítems personalizados cuando un Paquete o Plan está seleccionado.');
             }
             document.getElementById('customServiceName').value = '';
@@ -924,7 +942,7 @@
                 doc.text(`Proyecto: ${task.webName}`, leftMargin, y);
                 y += 8;
 
-                const item = task.package || task.plan;
+                const item = task.package || (task.plan ? monthlyPlans.find(p => p.id == task.plan.id) : null);
                 if (item) {
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
