@@ -3,9 +3,9 @@
  * Backend de producción del Asistente Zen.
  * Motor: DeepSeek R1.
  * Propósito: recibir historial, analizar proyecto, y devolver recomendación estructurada.
+ * Usando fetch global (Node 18+) para Netlify.
  */
 
-const fetch = require("node-fetch"); // si usás Node 18+, fetch ya está disponible
 const pricingData = require("./pricing.json");
 
 // --- CONFIGURACIÓN DE DEEPSEEK ---
