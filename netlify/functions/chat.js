@@ -1,96 +1,113 @@
 // /netlify/functions/chat.js
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const pricingData = require('./pricing.json'); // Carga el catálogo una sola vez al iniciar la función.
 
-// --- SECCIÓN CORREGIDA ---
-// Se eliminan 'fs' y 'path' que ya no son necesarios.
-// Ahora usamos require() para cargar el JSON, que es la forma estándar y más segura en Node.js.
-function getCatalogContext() {
-    try {
-        // require() busca el archivo relativo a este script (chat.js).
-        // Por eso es crucial que 'pricing.json' esté en la misma carpeta.
-        const pricingData = require('./pricing.json');
+// --- ESTRATEGIA 2: AGENTE CON HERRAMIENTAS ---
 
-        let catalogSummary = "Tu conocimiento se basa exclusivamente en este catálogo de servicios:\n\n";
+// Esta es la "herramienta" real que nuestro código ejecuta.
+// Es una función de búsqueda simple que la IA puede invocar.
+const tools = {
+    find_relevant_services(args) {
+        const { project_description } = args;
+        if (!project_description) return { error: "Se necesita una descripción del proyecto." };
 
-        // Paquetes (Soluciones Integrales)
-        catalogSummary += "--- PAQUETES (Elige uno si el proyecto es nuevo) ---\n";
-        pricingData.allServices.completeWebs.items.forEach(item => {
-            catalogSummary += `ID: ${item.id}, Nombre: ${item.name}, Precio: $${item.price}, Desc: ${item.description}\n`;
-        });
+        console.log(`Ejecutando herramienta 'find_relevant_services' con la descripción: "${project_description}"`);
+        const keywords = project_description.toLowerCase().match(/\b(\w+)\b/g) || [];
+        let scores = {};
 
-        // Ítems Individuales (Mejoras y Módulos)
-        catalogSummary += "\n--- ÍTEMS INDIVIDUALES (Añade a un paquete o selecciona individualmente) ---\n";
+        // Itera sobre todos los servicios y les da una puntuación de relevancia
         Object.values(pricingData.allServices).forEach(category => {
-            if (!category.isExclusive) {
-                category.items.forEach(item => {
-                    catalogSummary += `ID: ${item.id}, Nombre: ${item.name}, Precio: $${item.price}, Desc: ${item.description}\n`;
+            category.items.forEach(item => {
+                const content = `${item.name.toLowerCase()} ${item.description.toLowerCase()}`;
+                let score = 0;
+                keywords.forEach(keyword => {
+                    if (content.includes(keyword)) {
+                        score++;
+                    }
                 });
-            }
+                if (score > 0) {
+                    scores[item.id] = { score, name: item.name };
+                }
+            });
         });
         
-        // Planes Mensuales
-        catalogSummary += "\n--- PLANES MENSUALES (Para soporte y mantenimiento post-lanzamiento) ---\n";
-        pricingData.monthlyPlans.forEach(plan => {
-             catalogSummary += `ID: ${plan.id}, Nombre: ${plan.name}, Precio: $${plan.price}/mes, Desc: ${plan.description}\n`;
-        });
-
-        return catalogSummary;
-
-    } catch (error) {
-        console.error("Error crítico al cargar o procesar pricing.json:", error);
-        // Mensaje de error más útil para el log.
-        return "Error: No se pudo cargar el contexto del catálogo de servicios. Asegúrate de que una copia de 'pricing.json' esté en la misma carpeta que 'chat.js'.";
+        // Ordena por puntuación y devuelve los IDs más relevantes
+        const relevant_ids = Object.entries(scores)
+            .sort((a, b) => b[1].score - a[1].score)
+            .slice(0, 4) // Devuelve hasta 4 IDs para no abrumar
+            .map(entry => entry[0]);
+            
+        console.log("IDs más relevantes encontrados:", relevant_ids);
+        return { relevant_ids };
     }
-}
+};
 
-// --- EL RESTO DEL ARCHIVO PERMANECE EXACTAMENTE IGUAL ---
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
-
     try {
         const { history } = JSON.parse(event.body);
-
         if (!history || !Array.isArray(history) || history.length === 0) {
-            return { statusCode: 400, body: JSON.stringify({ error: "El historial es inválido o está vacío." }) };
+            return { statusCode: 400, body: JSON.stringify({ error: "El historial es inválido." }) };
         }
-        
-        const catalogContext = getCatalogContext();
-        if (catalogContext.startsWith("Error:")) {
-            return { statusCode: 500, body: JSON.stringify({ response: catalogContext }) };
-        }
-
-        const systemPrompt = `
-            Eres 'Zen Assistant', un estratega de ventas web de élite. Tu misión es ayudar a revendedores a construir la propuesta perfecta para sus clientes usando la herramienta 'Centro de Operaciones'.
-            
-            ${catalogContext}
-
-            Analiza la necesidad y el presupuesto (si se menciona) del cliente que te describe el revendedor. Responde SIEMPRE con este formato exacto:
-
-            1. **Servicios:** [IDs de los servicios recomendados, separados por comas. Sé preciso. Si eliges un paquete, solo añade ítems sueltos si son mejoras claras y complementarias.]
-            2. **Respuesta:** [Un texto de venta conciso y profesional para el REVENDEDOR. Justifica tu elección basándote en los precios y descripciones del catálogo. Guíale sobre cómo proceder en la herramienta.]
-
-            EJEMPLO PERFECTO:
-            Servicios: p6, c1
-            Respuesta: Para una tienda online con muchos productos, la solución ideal es el E-commerce Avanzado (p6). Dado que cuesta $180, asegura que el cliente tenga un buen volumen de ventas. Añadir la Optimización de Velocidad (c1) es crucial para no perder clientes por tiempos de carga lentos. Puedes encontrar y seleccionar estos ítems en la sección 'Configurar la Solución'.
-        `;
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        // Se le enseña a la IA el formato de las herramientas que puede usar.
+        const model = genAI.getGenerativeModel({
+            model: "gemini-pro",
+            tools: [{
+                functionDeclarations: [{
+                    name: "find_relevant_services",
+                    description: "Busca en el catálogo de servicios para encontrar los paquetes o ítems más relevantes según la descripción de un proyecto web.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            project_description: {
+                                type: "STRING",
+                                description: "Una descripción detallada de las necesidades del cliente, sus objetivos, y cualquier restricción como el presupuesto."
+                            }
+                        },
+                        required: ["project_description"]
+                    }
+                }]
+            }]
+        });
 
-        const geminiHistory = history.map(turn => ({
-            role: turn.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: turn.content }]
-        }));
+        // El prompt ahora es sobre su ROL, no sobre su conocimiento. Le dice CÓMO comportarse.
+        const systemPrompt = `
+            Eres 'Zen Assistant', un estratega de ventas web de élite. Tu misión es ayudar a un revendedor a construir la propuesta perfecta.
+            - Primero, usa la herramienta 'find_relevant_services' para identificar los IDs de los servicios más adecuados del catálogo.
+            - Luego, basándote en los resultados de la herramienta, formula una recomendación profesional.
+            - Responde SIEMPRE con el siguiente formato estricto:
 
+            Servicios: [IDs de los servicios que encontraste con la herramienta]
+            Respuesta: [Texto de venta conciso para el revendedor, justificando tu elección. Guíale sobre cómo usar la herramienta.]
+        `;
+
+        const geminiHistory = history.map(turn => ({ role: turn.role === 'assistant' ? 'model' : 'user', parts: [{ text: turn.content }] }));
         const userMessage = geminiHistory.pop().parts[0].text;
-
+        
         const chat = model.startChat({ history: geminiHistory, systemInstruction: systemPrompt });
-        const result = await chat.sendMessage(userMessage);
-        const responseText = result.response.text();
+        let result = await chat.sendMessage(userMessage);
+        let response = result.response;
 
+        // --- LÓGICA DE ORQUESTACIÓN (El corazón del Agente) ---
+        const functionCalls = response.functionCalls();
+        if (functionCalls && functionCalls.length > 0) {
+            console.log("La IA ha decidido llamar a una herramienta:", functionCalls[0].name);
+            const call = functionCalls[0];
+            // Ejecuta la herramienta que la IA solicitó
+            const toolResult = tools[call.name](call.args);
+
+            // Envía el resultado de la herramienta de vuelta a la IA para que formule la respuesta final
+            result = await chat.sendMessage([{ functionResponse: { name: call.name, response: toolResult } }]);
+            response = result.response;
+        }
+
+        const responseText = response.text();
         return { statusCode: 200, body: JSON.stringify({ response: responseText }) };
 
     } catch (error) {

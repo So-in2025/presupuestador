@@ -8,48 +8,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!chatMessagesContainer || !chatInput || !sendChatBtn) return;
     
-    let chatHistory = JSON.parse(localStorage.getItem('zenChatHistory')) || [];
+    let chatHistory = [];
 
     function saveHistory() {
         localStorage.setItem('zenChatHistory', JSON.stringify(chatHistory));
+    }
+    
+    function loadHistory() {
+        chatHistory = JSON.parse(localStorage.getItem('zenChatHistory')) || [];
     }
 
     function addMessageToChat(message, sender) {
         const messageWrapper = document.createElement('div');
         messageWrapper.className = 'chat-message flex flex-col';
-        
         const messageBubble = document.createElement('div');
         messageBubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%]';
-
         if (sender === 'user') {
             messageWrapper.classList.add('items-end');
             messageBubble.classList.add('bg-cyan-500', 'text-slate-900', 'rounded-br-none');
             messageBubble.textContent = message;
-        } else { // Mensajes de la IA
+        } else {
             messageWrapper.classList.add('items-start');
             messageBubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
-            
             if (message.includes('Servicios:') && message.includes('Respuesta:')) {
                 const servicesMatch = message.match(/Servicios:\s*([\w\s,]+)/);
                 const responseText = message.substring(message.indexOf('Respuesta:') + 'Respuesta:'.length).trim();
                 let htmlContent = '';
-
                 if (servicesMatch && servicesMatch[1]) {
                     const serviceIDs = servicesMatch[1].trim().split(',').map(s => s.trim());
-                    htmlContent += `
-                        <div class="mb-3 p-2 border-l-4 border-purple-400 bg-slate-800 rounded-r-md">
-                            <p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Click para añadir):</p>
-                            <div class="flex flex-wrap gap-2">
-                                ${serviceIDs.map(id => {
-                                    let type = 'standard';
-                                    if (/^p\d+/.test(id)) type = 'package';
-                                    else if (/^\d+$/.test(id)) type = 'plan';
-                                    return `<button class="px-2 py-1 text-xs font-mono bg-slate-900 text-cyan-300 rounded cursor-pointer hover:bg-cyan-800 transition" 
-                                              data-action="add-service" data-service-id="${id}" data-service-type="${type}">+ ${id}</button>`;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
+                    htmlContent += `<div class="mb-3 p-2 border-l-4 border-purple-400 bg-slate-800 rounded-r-md"><p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Click para añadir):</p><div class="flex flex-wrap gap-2">${serviceIDs.map(id => {let type = 'standard'; if (/^p\d+/.test(id)) type = 'package'; else if (/^\d+$/.test(id)) type = 'plan'; return `<button class="px-2 py-1 text-xs font-mono bg-slate-900 text-cyan-300 rounded cursor-pointer hover:bg-cyan-800 transition" data-action="add-service" data-service-id="${id}" data-service-type="${type}">+ ${id}</button>`;}).join('')}</div></div>`;
                 }
                 htmlContent += responseText.replace(/\n/g, '<br>');
                 messageBubble.innerHTML = htmlContent;
@@ -57,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageBubble.innerHTML = message.replace(/\n/g, '<br>');
             }
         }
-        
         messageWrapper.appendChild(messageBubble);
         chatMessagesContainer.appendChild(messageWrapper);
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
@@ -91,8 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleTypingIndicator(true);
 
         try {
-            // El backend NO debe recibir el historial que empieza con 'assistant',
-            // así que filtramos el mensaje de bienvenida antes de enviar.
             const historyForAPI = chatHistory.filter(turn => !(turn.role === 'assistant' && turn.isWelcomeMessage));
 
             const response = await fetch('/.netlify/functions/chat', {
@@ -102,8 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Hubo un error en la respuesta del servidor.');
+                const errorText = await response.text();
+                throw new Error(errorText || 'Hubo un error en la respuesta del servidor.');
             }
 
             const data = await response.json();
@@ -113,27 +97,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Error al enviar mensaje:", error);
-            addMessageToChat(`Lo siento, hubo un error de conexión con el asistente: ${error.message}`, 'ai');
+            addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Intenta de nuevo.`, 'ai');
         } finally {
             toggleTypingIndicator(false);
         }
     }
-
+    
     function initChat() {
-        // --- CORRECCIÓN DEL MENSAJE DE BIENVENIDA ---
+        loadHistory();
+        chatMessagesContainer.innerHTML = '';
+
         if (chatHistory.length === 0) {
             const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-            // 1. Añade el mensaje al estado del chat CON UN MARCADOR
             chatHistory.push({ role: 'assistant', content: welcomeMessage, isWelcomeMessage: true });
-            // 2. Guarda el historial que ahora incluye el mensaje de bienvenida
             saveHistory();
         }
-
-        // Siempre redibuja el chat completo desde el historial guardado
-        chatMessagesContainer.innerHTML = ''; // Limpia el chat antes de redibujar
-        chatHistory.forEach(turn => addMessageToChat(turn.content, turn.role === 'user' ? 'user' : 'ai'));
         
-        // --- FIN DE LA CORRECCIÓN ---
+        chatHistory.forEach(turn => addMessageToChat(turn.content, turn.role));
 
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
@@ -148,12 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target) {
                 const { serviceId, serviceType } = target.dataset;
                 let elementId;
-
                 if (serviceType === 'plan') elementId = `plan-${serviceId}`;
                 else elementId = `${serviceType}-${serviceId}`;
-                
                 const serviceElement = document.getElementById(elementId);
-                
                 if (serviceElement) {
                     serviceElement.click();
                     if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
