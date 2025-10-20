@@ -1,13 +1,18 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+// /netlify/functions/chat.js
 
-async function getServiceCatalog() {
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fs = require('fs');
+const path = require('path');
+
+// Lee el catálogo de servicios localmente para mayor velocidad y fiabilidad.
+function getServiceCatalog() {
     try {
-        const response = await fetch(`${process.env.URL}/pricing-short.json`);//URL MODIFICADA (y nombre del archivo)
-        if (!response.ok) throw new Error(`Error al cargar pricing-short.json: ${response.statusText}`);
-        return await response.json();
+        const filePath = path.resolve(__dirname, '../../pricing.json');
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        return JSON.parse(fileContent);
     } catch (error) {
-        console.error("Error en getServiceCatalog:", error);
-        return "Error: No se pudo cargar el catálogo de servicios.";
+        console.error("Error crítico al leer pricing.json:", error);
+        return "Error: No se pudo cargar el catálogo de servicios desde el archivo.";
     }
 }
 
@@ -18,13 +23,22 @@ exports.handler = async function(event) {
 
     try {
         const { history } = JSON.parse(event.body);
-        const pricingData = await getServiceCatalog();
-        if (typeof pricingData === 'string') return { statusCode: 500, body: JSON.stringify({ response: pricingData }) };
 
-        // NUEVO PROMPT ULTRA-CORTO
+        if (!history || !Array.isArray(history) || history.length === 0) {
+            return { statusCode: 400, body: JSON.stringify({ error: "El historial es inválido o está vacío." }) };
+        }
+        
+        const pricingData = getServiceCatalog();
+        if (typeof pricingData === 'string') {
+            return { statusCode: 500, body: JSON.stringify({ response: pricingData }) };
+        }
+
+        // =======================================================================
+        // PROMPT FINAL OPTIMIZADO PARA ASISTIR AL REVENDEDOR
+        // =======================================================================
         const systemPrompt = `
-            Eres 'Proyecto Zen Assistant', experto en ventas web.
-            Conoces estos servicios:
+            Eres 'Zen Assistant', un experto estratega de ventas web. Tu misión es ayudar a revendedores a construir la propuesta perfecta para sus clientes usando la herramienta 'Centro de Operaciones'.
+            Tu conocimiento se basa exclusivamente en este catálogo de servicios:
 
             A. Paquetes Web: Landing Page (p1), Web Presencial (p2), Portfolio (p3), Web+Blog (p4), E-commerce Básico (p5), E-commerce Avanzado (p6), Optimización Web (p7), App Web (p8)
             B. Mejoras UX: Animaciones (b1), Landing Extra (b2), Formulario (b3), Mapas/Gráficos (b4)
@@ -32,13 +46,14 @@ exports.handler = async function(event) {
             D. Integraciones: Pasarela Pago (d1), Microservicios (d2)
             Planes Mensuales: Mantenimiento (1), Soporte (2), Evolución (3), Crecimiento (4), Business Pro (5), Desarrollo (6), Retainer Agencia (7), Retainer Corporativo (8), Retainer Enterprise (9), Equipo Dedicado (10)
             
-            Analiza la necesidad del cliente y responde:
-            1. **Servicios:** [IDs, separados por coma]
-            2. **Respuesta:** [Texto de venta, MAX 3 oraciones]. Cierra con "¿Qué te parece?"
+            Analiza la necesidad del cliente que te describe el revendedor y responde SIEMPRE con este formato exacto:
 
-            EJEMPLO:
-            **Servicios:** p4, c5
-            **Respuesta:** Para tu web con blog y sistema de usuarios, te recomiendo Web+Blog (p4) y Sistema de Usuarios (c5). Atraerá leads y te dará control. ¿Qué te parece?
+            1. **Servicios:** [IDs de los servicios recomendados, separados por comas. Elige los más precisos. Si es un paquete, no incluyas ítems sueltos a menos que sea estrictamente necesario.]
+            2. **Respuesta:** [Un texto de venta conciso y profesional para el REVENDEDOR, de 2 a 3 oraciones. Nombra los servicios recomendados y justifica brevemente por qué son la mejor opción. Cierra con una frase que le invite a la acción dentro de la herramienta.]
+
+            EJEMPLO PERFECTO:
+            Servicios: p6, c1
+            Respuesta: Para una tienda online con muchos productos, la solución ideal es el E-commerce Avanzado (p6) combinado con la Optimización de Velocidad (c1) para asegurar una experiencia de compra fluida. Puedes encontrar y seleccionar estos ítems en la sección 'Configurar la Solución'. ¿Te parece un buen punto de partida?
         `;
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -48,6 +63,7 @@ exports.handler = async function(event) {
             role: turn.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: turn.content }]
         }));
+
         const userMessage = geminiHistory.pop().parts[0].text;
 
         const chat = model.startChat({ history: geminiHistory, systemInstruction: systemPrompt });

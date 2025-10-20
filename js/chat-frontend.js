@@ -1,43 +1,59 @@
 // /js/chat-frontend.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. SELECTORES DEL DOM ---
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const sendChatBtn = document.getElementById('chat-send-btn');
 
-    // Salir si no estamos en la página del presupuestador
-    if (!chatMessagesContainer || !chatInput || !sendChatBtn) {
-        return;
-    }
+    if (!chatMessagesContainer || !chatInput || !sendChatBtn) return;
 
-    // --- 2. ESTADO DEL CHAT ---
     let chatHistory = [];
 
-    // --- 3. FUNCIONES DE LA INTERFAZ DEL CHAT ---
-
+    // --- FUNCIÓN MEJORADA PARA MOSTRAR MENSAJES ---
+    // Ahora puede parsear la respuesta estructurada de la IA.
     function addMessageToChat(message, sender) {
-        // Estilos base para el contenedor del mensaje
         const messageWrapper = document.createElement('div');
         messageWrapper.className = 'chat-message flex flex-col';
         
-        // Estilos para la burbuja del chat
         const messageBubble = document.createElement('div');
         messageBubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%]';
-        messageBubble.innerHTML = message; // Usamos innerHTML para renderizar <br> y formato
 
         if (sender === 'user') {
-            messageWrapper.classList.add('items-end'); // Alinear a la derecha
+            messageWrapper.classList.add('items-end');
             messageBubble.classList.add('bg-cyan-500', 'text-slate-900', 'rounded-br-none');
-        } else {
-            messageWrapper.classList.add('items-start'); // Alinear a la izquierda
+            messageBubble.textContent = message;
+        } else { // Mensajes de la IA
+            messageWrapper.classList.add('items-start');
             messageBubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
+            
+            // INTELIGENCIA DE PARSEO: Revisa si la respuesta tiene el formato esperado
+            if (message.includes('Servicios:') && message.includes('Respuesta:')) {
+                const servicesMatch = message.match(/Servicios:\s*([\w\s,]+)/);
+                const responseText = message.substring(message.indexOf('Respuesta:') + 'Respuesta:'.length).trim();
+
+                let htmlContent = '';
+                if (servicesMatch && servicesMatch[1]) {
+                    const serviceIDs = servicesMatch[1].trim().split(',').map(s => s.trim());
+                    // Crea una caja de recomendación
+                    htmlContent += `
+                        <div class="mb-3 p-2 border-l-4 border-purple-400 bg-slate-800 rounded-r-md">
+                            <p class="text-sm font-bold text-purple-300 mb-1">Recomendación de Servicios:</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${serviceIDs.map(id => `<span class="px-2 py-1 text-xs font-mono bg-slate-900 text-cyan-300 rounded">${id}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                htmlContent += responseText.replace(/\n/g, '<br>'); // Añade el texto de venta
+                messageBubble.innerHTML = htmlContent;
+            } else {
+                // Si no tiene el formato, muestra el mensaje tal cual (para errores, etc.)
+                messageBubble.innerHTML = message.replace(/\n/g, '<br>');
+            }
         }
         
         messageWrapper.appendChild(messageBubble);
         chatMessagesContainer.appendChild(messageWrapper);
-        
-        // Auto-scroll hacia el último mensaje
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
@@ -62,8 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 4. LÓGICA DE COMUNICACIÓN ---
-
     async function sendMessage() {
         const userMessage = chatInput.value.trim();
         if (userMessage === '') return;
@@ -71,16 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
         addMessageToChat(userMessage, 'user');
         chatHistory.push({ role: 'user', content: userMessage });
         chatInput.value = '';
+        chatInput.focus();
         toggleTypingIndicator(true);
 
         try {
-            // Llamada a tu Netlify Function
             const response = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ history: chatHistory })
             });
-
             toggleTypingIndicator(false);
 
             if (!response.ok) {
@@ -89,11 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            
-            // Reemplazamos saltos de línea del modelo por <br> para HTML
-            const formattedResponse = data.response.replace(/\n/g, '<br>');
-
-            addMessageToChat(formattedResponse, 'ai');
+            addMessageToChat(data.response, 'ai');
             chatHistory.push({ role: 'assistant', content: data.response });
 
         } catch (error) {
@@ -103,17 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 5. INICIALIZACIÓN ---
-
     function initChat() {
-        const welcomeMessage = '¡Hola! Soy tu asistente IA de ventas. Descríbeme la necesidad de tu cliente y te recomendaré los servicios ideales del catálogo.';
+        const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
         addMessageToChat(welcomeMessage, 'ai');
-        chatHistory.push({ role: 'assistant', content: welcomeMessage });
+        // No añadimos el mensaje de bienvenida al historial de la API para evitar errores.
 
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                event.preventDefault(); // Evita que el Enter haga un salto de línea
+                event.preventDefault();
                 sendMessage();
             }
         });
