@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "node-fetch": "^2.7.0",
     "openai": "^6.6.0"
   }
 }
