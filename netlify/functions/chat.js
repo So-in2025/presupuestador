@@ -1,5 +1,3 @@
-// /netlify/functions/chat.js
-
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
@@ -57,8 +55,8 @@ exports.handler = async function(event) {
         };
 
         const geminiHistory = history.map(turn => ({
-            role: turn.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: turn.content }]
+            role: turn.role,
+            parts: turn.parts
         }));
         
         const fullHistory = [instructions, ...geminiHistory];
@@ -70,7 +68,7 @@ exports.handler = async function(event) {
         let userMessage = "";
         for (let i = history.length - 1; i >= 0; i--) {
             if (history[i].role === 'user') {
-                userMessage = history[i].content;
+                userMessage = history[i].parts[0].text;
                 break;
             }
         }

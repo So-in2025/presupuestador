@@ -1,5 +1,3 @@
-// /js/chat-frontend.js
-
 document.addEventListener('DOMContentLoaded', () => {
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -60,60 +58,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
    async function sendMessage() {
-    const userMessage = chatInput.value.trim();
-    if (userMessage === '') return;
+        const userMessage = chatInput.value.trim();
+        if (userMessage === '') return;
 
-    addMessageToChat(userMessage, 'user');
-    // --- AÑADIMOS CONTEXTO AL MENSAJE DEL USUARIO ---
-    const enhancedUserMessage = `
-        Por favor, analiza esta necesidad y recomienda servicios específicos del catálogo.
-        Necesidad del cliente: ${userMessage}
-    `;
+        addMessageToChat(userMessage, 'user');
+        // Formatea el mensaje para la API de Google
+        chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+        
+        chatInput.value = '';
+        chatInput.focus();
+        toggleTypingIndicator(true);
 
-    chatHistory.push({ role: 'user', content: enhancedUserMessage }); // Usamos el mensaje enriquecido
-    
-    // El resto de la función no cambia
-    chatInput.value = '';
-    chatInput.focus();
-    toggleTypingIndicator(true);
+        try {
+            const response = await fetch('/.netlify/functions/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: chatHistory })
+            });
 
-    try {
-        const response = await fetch('/.netlify/functions/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ history: chatHistory })
-        });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Hubo un error en la respuesta del servidor.');
+            }
 
-        if (!response.ok) {
-             const errorText = await response.text();
-             throw new Error(errorText || 'Hubo un error en la respuesta del servidor.');
+            const data = await response.json();
+            addMessageToChat(data.response, 'model');
+             // Formatea la respuesta de la IA para la API de Google
+            chatHistory.push({ role: 'model', parts: [{ text: data.response }] });
+
+        } catch (error) {
+            console.error("Error al enviar mensaje:", error);
+            addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Intenta de nuevo.`, 'model');
+        } finally {
+            toggleTypingIndicator(false);
         }
-
-        const data = await response.json();
-        addMessageToChat(data.response, 'assistant');
-        chatHistory.push({ role: 'assistant', content: data.response });
-
-    } catch (error) {
-        console.error("Error al enviar mensaje:", error);
-        addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Intenta de nuevo.`, 'assistant');
-    } finally {
-        toggleTypingIndicator(false);
     }
-}
     
     function initChat() {
-        // Limpia cualquier contenido previo y el historial en memoria cada vez que se carga.
+        
         chatMessagesContainer.innerHTML = '';
         chatHistory = [];
 
-        // Muestra siempre el mensaje de bienvenida.
         const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
-        addMessageToChat(welcomeMessage, 'assistant');
+        chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
         
-        // Lo añadimos al historial de la sesión actual para que la IA tenga contexto.
-        chatHistory.push({ role: 'assistant', content: welcomeMessage });
+        chatHistory.forEach(turn => addMessageToChat(turn.parts[0].text, turn.role));
 
         sendChatBtn.addEventListener('click', sendMessage);
+        
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
