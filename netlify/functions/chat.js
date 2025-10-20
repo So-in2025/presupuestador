@@ -1,16 +1,16 @@
 // /netlify/functions/chat.js
 /**
  * Backend de producción del Asistente Zen.
- * Motor: OpenAI GPT-4o.
+ * Motor: DeepSeek R1.
  * Propósito: recibir historial, analizar proyecto, y devolver recomendación estructurada.
  */
 
-const OpenAI = require("openai");
+const fetch = require("node-fetch"); // si usás Node 18+, fetch ya está disponible
 const pricingData = require("./pricing.json");
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Definila en Netlify
-});
+// --- CONFIGURACIÓN DE DEEPSEEK ---
+const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || "https://api.deepseek.ai/v1/r1/generate";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "TU_API_KEY_DEEPSEEK";
 
 // --- FUNCIÓN DE BÚSQUEDA REAL ---
 function findRelevantServices(project_description) {
@@ -36,6 +36,39 @@ function findRelevantServices(project_description) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
     .map(([id]) => id);
+}
+
+// --- FUNCION PARA COMUNICARSE CON DEEPSEEK ---
+async function sendMessageToDeepSeek(systemPrompt, history, userPrompt) {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map((msg) => ({
+      role: msg.role === "model" ? "assistant" : "user",
+      content: msg.parts[0].text,
+    })),
+    { role: "user", content: userPrompt },
+  ];
+
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      input: messages.map(m => m.content).join("\n"),
+      max_tokens: 500,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error al comunicarse con DeepSeek: ${response.status}`);
+  }
+
+  const data = await response.json();
+  // Ajusta según la estructura real de la respuesta de DeepSeek R1
+  return data.output_text || "DeepSeek no devolvió respuesta";
 }
 
 // --- HANDLER PRINCIPAL ---
@@ -91,22 +124,9 @@ Formula una respuesta usando el formato estricto.`
         : `El cliente describe: "${userMessage}".
 No se encontraron coincidencias. Pide más detalles de forma profesional.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...history.map((msg) => ({
-          role: msg.role === "model" ? "assistant" : "user",
-          content: msg.parts[0].text,
-        })),
-        { role: "user", content: userPrompt },
-      ],
-    });
+    const responseText = await sendMessageToDeepSeek(systemPrompt, history, userPrompt);
 
-    const responseText = completion.choices[0].message.content.trim();
     console.log(`[${invocationId}] OK`);
-
     return { statusCode: 200, body: JSON.stringify({ response: responseText }) };
   } catch (err) {
     console.error(`[${invocationId}] FATAL:`, err);
