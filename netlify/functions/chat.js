@@ -42,33 +42,17 @@ exports.handler = async function(event) {
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
         
-        // --- PROMPT EXPANDIDO CON ESTRATEGIAS DE VENTA ---
         const instructions = {
             role: "user",
             parts: [{ text: `
-                Eres 'Zen Assistant', un estratega de ventas web de élite con 10 años de experiencia. Tu objetivo es ayudar a un revendedor a construir la propuesta perfecta, maximizando tanto la satisfacción del cliente como las ganancias del revendedor.
+                Eres 'Zen Assistant', un estratega de ventas web de élite.
+                - Tu PRIMER paso es SIEMPRE usar la herramienta 'find_relevant_services' para analizar la necesidad.
+                - CASO 1: Si la herramienta devuelve IDs, analiza esos IDs y formula una recomendación profesional usando el formato estricto.
+                - CASO 2: Si la herramienta NO devuelve IDs, significa que no entendiste la petición. IGNORA el formato estricto y responde de forma conversacional pidiendo más detalles (Ej: "No entendí bien. ¿Podrías darme más detalles sobre el proyecto?").
+                - Formato Estricto (SÓLO para CASO 1):
 
-                Debes basar tus recomendaciones en estas estrategias de venta probadas:
-                1. Solución Integral: Prioriza ofrecer un paquete completo que cubra la mayor parte de las necesidades del cliente.
-                2. Prueba Social: Destaca testimonios o casos de éxito similares.
-                3. Valor Agregado: Para presupuestos limitados, enfócate en las funcionalidades esenciales primero, con opciones de ampliación futuras.
-                4. Upselling Inteligente: Si el cliente muestra interés, sugiere mejoras de UX o funcionalidades que complementen su necesidad.
-                5. Confianza y Seguridad: Para clientes preocupados por la seguridad, enfatiza los servicios de seguridad.
-                6. Plan a Largo Plazo: Recomienda planes mensuales para asegurar soporte continuo y una relación duradera.
-                7. Valor > Precio: Explica que el retorno de la inversión a largo plazo (atraer clientes, buena imagen) es más importante que el precio inicial.
-                8. AIDA (Atención, Interés, Deseo, Acción): Capta la Atención, genera Interés, despierta el Deseo y cierra con una Acción clara.
-
-                Tu proceso es:
-                1. Analiza la necesidad del cliente descrita por el revendedor.
-                2. SIEMPRE usa la herramienta 'find_relevant_services' para obtener los IDs de los servicios más relevantes.
-                3. Luego, crea una propuesta de valor persuasiva que incluya:
-                   - Los IDs de los servicios seleccionados.
-                   - Una justificación concisa basada en las estrategias de venta y en el catálogo.
-                   - Una llamada a la acción clara para el revendedor (ej: 'Añade estos ítems a tu propuesta ahora').
-
-                Sigue SIEMPRE este formato:
-                Servicios: [Lista de IDs, separados por comas]
-                Respuesta: [Texto de venta de 2-3 oraciones. Aplica las estrategias aprendidas.]
+                Servicios: [IDs encontrados]
+                Respuesta: [Texto de venta conciso y justificado para el revendedor.]
             `}]
         };
 
@@ -79,7 +63,17 @@ exports.handler = async function(event) {
         
         const fullHistory = [instructions, ...geminiHistory];
         const chat = model.startChat({ history: fullHistory });
-        const userMessage = history.length > 0 ? history[history.length - 1].content : "";
+
+        // --- CORRECCIÓN CLAVE: Extraer la descripción original del usuario ---
+        // En lugar de usar history[history.length - 1].content,
+        // buscamos el primer mensaje del usuario en el historial, que es la descripción original.
+        let userMessage = "";
+        for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].role === 'user') {
+                userMessage = history[i].content;
+                break;
+            }
+        }
 
         if (userMessage === "") {
              return { statusCode: 400, body: JSON.stringify({ error: "No se recibió un mensaje de usuario para procesar." }) };
