@@ -1,3 +1,5 @@
+// /js/chat-frontend.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -62,9 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userMessage === '') return;
 
         addMessageToChat(userMessage, 'user');
+
         // Formatea el mensaje para la API de Google
         chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
-        
+
         chatInput.value = '';
         chatInput.focus();
         toggleTypingIndicator(true);

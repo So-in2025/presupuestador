@@ -1,5 +1,21 @@
+// /netlify/functions/chat.js
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
+
+// Construye un diccionario de servicios (ID -> Nombre)
+function buildServiceDictionary() {
+    const dictionary = {};
+    Object.values(pricingData.allServices).forEach(category => {
+        category.items.forEach(item => {
+            dictionary[item.id] = item.name;
+        });
+    });
+    pricingData.monthlyPlans.forEach(plan => {
+        dictionary[plan.id] = plan.name;
+    });
+    return dictionary;
+}
 
 const tools = {
     find_relevant_services: function(args) {
@@ -26,7 +42,7 @@ const tools = {
 
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
+        return { statusCode: 405, body: JSON.stringify({ error: "Method Not Allowed" }) };
     }
     try {
         const { history } = JSON.parse(event.body);
@@ -40,23 +56,30 @@ exports.handler = async function(event) {
             tools: [{ functionDeclarations: [tools.find_relevant_services] }]
         });
         
+        // --- CONSTRUCCIÓN DEL DICCIONARIO Y PROMPT REFORZADO ---
+        const serviceDictionary = buildServiceDictionary();
+
         const instructions = {
             role: "user",
             parts: [{ text: `
-                Eres 'Zen Assistant', un estratega de ventas web de élite.
-                - Tu PRIMER paso es SIEMPRE usar la herramienta 'find_relevant_services' para analizar la necesidad.
-                - CASO 1: Si la herramienta devuelve IDs, analiza esos IDs y formula una recomendación profesional usando el formato estricto.
-                - CASO 2: Si la herramienta NO devuelve IDs, significa que no entendiste la petición. IGNORA el formato estricto y responde de forma conversacional pidiendo más detalles (Ej: "No entendí bien. ¿Podrías darme más detalles sobre el proyecto?").
-                - Formato Estricto (SÓLO para CASO 1):
+                Eres 'Zen Assistant', un estratega de ventas web de élite. Tu objetivo es ayudar a un revendedor.
+                Conoces estos servicios:
 
-                Servicios: [IDs encontrados]
+                ${JSON.stringify(serviceDictionary, null, 2)}
+
+                Siempre sigue estos pasos:
+                1. Usa la herramienta 'find_relevant_services' para analizar la necesidad.
+                2. Analiza los IDs de servicios que la herramienta te haya dado.
+                3. Responde SIEMPRE con este formato:
+
+                Servicios: [Lista de IDs de los servicios, separados por comas.  Usa SOLO los IDs del diccionario de servicios.]
                 Respuesta: [Texto de venta conciso y justificado para el revendedor.]
             `}]
         };
 
         const geminiHistory = history.map(turn => ({
-            role: turn.role,
-            parts: turn.parts
+            role: turn.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: turn.content }]
         }));
         
         const fullHistory = [instructions, ...geminiHistory];
