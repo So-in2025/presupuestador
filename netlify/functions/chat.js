@@ -4,15 +4,43 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require('fs');
 const path = require('path');
 
-// Lee el catálogo de servicios localmente para mayor velocidad y fiabilidad.
-function getServiceCatalog() {
+// --- Nivel 2: Mejora de Inteligencia ---
+// La función ahora construye un resumen detallado del catálogo para la IA.
+function getCatalogContext() {
     try {
         const filePath = path.resolve(__dirname, '../../pricing.json');
         const fileContent = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(fileContent);
+        const pricingData = JSON.parse(fileContent);
+
+        let catalogSummary = "Tu conocimiento se basa exclusivamente en este catálogo de servicios:\n\n";
+
+        // Paquetes (Soluciones Integrales)
+        catalogSummary += "--- PAQUETES (Elige uno si el proyecto es nuevo) ---\n";
+        pricingData.allServices.completeWebs.items.forEach(item => {
+            catalogSummary += `ID: ${item.id}, Nombre: ${item.name}, Precio: $${item.price}, Desc: ${item.description}\n`;
+        });
+
+        // Ítems Individuales (Mejoras y Módulos)
+        catalogSummary += "\n--- ÍTEMS INDIVIDUALES (Añade a un paquete o selecciona individualmente) ---\n";
+        Object.values(pricingData.allServices).forEach(category => {
+            if (!category.isExclusive) {
+                category.items.forEach(item => {
+                    catalogSummary += `ID: ${item.id}, Nombre: ${item.name}, Precio: $${item.price}, Desc: ${item.description}\n`;
+                });
+            }
+        });
+        
+        // Planes Mensuales
+        catalogSummary += "\n--- PLANES MENSUALES (Para soporte y mantenimiento post-lanzamiento) ---\n";
+        pricingData.monthlyPlans.forEach(plan => {
+             catalogSummary += `ID: ${plan.id}, Nombre: ${plan.name}, Precio: $${plan.price}/mes, Desc: ${plan.description}\n`;
+        });
+
+        return catalogSummary;
+
     } catch (error) {
-        console.error("Error crítico al leer pricing.json:", error);
-        return "Error: No se pudo cargar el catálogo de servicios desde el archivo.";
+        console.error("Error crítico al leer y procesar pricing.json:", error);
+        return "Error: No se pudo cargar el contexto del catálogo de servicios.";
     }
 }
 
@@ -28,32 +56,24 @@ exports.handler = async function(event) {
             return { statusCode: 400, body: JSON.stringify({ error: "El historial es inválido o está vacío." }) };
         }
         
-        const pricingData = getServiceCatalog();
-        if (typeof pricingData === 'string') {
-            return { statusCode: 500, body: JSON.stringify({ response: pricingData }) };
+        const catalogContext = getCatalogContext();
+        if (catalogContext.startsWith("Error:")) {
+            return { statusCode: 500, body: JSON.stringify({ response: catalogContext }) };
         }
 
-        // =======================================================================
-        // PROMPT FINAL OPTIMIZADO PARA ASISTIR AL REVENDEDOR
-        // =======================================================================
         const systemPrompt = `
-            Eres 'Zen Assistant', un experto estratega de ventas web. Tu misión es ayudar a revendedores a construir la propuesta perfecta para sus clientes usando la herramienta 'Centro de Operaciones'.
-            Tu conocimiento se basa exclusivamente en este catálogo de servicios:
-
-            A. Paquetes Web: Landing Page (p1), Web Presencial (p2), Portfolio (p3), Web+Blog (p4), E-commerce Básico (p5), E-commerce Avanzado (p6), Optimización Web (p7), App Web (p8)
-            B. Mejoras UX: Animaciones (b1), Landing Extra (b2), Formulario (b3), Mapas/Gráficos (b4)
-            C. Funcionalidad: Velocidad (c1), Diseño Visual (c2), API (c3), Base de Datos (c4), Usuarios (c5), Seguridad (c6)
-            D. Integraciones: Pasarela Pago (d1), Microservicios (d2)
-            Planes Mensuales: Mantenimiento (1), Soporte (2), Evolución (3), Crecimiento (4), Business Pro (5), Desarrollo (6), Retainer Agencia (7), Retainer Corporativo (8), Retainer Enterprise (9), Equipo Dedicado (10)
+            Eres 'Zen Assistant', un estratega de ventas web de élite. Tu misión es ayudar a revendedores a construir la propuesta perfecta para sus clientes usando la herramienta 'Centro de Operaciones'.
             
-            Analiza la necesidad del cliente que te describe el revendedor y responde SIEMPRE con este formato exacto:
+            ${catalogContext}
 
-            1. **Servicios:** [IDs de los servicios recomendados, separados por comas. Elige los más precisos. Si es un paquete, no incluyas ítems sueltos a menos que sea estrictamente necesario.]
-            2. **Respuesta:** [Un texto de venta conciso y profesional para el REVENDEDOR, de 2 a 3 oraciones. Nombra los servicios recomendados y justifica brevemente por qué son la mejor opción. Cierra con una frase que le invite a la acción dentro de la herramienta.]
+            Analiza la necesidad y el presupuesto (si se menciona) del cliente que te describe el revendedor. Responde SIEMPRE con este formato exacto:
+
+            1. **Servicios:** [IDs de los servicios recomendados, separados por comas. Sé preciso. Si eliges un paquete, solo añade ítems sueltos si son mejoras claras y complementarias.]
+            2. **Respuesta:** [Un texto de venta conciso y profesional para el REVENDEDOR. Justifica tu elección basándote en los precios y descripciones del catálogo. Guíale sobre cómo proceder en la herramienta.]
 
             EJEMPLO PERFECTO:
             Servicios: p6, c1
-            Respuesta: Para una tienda online con muchos productos, la solución ideal es el E-commerce Avanzado (p6) combinado con la Optimización de Velocidad (c1) para asegurar una experiencia de compra fluida. Puedes encontrar y seleccionar estos ítems en la sección 'Configurar la Solución'. ¿Te parece un buen punto de partida?
+            Respuesta: Para una tienda online con muchos productos, la solución ideal es el E-commerce Avanzado (p6). Dado que cuesta $180, asegura que el cliente tenga un buen volumen de ventas. Añadir la Optimización de Velocidad (c1) es crucial para no perder clientes por tiempos de carga lentos. Puedes encontrar y seleccionar estos ítems en la sección 'Configurar la Solución'.
         `;
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
