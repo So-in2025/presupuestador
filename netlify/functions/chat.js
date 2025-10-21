@@ -123,6 +123,12 @@ async function detectUserIntent(userMessage, history) {
  * @param {string} userPrompt - Mensaje del usuario
  * @param {string} mode - Modo para ajustar configuración (ej. 'CLASSIFICATION' o 'RECOMMENDATION')
  */
+/**
+ * @param {string} systemPrompt - Instrucción de sistema
+ * @param {Array<Object>} history - Historial de chat
+ * @param {string} userPrompt - Mensaje del usuario
+ * @param {string} mode - Modo para ajustar configuración (ej. 'CLASSIFICATION' o 'RECOMMENDATION')
+ */
 async function sendMessageToGemini(systemPrompt, history, userPrompt, mode = 'DEFAULT') {
   if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
 
@@ -139,9 +145,9 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, mode = 'DE
     },
   ];
   
-  // Ajustar configuración para mayor precisión en clasificación/estructuración
+  // Ajustar configuración base para el modo
   let config = { 
-      temperature: 0.2, // Reducir temperatura para ser más estricto
+      temperature: 0.2, 
       maxOutputTokens: 1000 
   };
   
@@ -150,21 +156,18 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, mode = 'DE
       config.maxOutputTokens = 20;
   }
   
-  // Forzar respuesta JSON para recomendación (si la API lo soporta)
-  // Aunque no es explícito en esta llamada de API, el System Prompt debe ser suficiente.
-  // if (mode === 'RECOMMENDATION') { 
-  //     config.responseMimeType = "application/json";
-  // }
-  
   try {
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // 🚨 ESTRUCTURA JSON CORREGIDA PARA LA API DE GEMINI generateContent 🚨
       body: JSON.stringify({
         contents: contents,
-        config: {
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          ...config
+        generationConfig: {
+            // Pasamos las instrucciones y la configuración dentro de 'generationConfig'
+            systemInstruction: systemPrompt,
+            temperature: config.temperature,
+            maxOutputTokens: config.maxOutputTokens
         }
       }),
     });
@@ -193,7 +196,6 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, mode = 'DE
     throw new Error("No se pudo conectar con el motor Gemini.");
   }
 }
-
 // --- HANDLER PRINCIPAL (CON LÓGICA DE INTENCIÓN DINÁMICA) ---
 
 exports.handler = async (event) => {
