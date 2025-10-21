@@ -2,10 +2,9 @@
 /**
  * Lógica de frontend para Zen Assistant usando Gemini.
  * Se comunica con la función serverless de Netlify (chat.js) para la lógica de IA.
- * * * CORRECCIÓN CRÍTICA DE BUCLE: La actualización del historial del frontend estaba duplicando
- * el mensaje del usuario. Se revierte a la lógica de actualización correcta.
- * * CORRECCIÓN DE PRESUPUESTO: Se mantiene la lógica robusta para manejar la selección de botones
- * que cambia de modo (Plan Mensual a Servicio Estándar).
+ * * * CORRECCIÓN DE HISTORIAL: Se elimina la duplicación del mensaje de usuario en chatHistory
+ * ANTES del envío. Ahora se construye un historial temporal para la API y se
+ * utiliza el historial devuelto por el backend para asegurar la correcta sincronización.
  */
 
 // Importamos el estado para poder acceder al catálogo de servicios (necesario para el helper)
@@ -67,8 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Usamos el 'ai-message' como contenedor base para los mensajes del modelo
     let innerClass = role === 'user' ? 'user-message text-right' : 'ai-message text-left';
     
+    // CORRECCIÓN: Estilos para diferenciar mensajes de IA y usuario
+    const bgColor = role === 'user' ? 'bg-indigo-700 text-white' : 'card-bg text-slate-50 border border-slate-700';
+
     messageDiv.innerHTML = `
-      <div class="max-w-[85%] p-3 text-sm whitespace-pre-wrap ${innerClass}">
+      <div class="max-w-[85%] p-3 text-sm whitespace-pre-wrap rounded-xl ${bgColor} ${innerClass}">
         ${content}
       </div>
     `;
@@ -175,14 +177,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Renderizar mensaje de usuario
     renderMessage('user', trimmedMessage);
     
-    // 2. AÑADIR MENSAJE DE USUARIO AL HISTORIAL DEL FRONTEND (Preparado para el próximo envío)
-    chatHistory.push({ role: 'user', parts: [{ text: trimmedMessage }] });
-    // Usamos el historial completo para enviar al backend
-    const historyForApi = chatHistory;
+    // 2. CORRECCIÓN CRÍTICA: Construir el historial a enviar a la API
+    // Se toma el historial existente + el nuevo mensaje del usuario.
+    const historyForApi = [
+        ...chatHistory,
+        { role: 'user', parts: [{ text: trimmedMessage }] }
+    ];
 
     // 3. Renderizar indicador de carga (AI)
     const loadingMessageId = 'loading-' + Date.now();
-    renderMessage('model', `<div id="${loadingMessageId}" class="flex items-center space-x-2 text-slate-400"><div class="loading-animation"></div><span>Escribiendo...</span></div>`);
+    renderMessage('model', `<div id="${loadingMessageId}" class="flex items-center space-x-2 text-slate-400">
+        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0s;"></div>
+        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
+        <span>Escribiendo...</span>
+    </div>`);
 
     // 4. Llamada a la función Netlify (segura)
     try {
@@ -191,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Enviamos el historial COMPLETO, incluyendo el último mensaje de usuario
+        // Enviamos el historial TEMPORAL que incluye el último mensaje de usuario
         body: JSON.stringify({ userMessage: trimmedMessage, history: historyForApi }) 
       });
 
@@ -206,14 +215,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.error || !response.ok) {
         const errorMessage = data.message || "No se pudo contactar con la IA. Inténtalo de nuevo.";
         renderMessage('model', `<span class="text-red-400 font-bold">Error del Asistente:</span> ${errorMessage}`);
-        // Si hay un error, removemos el último mensaje de usuario del historial para reintentar sin duplicar
-        chatHistory.pop(); 
+        // No actualizamos el historial si hay error, el mensaje de usuario no se añade.
       } else {
         const aiResponseContent = renderMessageContent(data.response);
         renderMessage('model', aiResponseContent);
         
-        // 6. Actualizamos el historial con la RESPUESTA DEL MODELO (únicamente, sin duplicar el userMessage)
-        chatHistory.push({ role: 'model', parts: [{ text: data.response }] });
+        // 6. Sincronización CRÍTICA: Reemplazamos el historial con el historial completo y validado del backend.
+        // Esto incluye el user message + model response.
+        chatHistory = data.history; 
       }
 
     } catch (error) {
@@ -224,8 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
           loadingEl.parentElement.remove();
       }
       renderMessage('model', '<span class="text-red-400 font-bold">Error de Conexión:</span> Hubo un problema de red. Por favor, inténtalo de nuevo.');
-      // Si hay un error de conexión, removemos el último mensaje de usuario del historial
-      chatHistory.pop();
+      // No actualizamos el historial si hay error de conexión.
     } finally {
       isSending = false;
       sendChatBtn.disabled = false;
@@ -259,10 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const serviceData = findServiceById(serviceId);
       
       if (serviceData) {
-        const elementId = `selection-box-${serviceData.id}`;
-        const serviceElement = document.getElementById(elementId);
+        // En los botones de recomendación, el ID es suficiente, no usamos 'selection-box'
+        // para evitar acoplamiento excesivo con el DOM.
+        const serviceElement = document.querySelector(`input[data-service-id="${serviceData.id}"]`);
         
-        // 1. **CORRECCIÓN CRÍTICA DE LÓGICA DE PRESUPUESTO:**
+        // 1. Lógica de Presupuesto:
         
         if (serviceData.type === 'monthly') {
              // Si es un plan mensual:
@@ -277,9 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (serviceData.type === 'standard') {
             // Si es un servicio estándar:
             
-            // Si hay un plan mensual u otros servicios seleccionados, forzamos la limpieza
-            // para cambiar el modo de presupuesto a "Servicio Estándar".
-            // Esta línea asegura que el presupuesto no se arruine al mezclar modos.
+            // Forzamos la limpieza si hay cualquier plan o servicio de puntos seleccionado, 
+            // cambiando el modo de presupuesto a "Selección Personalizada".
             if (document.querySelector('input[name="selectionGroup"]:checked, input[name="monthlyPlanSelection"]:checked')) { 
                 clearAllSelections(); 
             }

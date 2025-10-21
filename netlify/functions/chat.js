@@ -8,6 +8,7 @@
  * 1. Correcta comunicación con la API de Gemini 2.5.
  * 2. Lógica de reintento implementada en sendMessageToGemini.
  * 3. Forzado de salida JSON para la intención de 'RECOMENDACION' con el esquema definido.
+ * 4. El historial se devuelve al frontend (almacenando el user_message + model_response)
  */
 
 const pricingData = require("./pricing.json");
@@ -157,7 +158,7 @@ exports.handler = async (event) => {
   
   // Desestructuración de los datos de entrada:
   // - userMessage: El texto del último mensaje.
-  // - historyForApi: Todo el historial, incluyendo el último mensaje del usuario.
+  // - history: Todo el historial, incluyendo el último mensaje del usuario.
   const { userMessage, history: historyForApi } = body;
   const invocationId = Date.now(); // ID único para el log de esta invocación.
 
@@ -234,9 +235,10 @@ exports.handler = async (event) => {
         `;
         // userPrompt ya está establecido como lastUserMessage
         
-    } else if (intent === 'TEXTO') {
+    } else if (intent === 'TEXTO' || intent === 'DESCONOCIDA') {
         
-        console.log(`[${invocationId}] INTENCIÓN: Texto general/Ventas.`);
+        // Consolidamos el texto general y desconocido en la misma lógica de ventas.
+        console.log(`[${invocationId}] INTENCIÓN: Texto general/Ventas (${intent}).`);
         geminiMode = "TEXT";
         
         systemPrompt = `
@@ -250,19 +252,13 @@ exports.handler = async (event) => {
 
     } else {
         
-        // Lógica de fallback para intención 'DESCONOCIDA'
-        console.log(`[${invocationId}] INTENCIÓN: Desconocida (${intent}). Fallback a Asistente de Ventas.`);
+        // Fallback muy robusto si el clasificador devuelve algo inesperado.
+        console.log(`[${invocationId}] INTENCIÓN: Inesperada (${intent}). Fallback a Texto simple.`);
         geminiMode = "TEXT";
 
         systemPrompt = `
-            Eres Zen Assistant. No se pudo clasificar la solicitud como una recomendación de servicios.
-            Actúa como un asistente de ventas general.
-            
-            INSTRUCCIONES CLAVE:
-            - Responde de forma cortés, indicando que necesitas más detalles sobre el proyecto o que ayudarás con su consulta de ventas.
+            Eres Zen Assistant. Responde al revendedor de forma cortés, indicando que hubo un pequeño problema con tu clasificación de su solicitud, pero que le ayudarás de todas formas.
         `;
-
-        userPrompt = `El revendedor preguntó: "${userMessage}". Parece que quiere ayuda de ventas, pero no estoy seguro. Ofrécete a ayudarle con un consejo de ventas o pídele más detalles sobre el proyecto.`;
     }
 
     // Llamada final al modelo con el prompt y modo definidos.
@@ -283,7 +279,7 @@ exports.handler = async (event) => {
 
     // --- PASO 4: Actualización del Historial y Respuesta Final ---
 
-    // Creamos el historial actualizado para devolver al frontend.
+    // Creamos el historial actualizado para devolver al frontend, incluyendo la respuesta del modelo.
     const updatedHistory = [
       ...historyForApi,
       { role: 'model', parts: [{ text: responseText }] }
