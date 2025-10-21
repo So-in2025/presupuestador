@@ -2,7 +2,8 @@
 /**
  * Lógica de frontend para Zen Assistant usando Gemini.
  * Se comunica con la función serverless de Netlify (chat.js) para la lógica de IA.
- * * * CORRECCIÓN CRÍTICA DE ROBUSTEZ: Se añade lógica para evitar el 'SyntaxError: Unexpected end of JSON input'
+ * * * RUTA FINAL CORRECTA: Usando '/netlify/functions/chat' según la ruta que el usuario quiere usar.
+ * * CORRECCIÓN DE ROBUSTEZ: Se mantiene lógica para evitar el 'SyntaxError: Unexpected end of JSON input'
  * en caso de errores de servidor (404, 500) al fallar la lectura del JSON.
  * * CORRECCIÓN DE HISTORIAL: Se mantiene la lógica de sincronización de historial con el backend.
  */
@@ -194,7 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Llamada a la función Netlify (segura)
     try {
-      const apiUrl = `/api/chat`; 
+      // ************* RUTA DEFINITIVA A USAR *************
+      const apiUrl = `/netlify/functions/chat`; 
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -206,13 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // --- CORRECCIÓN CRÍTICA DE ROBUSTEZ ---
       let data = {};
       let responseText = null;
-
+      
+      // Si la respuesta HTTP no es 200 (ej: 404, 500), leemos el cuerpo como texto para evitar SyntaxError.
       if (response.ok) {
-          // Si la respuesta HTTP es 200, intentamos leer el JSON
           data = await response.json();
       } else {
-          // Si es un error HTTP (404, 500, etc.), leemos el cuerpo como texto para evitar
-          // que 'response.json()' falle con SyntaxError: Unexpected end of JSON input
           responseText = await response.text(); 
       }
       // ----------------------------------------
@@ -225,8 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // La condición de error se actualiza para manejar errores HTTP (response.ok=false)
       if (!response.ok) { 
-        // El 404 de Netlify no devuelve JSON. El responseText tendrá la página de error.
-        const errorMessage = `Error de servidor (${response.status}). Posiblemente: la ruta '/api/chat' no existe o la función falló internamente.`;
+        // Generamos un mensaje de error más claro.
+        const errorMessage = `Error de servidor (${response.status}). Asegúrate de que tu carpeta 'netlify/functions' existe, contiene 'chat.js' y las variables de entorno están configuradas.`;
         renderMessage('model', `<span class="text-red-400 font-bold">Error de Conexión:</span> ${errorMessage}`);
         
       } else if (data.error) { // Error devuelto por chat.js (código 200 con payload de error)
