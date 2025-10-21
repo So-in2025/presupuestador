@@ -1,18 +1,16 @@
 // /netlify/functions/chat.js
 /**
- * Backend de producción del Asistente Zen.
- * Motor: Gemini 2.5 Pro (con fallback a Gemini 2.5 base).
- * Propósito: recibir historial, analizar proyecto, y devolver recomendación estructurada.
- * Configurado para Netlify Node 18+ usando fetch global.
+ * Backend actualizado para Asistente Zen
+ * Modelo: Gemini 2.5 Flash (v1beta)
+ * Compatible con Node 18+ en Netlify
  */
 
 const pricingData = require("./pricing.json");
 
 // --- CONFIGURACIÓN DE GEMINI ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL_PRIMARY = "gemini-2.5-pro";
-const GEMINI_MODEL_FALLBACK = "gemini-2.5";
-const GEMINI_API_URL = (model) => `https://gemini.googleapis.com/v1/models/${model}:generate`;
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 if (!GEMINI_API_KEY) {
   console.error("❌ GEMINI_API_KEY no está definida en variables de entorno.");
@@ -22,8 +20,7 @@ if (!GEMINI_API_KEY) {
 function findRelevantServices(project_description) {
   if (!project_description) throw new Error("Descripción de proyecto vacía.");
 
-  const keywords =
-    project_description.toLowerCase().match(/\b(\w{3,})\b/g) || [];
+  const keywords = project_description.toLowerCase().match(/\b(\w{3,})\b/g) || [];
   if (keywords.length === 0) return [];
 
   const scores = {};
@@ -45,7 +42,9 @@ function findRelevantServices(project_description) {
 }
 
 // --- FUNCIÓN PARA COMUNICARSE CON GEMINI ---
-async function callGemini(model, url, systemPrompt, history, userPrompt) {
+async function sendMessageToGemini(systemPrompt, history, userPrompt) {
+  if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
+
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map((msg) => ({
@@ -55,43 +54,30 @@ async function callGemini(model, url, systemPrompt, history, userPrompt) {
     { role: "user", content: userPrompt },
   ];
 
-  const apiUrl = url || GEMINI_API_URL(model);
-
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${GEMINI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      prompt: messages.map((m) => m.content).join("\n"),
-      max_output_tokens: 500,
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Gemini API responded with ${response.status}: ${text}`);
-  }
-
-  const data = await response.json();
-  return data.candidates?.[0]?.content || "Gemini no devolvió respuesta";
-}
-
-async function sendMessageToGemini(systemPrompt, history, userPrompt) {
-  if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
-
   try {
-    return await callGemini(GEMINI_MODEL_PRIMARY, null, systemPrompt, history, userPrompt);
-  } catch (err) {
-    console.warn("⚠️ Error con Gemini Pro, intentando modelo base...", err.message);
-    try {
-      return await callGemini(GEMINI_MODEL_FALLBACK, null, systemPrompt, history, userPrompt);
-    } catch (fallbackErr) {
-      console.error("❌ Falla también con modelo base:", fallbackErr.message);
-      throw new Error("No se pudo conectar con el motor Gemini.");
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        prompt: messages.map((m) => m.content).join("\n"),
+        temperature: 0.7,
+        maxOutputTokens: 1000, // ajustable según necesidad
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Gemini API respondió con ${response.status}: ${text}`);
     }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content || "Gemini no devolvió respuesta";
+  } catch (err) {
+    console.error("Error comunicándose con Gemini:", err.message);
+    throw new Error("No se pudo conectar con el motor Gemini.");
   }
 }
 
