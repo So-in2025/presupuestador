@@ -41,7 +41,6 @@ function findRelevantServices(project_description) {
     .map(([id]) => id);
 }
 
-// --- FUNCIÓN PARA COMUNICARSE CON GEMINI (CORREGIDA) ---
 // --- FUNCIÓN PARA COMUNICARSE CON GEMINI (CORREGIDA Y ROBUSTA) ---
 async function sendMessageToGemini(systemPrompt, history, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
