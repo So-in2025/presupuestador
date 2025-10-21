@@ -1,8 +1,11 @@
 // /js/chat-frontend.js
 /**
  * Frontend logic for Zen Assistant using Gemini 2.5 Flash Lite.
- * Communicates with Netlify serverless function backend.
+ * Comunicates with Netlify serverless function backend.
  */
+
+// Importamos el estado para poder acceder al catálogo de servicios
+import { getState } from './state.js'; 
 
 document.addEventListener('DOMContentLoaded', () => {
   const chatMessagesContainer = document.getElementById('chat-messages');
@@ -17,6 +20,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let chatHistory = [];
 
+  // --- AYUDANTE DE BÚSQUEDA DE SERVICIOS (usa getState para acceder al catálogo) ---
+  function findServiceById(id) {
+    const { allServices, monthlyPlans } = getState();
+    
+    // Buscar en servicios estándar/paquetes
+    for (const key in allServices) {
+        const item = allServices[key].items.find(s => s.id === id);
+        if (item) {
+            // El tipo se infiere de la estructura del pricing.json (p1, s1, etc.)
+            let type = 'standard';
+            if (key === 'completeWebs' || key === 'complexPackages') {
+                type = 'package';
+            }
+            return { name: item.name, type: type };
+        }
+    }
+
+    // Buscar en planes mensuales
+    const plan = monthlyPlans.find(p => p.id == id);
+    if (plan) {
+        return { name: plan.name, type: 'plan' };
+    }
+    
+    return null;
+  }
+
+  // --- AYUDANTE DE CREACIÓN DE BOTONES ---
+  function createServiceButtonHTML(serviceId, serviceType, serviceName) {
+    // Aseguramos que el type sea 'plan', 'package', o 'standard' para la función del clic en el frontend
+    const type = serviceType === 'plan' ? 'plan' : serviceType; // Usamos el tipo directo
+    
+    // El texto del botón ahora usa el nombre del servicio (serviceName)
+    return `<button 
+        data-action="add-service" 
+        data-service-id="${serviceId}" 
+        data-service-type="${type}" 
+        class="bg-slate-900 text-cyan-300 font-bold py-2 px-4 rounded-lg hover:bg-cyan-800 hover:text-white transition duration-200 mt-2 mr-2">
+        Añadir ${serviceName}
+    </button>`;
+  }
+
   function addMessageToChat(message, role) {
     const sender = role === 'user' ? 'user' : 'ai';
     const wrapper = document.createElement('div');
@@ -24,6 +68,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%]';
+    
+    let finalHTML = message.replace(/\n/g, '<br>');
+
+    if (sender === 'ai') {
+        // --- LÓGICA DE PARSEO JSON (Recomendación de Servicios) ---
+        try {
+            const jsonResponse = JSON.parse(message);
+            if (jsonResponse.message && Array.isArray(jsonResponse.recommendations)) {
+                // 1. Usar el mensaje de texto del JSON
+                let messageText = jsonResponse.message.replace(/\n/g, '<br>');
+                let buttonsHTML = '';
+                
+                // 2. Generar los botones HTML
+                jsonResponse.recommendations.forEach(rec => {
+                    const serviceInfo = findServiceById(rec.id);
+                    if (serviceInfo) {
+                        // AQUÍ ES DONDE SE USA serviceInfo.name
+                        buttonsHTML += createServiceButtonHTML(rec.id, serviceInfo.type, serviceInfo.name);
+                    } else {
+                        console.warn(`Servicio no encontrado en el catálogo: ${rec.id}`);
+                        // En caso de no encontrarlo, al menos mostramos el ID para depurar
+                        buttonsHTML += createServiceButtonHTML(rec.id, rec.type, `Servicio ID: ${rec.id}`);
+                    }
+                });
+                
+                finalHTML = messageText;
+                
+                if (buttonsHTML) {
+                    finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
+                        <p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Recomendación):</p>
+                        <div class="flex flex-wrap gap-2">${buttonsHTML}</div>
+                    </div>`;
+                }
+            }
+        } catch (e) {
+            // El mensaje no es JSON (es un mensaje de ASSIST_SALES o un error), 
+            // se procesa como texto simple.
+        }
+    }
+    // --- FIN LÓGICA DE PARSEO JSON ---
 
     if (sender === 'user') {
       wrapper.classList.add('items-end');
@@ -32,32 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       wrapper.classList.add('items-start');
       bubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
-
-      if (message.includes('Servicios:') && message.includes('Respuesta:')) {
-        const servicesMatch = message.match(/Servicios:\s*([\w\d\s,-]+)/);
-        const responseText = message.substring(message.indexOf('Respuesta:') + 9).trim();
-        let htmlContent = '';
-
-        if (servicesMatch && servicesMatch[1].trim()) {
-          const serviceIDs = servicesMatch[1].trim().split(',').map(s => s.trim());
-          htmlContent += `<div class="mb-3 p-2 border-l-4 border-purple-400 bg-slate-800 rounded-r-md">
-            <p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Click para añadir):</p>
-            <div class="flex flex-wrap gap-2">
-              ${serviceIDs.map(id => {
-                let type = 'standard';
-                if (/^p\d+/.test(id)) type = 'package';
-                else if (/^\d+$/.test(id)) type = 'plan';
-                return `<button class="px-2 py-1 text-xs font-mono bg-slate-900 text-cyan-300 rounded cursor-pointer hover:bg-cyan-800 transition" data-action="add-service" data-service-id="${id}" data-service-type="${type}">+ ${id}</button>`;
-              }).join('')}
-            </div>
-          </div>`;
-        }
-
-        htmlContent += responseText.replace(/\n/g, '<br>');
-        bubble.innerHTML = htmlContent;
-      } else {
-        bubble.innerHTML = message.replace(/\n/g, '<br>');
-      }
+      bubble.innerHTML = finalHTML; // Usamos innerHTML para renderizar los botones
     }
 
     wrapper.appendChild(bubble);
@@ -90,7 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!userMessage) return;
 
     addMessageToChat(userMessage, 'user');
-    chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+    
+    // Solo añadimos el mensaje del usuario al historial para la API
+    chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
     
     chatInput.value = '';
     chatInput.focus();
@@ -109,8 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const data = await response.json();
-      addMessageToChat(data.response, 'model');
-      chatHistory.push({ role: 'model', parts: [{ text: data.response }] });
+      
+      // La respuesta del servidor ya trae el historial completo, incluyendo la respuesta de la IA
+      chatHistory = data.history; 
+      
+      // El último mensaje en el historial actualizado es la respuesta de la IA
+      const aiResponseText = data.response; 
+      
+      // addMessageToChat ahora maneja el JSON/Texto.
+      addMessageToChat(aiResponseText, 'model'); 
 
     } catch (error) {
       console.error("Error detallado al enviar mensaje:", error);
@@ -136,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Delegación de eventos para los botones de servicio generados por la IA
     chatMessagesContainer.addEventListener('click', (event) => {
       const target = event.target.closest('[data-action="add-service"]');
       if (target) {
@@ -146,11 +215,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (serviceElement) {
           serviceElement.click();
           if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800');
+          
+          // Actualizar el estilo del botón
+          target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800', 'hover:text-white');
           target.classList.add('bg-green-700', 'text-white', 'cursor-default');
           target.textContent = `Añadido ✔️`;
           target.disabled = true;
         } else {
+          // Si por alguna razón el servicio no existe en el DOM (catálogo no cargado, error de ID)
           target.textContent = `No encontrado`;
           target.disabled = true;
         }
