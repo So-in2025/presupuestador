@@ -10,7 +10,7 @@ const pricingData = require("./pricing.json");
 // --- CONFIGURACIÓN DE GEMINI ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // Se recomienda usar gemini-1.5-flash para un mejor rendimiento y capacidades.
-const GEMINI_MODEL = "gemini-1.5-flash"; 
+const GEMINI_MODEL = "gemini-2.5-flash"; 
 
 if (!GEMINI_API_KEY) {
   console.error("❌ GEMINI_API_KEY no está definida en variables de entorno.");
