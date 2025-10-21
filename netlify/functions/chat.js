@@ -42,20 +42,18 @@ function findRelevantServices(project_description) {
 }
 
 // --- FUNCIÓN PARA COMUNICARSE CON GEMINI (CORREGIDA) ---
+// --- FUNCIÓN PARA COMUNICARSE CON GEMINI (CORREGIDA Y ROBUSTA) ---
 async function sendMessageToGemini(systemPrompt, history, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
 
-  // La URL de la API ahora incluye la clave como parámetro, que es el método correcto.
+  const GEMINI_MODEL = "gemini-2.5-flash"; // Usando el nombre de modelo correcto
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-  // La API moderna de Gemini gestiona el historial y el system prompt directamente en el array de contenidos.
   const contents = [
-    // El historial se formatea para que coincida con la estructura que espera la API
     ...history.map((msg) => ({
-      role: msg.role, // "user" o "model"
+      role: msg.role,
       parts: [{ text: msg.parts[0].text }],
     })),
-    // El mensaje final del usuario se añade al final
     { 
       role: "user", 
       parts: [{ text: userPrompt }] 
@@ -67,14 +65,13 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // El encabezado "Authorization: Bearer" se elimina. La clave ahora va en la URL.
       },
       body: JSON.stringify({
-        contents: contents, // Se usa la estructura "contents"
-        systemInstruction: { // El system prompt se envía en un campo dedicado
+        contents: contents,
+        systemInstruction: {
           parts: [{ text: systemPrompt }]
         },
-        generationConfig: { // Los parámetros van dentro de "generationConfig"
+        generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1000,
         },
@@ -88,19 +85,28 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt) {
 
     const data = await response.json();
     
-    // La estructura de la respuesta también ha cambiado
-    if (!data.candidates || data.candidates.length === 0) {
-      // Manejar el caso de bloqueo de contenido u otras respuestas vacías
+    // --- INICIO DE LA CORRECCIÓN CLAVE ---
+    // Esta nueva línea extrae el texto de forma segura, previniendo el error.
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // --- FIN DE LA CORRECCIÓN CLAVE ---
+
+    if (!responseText) {
+      // Si no hay texto, investigamos por qué.
       const blockReason = data.promptFeedback?.blockReason;
       if (blockReason) {
         console.warn(`Respuesta de Gemini bloqueada por: ${blockReason}`);
         return `Mi respuesta fue bloqueada por políticas de seguridad (${blockReason}). Por favor, reformula tu pregunta.`;
       }
-      return "Gemini no devolvió una respuesta válida.";
+      // Si no fue bloqueada, es otra respuesta vacía inesperada.
+      console.error("Respuesta de Gemini vacía o en formato inesperado:", JSON.stringify(data, null, 2));
+      return "El asistente no pudo generar una respuesta. Intenta de nuevo.";
     }
     
-    return data.candidates[0]?.content?.parts[0]?.text || "Gemini no devolvió contenido de texto.";
+    return responseText;
+
   } catch (err) {
+    // Aquí atrapamos el error si el JSON.parse falla o si hay un error de red.
+    // El error que veías ("Cannot read properties...") estaba sucediendo ANTES de que pudiera ser atrapado aquí.
     console.error("Error comunicándose con Gemini:", err.message);
     throw new Error("No se pudo conectar con el motor Gemini.");
   }
