@@ -11,6 +11,7 @@
  * 4. El historial se devuelve al frontend (almacenando el user_message + model_response)
  */
 
+// Importa el catálogo de precios (asumiendo que existe un pricing.json en el mismo directorio)
 const pricingData = require("./pricing.json");
 
 
@@ -30,19 +31,16 @@ if (!GEMINI_API_KEY) {
 
 /**
  * Envía un mensaje a la API de Gemini con lógica de reintento y configuración de formato.
- * Esta función maneja la comunicación directa con el modelo de IA.
  * * @param {string} systemPrompt - Instrucciones de comportamiento para el modelo.
- * @param {Array<Object>} history - Historial de chat completo para mantener el contexto.
+ * @param {Array<Object>} history - Historial de chat completo para mantener el contexto (incluye el último mensaje de usuario).
  * @param {string} userPrompt - Mensaje del usuario (usado solo para referencia en systemPrompt/debugging).
  * @param {string} geminiMode - Define el formato de respuesta: "TEXT" o "JSON".
  * @returns {Promise<string>} La respuesta de texto (o JSON stringificado) de Gemini.
  */
 async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode = "TEXT") {
   
-  // Uso de fetch nativo de Node/Netlify para la conexión.
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
-  // El historial (contents) que llega del frontend YA incluye el último mensaje del usuario.
   const contents = history; 
 
   
@@ -93,7 +91,7 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json', // Importante para recibir la respuesta correctamente
+          'Accept': 'application/json', 
         },
         body: JSON.stringify(payload)
       });
@@ -101,7 +99,8 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
 
       if (!response.ok) {
         // Si la respuesta HTTP no es 2xx, lanzamos un error con el cuerpo de la respuesta.
-        throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
+        const errorDetails = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorDetails.substring(0, 100)}...`);
       }
 
 
@@ -123,7 +122,8 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
       
       if (attempt === 2) {
         // Fallback final si todos los reintentos fallan.
-        return JSON.stringify({ error: true, message: `Error al contactar con el asistente IA: ${error.message}` });
+        // Se devuelve un JSON de error que el frontend puede manejar.
+        return JSON.stringify({ error: true, message: `Error al contactar con el asistente IA (máximo de reintentos): ${error.message}` });
       }
       
       // Espera exponencial antes del próximo reintento.
@@ -157,10 +157,8 @@ exports.handler = async (event) => {
 
   
   // Desestructuración de los datos de entrada:
-  // - userMessage: El texto del último mensaje.
-  // - history: Todo el historial, incluyendo el último mensaje del usuario.
   const { userMessage, history: historyForApi } = body;
-  const invocationId = Date.now(); // ID único para el log de esta invocación.
+  const invocationId = Date.now(); 
 
 
   if (!userMessage || !historyForApi) {
@@ -181,7 +179,6 @@ exports.handler = async (event) => {
     let userPrompt = lastUserMessage; 
 
 
-    // Prompt de clasificación simple y estricto.
     let classificationSystemPrompt = `
         Eres un clasificador de peticiones.
         Analiza el siguiente mensaje del revendedor.
@@ -193,11 +190,9 @@ exports.handler = async (event) => {
     `;
     
     
-    // Ejecutamos la clasificación usando el historial completo para mayor precisión.
     const intentResponse = await sendMessageToGemini(classificationSystemPrompt, historyForApi, lastUserMessage, "TEXT");
     
     
-    // Normalizamos la respuesta del clasificador.
     intent = intentResponse.toUpperCase().trim().replace(/['"]+/g, '');
 
 
@@ -209,7 +204,7 @@ exports.handler = async (event) => {
     if (intent === 'RECOMENDACION') {
         
         console.log(`[${invocationId}] INTENCIÓN: Recomendación de Servicios.`);
-        geminiMode = "JSON"; // Forzamos la salida JSON.
+        geminiMode = "JSON"; 
         
         // Preparamos el catálogo de servicios para incluirlo en el System Prompt.
         const serviceList = pricingData.allServices
@@ -224,7 +219,7 @@ exports.handler = async (event) => {
         systemPrompt = `
             Eres Zen Assistant, un experto en presupuestos de desarrollo web.
             Tu tarea es recomendar al revendedor la lista de IDs de servicios más adecuada 
-            para su proyecto, BASÁNDOTE SÓLO en el catálogo proporcionado.
+            para su proyecto, BASÁNDOSE SÓLO en el catálogo proporcionado.
             
             ${allServicesString}
 
@@ -233,11 +228,9 @@ exports.handler = async (event) => {
             2. SÓLO incluye IDs de servicios que existan en el CATÁLOGO (ej: s1, p3, m1).
             3. La 'introduction' debe ser profesional y persuasiva.
         `;
-        // userPrompt ya está establecido como lastUserMessage
         
     } else if (intent === 'TEXTO' || intent === 'DESCONOCIDA') {
         
-        // Consolidamos el texto general y desconocido en la misma lógica de ventas.
         console.log(`[${invocationId}] INTENCIÓN: Texto general/Ventas (${intent}).`);
         geminiMode = "TEXT";
         
@@ -248,11 +241,9 @@ exports.handler = async (event) => {
             - Responde de forma cortés, profesional y concisa.
             - Responde directamente a la consulta del revendedor.
         `;
-        // userPrompt ya está establecido como lastUserMessage
-
+        
     } else {
         
-        // Fallback muy robusto si el clasificador devuelve algo inesperado.
         console.log(`[${invocationId}] INTENCIÓN: Inesperada (${intent}). Fallback a Texto simple.`);
         geminiMode = "TEXT";
 
@@ -265,11 +256,11 @@ exports.handler = async (event) => {
     responseText = await sendMessageToGemini(systemPrompt, historyForApi, userPrompt, geminiMode);
 
 
-    // --- PASO 3: Verificación de Errores de API (Si la respuesta es un JSON de error) ---
+    // --- PASO 3: Verificación de Errores de API ---
     try {
         const errorCheck = JSON.parse(responseText);
         if (errorCheck.error) {
-             // Si el JSON contiene 'error: true', retornamos el error 500.
+             // Si el JSON contiene 'error: true' (devuelto por sendMessageToGemini), retornamos el error 500.
              return { statusCode: 500, body: responseText };
         }
     } catch (e) {

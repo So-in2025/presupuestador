@@ -2,9 +2,9 @@
 /**
  * Lógica de frontend para Zen Assistant usando Gemini.
  * Se comunica con la función serverless de Netlify (chat.js) para la lógica de IA.
- * * * CORRECCIÓN DE HISTORIAL: Se elimina la duplicación del mensaje de usuario en chatHistory
- * ANTES del envío. Ahora se construye un historial temporal para la API y se
- * utiliza el historial devuelto por el backend para asegurar la correcta sincronización.
+ * * * CORRECCIÓN CRÍTICA DE ROBUSTEZ: Se añade lógica para evitar el 'SyntaxError: Unexpected end of JSON input'
+ * en caso de errores de servidor (404, 500) al fallar la lectura del JSON.
+ * * CORRECCIÓN DE HISTORIAL: Se mantiene la lógica de sincronización de historial con el backend.
  */
 
 // Importamos el estado para poder acceder al catálogo de servicios (necesario para el helper)
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Usamos el 'ai-message' como contenedor base para los mensajes del modelo
     let innerClass = role === 'user' ? 'user-message text-right' : 'ai-message text-left';
     
-    // CORRECCIÓN: Estilos para diferenciar mensajes de IA y usuario
+    // Estilos para diferenciar mensajes de IA y usuario
     const bgColor = role === 'user' ? 'bg-indigo-700 text-white' : 'card-bg text-slate-50 border border-slate-700';
 
     messageDiv.innerHTML = `
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   /**
    * Renderiza el contenido del mensaje de la IA. Si es JSON, lo parsea y muestra la recomendación.
-   * @param {string} content - La respuesta cruda de Gemini (Texto o JSON stringificado).
+   * @param {string} content - La respuesta cruda de la API (Texto o JSON stringificado).
    * @returns {string} El contenido HTML/Texto a mostrar en el chat.
    */
   const renderMessageContent = (content) => {
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Parsear el JSON
     const recommendation = JSON.parse(jsonString); 
     
-    // 3. Validar la estructura esencial (debe tener el array 'services' o ser un JSON de error del backend)
+    // 3. Validar la estructura esencial 
     if (recommendation.error || !recommendation.services || !Array.isArray(recommendation.services)) {
         // Si es un JSON de error del backend, usamos el mensaje como introducción
         const introduction = recommendation.message || 'La IA no pudo generar una recomendación válida.';
@@ -177,8 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Renderizar mensaje de usuario
     renderMessage('user', trimmedMessage);
     
-    // 2. CORRECCIÓN CRÍTICA: Construir el historial a enviar a la API
-    // Se toma el historial existente + el nuevo mensaje del usuario.
+    // 2. Construir el historial a enviar a la API (Historial existente + mensaje de usuario actual)
     const historyForApi = [
         ...chatHistory,
         { role: 'user', parts: [{ text: trimmedMessage }] }
@@ -204,7 +203,19 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ userMessage: trimmedMessage, history: historyForApi }) 
       });
 
-      const data = await response.json();
+      // --- CORRECCIÓN CRÍTICA DE ROBUSTEZ ---
+      let data = {};
+      let responseText = null;
+
+      if (response.ok) {
+          // Si la respuesta HTTP es 200, intentamos leer el JSON
+          data = await response.json();
+      } else {
+          // Si es un error HTTP (404, 500, etc.), leemos el cuerpo como texto para evitar
+          // que 'response.json()' falle con SyntaxError: Unexpected end of JSON input
+          responseText = await response.text(); 
+      }
+      // ----------------------------------------
       
       // 5. Eliminar el indicador de carga
       const loadingEl = document.getElementById(loadingMessageId);
@@ -212,16 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
           loadingEl.parentElement.remove();
       }
 
-      if (data.error || !response.ok) {
-        const errorMessage = data.message || "No se pudo contactar con la IA. Inténtalo de nuevo.";
+      // La condición de error se actualiza para manejar errores HTTP (response.ok=false)
+      if (!response.ok) { 
+        // El 404 de Netlify no devuelve JSON. El responseText tendrá la página de error.
+        const errorMessage = `Error de servidor (${response.status}). Posiblemente: la ruta '/api/chat' no existe o la función falló internamente.`;
+        renderMessage('model', `<span class="text-red-400 font-bold">Error de Conexión:</span> ${errorMessage}`);
+        
+      } else if (data.error) { // Error devuelto por chat.js (código 200 con payload de error)
+        const errorMessage = data.message || "La IA no pudo procesar la solicitud.";
         renderMessage('model', `<span class="text-red-400 font-bold">Error del Asistente:</span> ${errorMessage}`);
-        // No actualizamos el historial si hay error, el mensaje de usuario no se añade.
+        
       } else {
         const aiResponseContent = renderMessageContent(data.response);
         renderMessage('model', aiResponseContent);
         
         // 6. Sincronización CRÍTICA: Reemplazamos el historial con el historial completo y validado del backend.
-        // Esto incluye el user message + model response.
         chatHistory = data.history; 
       }
 
@@ -232,8 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (loadingEl && loadingEl.parentElement) {
           loadingEl.parentElement.remove();
       }
+      // Este catch captura errores de red o errores fatales ANTES de la llamada fetch.
       renderMessage('model', '<span class="text-red-400 font-bold">Error de Conexión:</span> Hubo un problema de red. Por favor, inténtalo de nuevo.');
-      // No actualizamos el historial si hay error de conexión.
     } finally {
       isSending = false;
       sendChatBtn.disabled = false;
@@ -267,16 +283,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const serviceData = findServiceById(serviceId);
       
       if (serviceData) {
-        // En los botones de recomendación, el ID es suficiente, no usamos 'selection-box'
-        // para evitar acoplamiento excesivo con el DOM.
         const serviceElement = document.querySelector(`input[data-service-id="${serviceData.id}"]`);
         
         // 1. Lógica de Presupuesto:
         
         if (serviceData.type === 'monthly') {
-             // Si es un plan mensual:
              if (serviceElement) {
-                 // handlePlanSelection gestiona la lógica de planes (limpia estándares y marca el plan)
                  handlePlanSelection(serviceData.id, serviceElement);
              } else {
                  showNotification('warning', 'Elemento No Encontrado', `El plan "${serviceData.item.name}" fue recomendado, pero su elemento de selección no está cargado.`);
@@ -284,15 +296,10 @@ document.addEventListener('DOMContentLoaded', () => {
              }
              
         } else if (serviceData.type === 'standard') {
-            // Si es un servicio estándar:
-            
-            // Forzamos la limpieza si hay cualquier plan o servicio de puntos seleccionado, 
-            // cambiando el modo de presupuesto a "Selección Personalizada".
             if (document.querySelector('input[name="selectionGroup"]:checked, input[name="monthlyPlanSelection"]:checked')) { 
                 clearAllSelections(); 
             }
             
-            // Marcamos el servicio estándar
             if (serviceElement) {
                 serviceElement.checked = true;
             } else {
@@ -301,9 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
         } else if (serviceData.type === 'plan-service') {
-             // Si es un servicio de puntos (no se debe marcar directamente en el catálogo principal)
              showNotification('info', 'Servicio de Puntos', `El servicio "${serviceData.item.name}" ha sido identificado. Si estás en modo Plan Mensual, selecciónalo en la lista de servicios con puntos.`);
-             return; // No marcamos, solo notificamos
+             return; 
         } else {
             showNotification('error', 'Error de Lógica', 'Tipo de servicio recomendado desconocido.');
             return;
