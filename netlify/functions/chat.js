@@ -1,7 +1,8 @@
 // /netlify/functions/chat.js
 /**
  * Backend actualizado para Asistente Zen
- * Modelo: Gemini 1.5 Flash (v1beta)
+ * Modelo: Gemini 2.5 Flash
+ * Lógica de Intención: v1
  * Compatible con Node 18+ en Netlify
  */
 
@@ -9,7 +10,6 @@ const pricingData = require("./pricing.json");
 
 // --- CONFIGURACIÓN DE GEMINI ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Se recomienda usar gemini-1.5-flash para un mejor rendimiento y capacidades.
 const GEMINI_MODEL = "gemini-2.5-flash"; 
 
 if (!GEMINI_API_KEY) {
@@ -41,11 +41,24 @@ function findRelevantServices(project_description) {
     .map(([id]) => id);
 }
 
-// --- FUNCIÓN PARA COMUNICARSE CON GEMINI (CORREGIDA Y ROBUSTA) ---
+// --- FUNCIÓN PARA DETECTAR LA INTENCIÓN DEL USUARIO ---
+function detectUserIntent(userMessage) {
+  const message = userMessage.toLowerCase();
+  // Palabras clave que indican una solicitud de ayuda, no una nueva propuesta.
+  const salesKeywords = ['texto para', 'cómo le ofrezco', 'escribir un correo', 'email para', 'presentar esta', 'un consejo', 'cómo le hablo', 'cliente final', 'redacta'];
+
+  for (const keyword of salesKeywords) {
+    if (message.includes(keyword)) {
+      return 'ASSIST_SALES'; // Intención: Actuar como asistente de ventas.
+    }
+  }
+  return 'RECOMMEND_SERVICES'; // Intención por defecto: Recomendar servicios.
+}
+
+// --- FUNCIÓN PARA COMUNICARSE CON GEMINI (ROBUSTA) ---
 async function sendMessageToGemini(systemPrompt, history, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
 
-  const GEMINI_MODEL = "gemini-2.5-flash"; // Usando el nombre de modelo correcto
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   const contents = [
@@ -62,18 +75,11 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt) {
   try {
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: contents,
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000,
-        },
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
       }),
     });
 
@@ -83,38 +89,28 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt) {
     }
 
     const data = await response.json();
-    
-    // --- INICIO DE LA CORRECCIÓN CLAVE ---
-    // Esta nueva línea extrae el texto de forma segura, previniendo el error.
     const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    // --- FIN DE LA CORRECCIÓN CLAVE ---
 
     if (!responseText) {
-      // Si no hay texto, investigamos por qué.
       const blockReason = data.promptFeedback?.blockReason;
       if (blockReason) {
         console.warn(`Respuesta de Gemini bloqueada por: ${blockReason}`);
         return `Mi respuesta fue bloqueada por políticas de seguridad (${blockReason}). Por favor, reformula tu pregunta.`;
       }
-      // Si no fue bloqueada, es otra respuesta vacía inesperada.
       console.error("Respuesta de Gemini vacía o en formato inesperado:", JSON.stringify(data, null, 2));
       return "El asistente no pudo generar una respuesta. Intenta de nuevo.";
     }
     
     return responseText;
-
   } catch (err) {
-    // Aquí atrapamos el error si el JSON.parse falla o si hay un error de red.
-    // El error que veías ("Cannot read properties...") estaba sucediendo ANTES de que pudiera ser atrapado aquí.
     console.error("Error comunicándose con Gemini:", err.message);
     throw new Error("No se pudo conectar con el motor Gemini.");
   }
 }
 
-// --- HANDLER PRINCIPAL ---
+// --- HANDLER PRINCIPAL (CON LÓGICA DE INTENCIÓN) ---
 exports.handler = async (event) => {
-  const invocationId =
-    new Date().toISOString() + "_" + Math.random().toString(36).substr(2, 9);
+  const invocationId = new Date().toISOString() + "_" + Math.random().toString(36).substr(2, 9);
   console.log(`[${invocationId}] START`);
 
   if (event.httpMethod !== "POST") {
@@ -124,51 +120,52 @@ exports.handler = async (event) => {
   try {
     const { history } = JSON.parse(event.body);
     if (!Array.isArray(history)) {
-      console.error(`[${invocationId}] ERROR: historial inválido`);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Historial inválido." }),
-      };
+      return { statusCode: 400, body: JSON.stringify({ error: "Historial inválido." }) };
     }
 
-    const userMessage =
-      history.length > 0 ? history[history.length - 1].parts[0].text : "";
+    const userMessage = history.length > 0 ? history[history.length - 1].parts[0].text : "";
     if (!userMessage) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Mensaje vacío." }),
-      };
+      return { statusCode: 400, body: JSON.stringify({ error: "Mensaje vacío." }) };
     }
     
-    // Filtramos el mensaje de bienvenida inicial del historial que se envía a la API
     const historyForApi = history.filter(
       (msg) => msg.parts[0].text !== '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.'
     );
 
     console.log(`[${invocationId}] MENSAJE: "${userMessage}"`);
-
-    const relevantIds = findRelevantServices(userMessage);
-    const formattedServices = relevantIds.join(", ");
-
+    
+    // --- LÓGICA DE INTENCIÓN APLICADA ---
+    const intent = detectUserIntent(userMessage);
+    let userPrompt;
+    
     const systemPrompt = `
-Eres "Zen Assistant", un asesor de ventas web profesional para una agencia de desarrollo.
-Tu objetivo es analizar la descripción de un cliente y recomendar servicios específicos de un catálogo interno.
-Si encuentras servicios relevantes, DEBES usar el siguiente formato de manera ESTRICTA, sin añadir texto introductorio antes o después:
+      Eres "Zen Assistant", un asesor de ventas y coach de negocios experto para una agencia de desarrollo. Tu misión es ayudar a un revendedor a tener éxito. Tienes dos modos de operación:
 
-Servicios: [lista de IDs de servicios separados por coma, ej: p2, c1, b3]
-Respuesta: [Aquí va tu texto de respuesta. Debe ser persuasivo, profesional y dirigido a un revendedor (la agencia), explicándole por qué esos servicios son los correctos para su cliente final.]
+      1.  **Modo Recomendador**: Cuando el revendedor describe un nuevo proyecto, tu objetivo es analizarlo y recomendar servicios del catálogo. DEBES usar el formato estricto:
+          Servicios: [lista de IDs separados por coma]
+          Respuesta: [Texto persuasivo para el revendedor explicando la elección.]
 
-Si la descripción del cliente es demasiado vaga o no encuentras coincidencias claras, pide más información de forma profesional para poder hacer una recomendación precisa. No inventes servicios.
-`;
+      2.  **Modo Coach de Ventas**: Cuando el revendedor pide ayuda sobre una propuesta ya creada (un texto, un email, un consejo), tu objetivo es actuar como un coach experto. Analiza la conversación y entrégale el material que necesita para hablar con su cliente final. NO generes una nueva lista de servicios en este modo.
 
-    const userPrompt =
-      relevantIds.length > 0
-        ? `El cliente describe: "${userMessage}".\nBasado en esto, los IDs de servicios más relevantes que he encontrado son: ${formattedServices}.\nPor favor, formula una respuesta para el revendedor usando el formato estricto que te indiqué.`
-        : `El cliente describe: "${userMessage}".\nNo he encontrado coincidencias claras en el catálogo con esta descripción. Por favor, pide al revendedor más detalles de forma profesional para poder asistirle mejor.`;
+      Mantén siempre un tono profesional, útil y motivador.`;
+
+    if (intent === 'RECOMMEND_SERVICES') {
+      console.log(`[${invocationId}] INTENCIÓN: Recomendar Servicios`);
+      const relevantIds = findRelevantServices(userMessage);
+      
+      if (relevantIds.length > 0) {
+        const formattedServices = relevantIds.join(", ");
+        userPrompt = `El revendedor describe un nuevo proyecto: "${userMessage}".\nHe encontrado estos servicios relevantes: ${formattedServices}.\nActúa en **Modo Recomendador** y crea la respuesta para el revendedor usando el formato estricto.`;
+      } else {
+        userPrompt = `El revendedor describe un nuevo proyecto: "${userMessage}".\nNo encontré coincidencias claras. Pide más detalles de forma profesional para poder hacer una recomendación.`;
+      }
+    } else { // intent === 'ASSIST_SALES'
+      console.log(`[${invocationId}] INTENCIÓN: Asistente de Ventas`);
+      userPrompt = `El revendedor necesita ayuda con la propuesta que acabamos de discutir. Su solicitud es: "${userMessage}".\n\nAnaliza la conversación anterior para entender el contexto (ej. el fotógrafo). Ahora, actúa en **Modo Coach de Ventas** y genera el texto, el email o el consejo que le piden para que pueda comunicarse eficazmente con su cliente final. No uses el formato de recomendación.`;
+    }
 
     const responseText = await sendMessageToGemini(systemPrompt, historyForApi, userPrompt);
     
-    // Añadimos la respuesta del modelo al historial para la siguiente llamada
     const updatedHistory = [
       ...history,
       { role: 'model', parts: [{ text: responseText }] }
@@ -180,9 +177,7 @@ Si la descripción del cliente es demasiado vaga o no encuentras coincidencias c
     console.error(`[${invocationId}] FATAL:`, err.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: `Error interno del asistente: ${err.message}`,
-      }),
+      body: JSON.stringify({ error: `Error interno del asistente: ${err.message}` }),
     };
   }
 };
