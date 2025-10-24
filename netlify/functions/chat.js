@@ -60,7 +60,7 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
       payload.generationConfig = {};
     }
 
-    // Se usan las claves correctas: 'response_mime_type' y 'response_schema'
+    // Se usan las claves correctas: 'response_mime_type' y 'response_schema' en los lugares correctos
     payload.generationConfig.response_mime_type = "application/json";
     
     payload.response_schema = {
