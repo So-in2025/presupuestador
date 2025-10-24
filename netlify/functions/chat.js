@@ -52,13 +52,18 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
   };
 
 
+  // --- CORRECCIÓN #1: Nombres de claves de la API de Gemini ---
   if (geminiMode === "JSON") {
     
-    // Configuración MANDATORIA para forzar la salida JSON con el esquema de recomendación
-    payload.responseMimeType = "application/json";
+    // Se crea el objeto 'generationConfig' si no existe
+    if (!payload.generationConfig) {
+      payload.generationConfig = {};
+    }
+
+    // Se usan las claves correctas: 'response_mime_type' y 'response_schema'
+    payload.generationConfig.response_mime_type = "application/json";
     
-    // Esquema JSON estricto para asegurar la estructura de la recomendación de servicios.
-    payload.responseSchema = {
+    payload.response_schema = {
         type: "OBJECT",
         properties: {
             introduction: { 
@@ -78,6 +83,7 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
         required: ["introduction", "services", "closing"]
     };
   }
+  // --- FIN DE LA CORRECCIÓN #1 ---
 
 
   // Lógica de reintento simple (hasta 3 intentos) y llamada fetch completa.
@@ -139,8 +145,7 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
  */
 exports.handler = async (event) => {
   
-  // --- ÚNICA MODIFICACIÓN REALIZADA ---
-  // El bloque que lee el `pricing.json` se ha movido aquí, dentro del handler.
+  // --- CORRECCIÓN #2: Lectura del pricing.json movida aquí ---
   let pricingData;
   try {
       const pricingPath = path.join(__dirname, 'pricing.json');
@@ -148,13 +153,12 @@ exports.handler = async (event) => {
       pricingData = JSON.parse(pricingFileContent);
   } catch (err) {
       console.error("ERROR CRÍTICO: No se pudo leer o parsear pricing.json", err);
-      // Devolvemos una respuesta de error para que se vea en el log de la función
       return {
           statusCode: 500,
           body: JSON.stringify({ error: true, message: 'Error interno del servidor: no se pudo cargar la configuración de precios.' })
       };
   }
-  // --- FIN DE LA MODIFICACIÓN ---
+  // --- FIN DE LA CORRECCIÓN #2 ---
 
   // 1. Verificación del método HTTP.
   if (event.httpMethod !== "POST") {
