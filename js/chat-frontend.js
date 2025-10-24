@@ -36,20 +36,35 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string} id - El ID del servicio a buscar (ej: 'p1', 's5', 'm1').
    * @returns {Object|null} Objeto {type: string, item: Object} o null.
    */
-  const findServiceById = (id) => {
+const findServiceById = (id) => {
       const state = getState();
-      // Búsqueda en Servicios Estándar
-      let service = state.allServices.find(s => s.id === id);
-      if (service) return { type: 'standard', item: service };
-
-      // Búsqueda en Planes Mensuales
-      service = state.monthlyPlans.find(p => p.id === id);
-      if (service) return { type: 'monthly', item: service };
       
-      // Búsqueda en Servicios de Puntos
-      service = state.pointServices.find(p => p.id === id);
-      if (service) return { type: 'plan-service', item: service };
+      // Primero, busca en los Planes Mensuales (esto estaba bien)
+      let plan = state.monthlyPlans.find(p => p.id == id || `plan-${p.id}` === id);
+      if (plan) return { type: 'monthly', item: plan };
 
+      // Ahora, busca en TODOS los demás servicios (CORREGIDO)
+      // 1. Aplanamos todas las categorías de 'allServices' en un único array de items.
+      const allStandardServices = Object.values(state.allServices).flatMap(category => category.items);
+      
+      // 2. Buscamos el servicio por su ID en ese array aplanado.
+      let service = allStandardServices.find(s => s.id === id);
+      
+      if (service) {
+        // 3. Si lo encontramos, determinamos su tipo para manejarlo correctamente.
+        const isPackage = Object.values(state.allServices).find(cat => cat.isExclusive && cat.items.some(i => i.id === id));
+        
+        let serviceType = 'standard'; // Tipo por defecto
+        if (isPackage) {
+            serviceType = 'package';
+        } else if (service.pointCost) {
+            serviceType = 'plan-service';
+        }
+
+        return { type: serviceType, item: service };
+      }
+
+      // Si no se encontró en ningún lado, retorna null.
       return null;
   };
 

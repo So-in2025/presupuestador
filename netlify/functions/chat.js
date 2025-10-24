@@ -206,8 +206,9 @@ exports.handler = async (event) => {
         console.log(`[${invocationId}] INTENCIÓN: Recomendación de Servicios.`);
         geminiMode = "JSON"; 
         
-        // Preparamos el catálogo de servicios para incluirlo en el System Prompt.
-        const serviceList = pricingData.allServices
+        // Extraemos los items de todas las categorías de 'allServices' en un solo array
+        const serviceList = Object.values(pricingData.allServices)
+            .flatMap(category => category.items) 
             .map(s => `ID: ${s.id} | Nombre: ${s.name} | Descripción: ${s.description}`).join('\n');
             
         const planList = pricingData.monthlyPlans
