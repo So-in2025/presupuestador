@@ -64,7 +64,7 @@ if (geminiMode === "JSON") {
     // deben estar DENTRO de 'generationConfig'.
     payload.generationConfig.response_mime_type = "application/json";
     
-    payload.generationConfig.response_schema = {
+        payload.generationConfig.response_schema = {
         type: "OBJECT",
         properties: {
             introduction: { 
@@ -79,9 +79,15 @@ if (geminiMode === "JSON") {
             closing: { 
               type: "STRING", 
               description: "Conclusión amigable para el cliente, invitando a añadirlos." 
+            },
+            // --- NUEVA PROPIEDAD AÑADIDA ---
+            suggested_questions: {
+              type: "ARRAY",
+              items: { type: "STRING" },
+              description: "Array con 2 o 3 preguntas de seguimiento inteligentes y cortas para ayudar al revendedor a clarificar el proyecto o hacer up-selling. Por ejemplo: '¿Necesitaremos un sistema de login para clientes VIP?' o '¿Será importante optimizar la velocidad para el SEO?'"
             }
         },
-        required: ["introduction", "services", "closing"]
+        required: ["introduction", "services", "closing", "suggested_questions"]
     };
   }
   // --- FIN DE LA CORRECCIÓN #1 ---
@@ -237,8 +243,8 @@ exports.handler = async (event) => {
         const allServicesString = `--- CATÁLOGO COMPLETO DE SERVICIOS ---\nSERVICIOS ESTÁNDAR:\n${serviceList}\nPLANES MENSUALES:\n${planList}`;
 
 
-        systemPrompt = `
-            Eres Zen Assistant, un experto en presupuestos de desarrollo web.
+         systemPrompt = `
+            Eres Zen Assistant, un experto en presupuestos de desarrollo web y un coach de ventas.
             Tu tarea es recomendar al revendedor la lista de IDs de servicios más adecuada 
             para su proyecto, BASÁNDOSE SÓLO en el catálogo proporcionado.
             
@@ -248,6 +254,7 @@ exports.handler = async (event) => {
             1. Genera una respuesta ESTRICTAMENTE en el formato JSON.
             2. SÓLO incluye IDs de servicios que existan en el CATÁLOGO (ej: s1, p3, m1).
             3. La 'introduction' debe ser profesional y persuasiva.
+            4. MUY IMPORTANTE: En 'suggested_questions', crea 2 o 3 preguntas cortas y estratégicas que el revendedor pueda usar para (a) entender mejor las necesidades de su cliente, (b) justificar un servicio de mayor valor, o (c) demostrar su experiencia.
         `;
         
     } else if (intent === 'TEXTO' || intent === 'DESCONOCIDA') {
@@ -256,7 +263,7 @@ exports.handler = async (event) => {
         geminiMode = "TEXT";
         
         systemPrompt = `
-            Eres Zen Assistant. Actúa como un asistente de ventas general experto en desarrollo de software.
+            Eres Zen Assistant. Actúa como un asistente de ventas general experto en desarrollo web.
             
             INSTRUCCIONES CLAVE:
             - Responde de forma cortés, profesional y concisa.

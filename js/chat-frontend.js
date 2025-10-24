@@ -61,19 +61,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let finalHTML = message.replace(/\n/g, '<br>');
 
-        if (sender === 'ai') {
+         if (sender === 'ai') {
             try {
                 const jsonResponse = JSON.parse(message);
-                // ----- ESTA ES LA LÍNEA CORREGIDA -----
+
                 if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
-                    // ----- FIN DE LA CORRECCIÓN -----
                     let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                    let buttonsHTML = '';
+                    let serviceButtonsHTML = '';
                     
-                    jsonResponse.services.forEach(serviceId => { // Iteramos sobre el array de IDs
+                    jsonResponse.services.forEach(serviceId => {
                         const serviceInfo = findServiceById(serviceId);
                         if (serviceInfo) {
-                            buttonsHTML += createServiceButtonHTML(serviceId, serviceInfo.type, serviceInfo.item.name);
+                            serviceButtonsHTML += createServiceButtonHTML(serviceId, serviceInfo.type, serviceInfo.item.name);
                         } else {
                             console.warn(`Servicio recomendado no encontrado en catálogo: ${serviceId}`);
                         }
@@ -85,12 +84,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     finalHTML = messageText;
                     
-                    if (buttonsHTML) {
+                    if (serviceButtonsHTML) {
                         finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
                             <p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p>
-                            <div class="flex flex-wrap gap-2">${buttonsHTML}</div>
+                            <div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div>
                         </div>`;
                     }
+
+                    // --- NUEVO BLOQUE PARA LAS PREGUNTAS SUGERIDAS ---
+                    if (Array.isArray(jsonResponse.suggested_questions) && jsonResponse.suggested_questions.length > 0) {
+                        let suggestionButtonsHTML = '';
+                        jsonResponse.suggested_questions.forEach(question => {
+                            // Usamos comillas simples para el onclick para no interferir con las dobles del atributo
+                            suggestionButtonsHTML += `<button onclick='document.getElementById("chat-input").value = "${question}"; document.getElementById("chat-input").focus();' 
+                                class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2">
+                                ${question}
+                            </button>`;
+                        });
+
+                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
+                            <p class="text-sm font-bold text-yellow-300 mb-2">Siguiente Paso (Sugerencias):</p>
+                            <div class="flex flex-col items-start gap-2">${suggestionButtonsHTML}</div>
+                        </div>`;
+                    }
+                    // --- FIN DEL NUEVO BLOQUE ---
                 }
             } catch (e) {
                 // No es JSON, es texto plano. No hacer nada.
