@@ -53,17 +53,18 @@ async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode
 
 
   // --- CORRECCIÓN #1: Nombres de claves de la API de Gemini ---
-  if (geminiMode === "JSON") {
+if (geminiMode === "JSON") {
     
     // Se crea el objeto 'generationConfig' si no existe
     if (!payload.generationConfig) {
       payload.generationConfig = {};
     }
 
-    // Se usan las claves correctas: 'response_mime_type' y 'response_schema' en los lugares correctos
+    // CORRECTO: Tanto 'response_mime_type' como 'response_schema'
+    // deben estar DENTRO de 'generationConfig'.
     payload.generationConfig.response_mime_type = "application/json";
     
-    payload.response_schema = {
+    payload.generationConfig.response_schema = {
         type: "OBJECT",
         properties: {
             introduction: { 
