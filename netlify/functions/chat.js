@@ -2,317 +2,208 @@
 /**
  * Backend actualizado para Asistente Zen
  * Modelo: Gemini 2.5 Flash
- * Lógica de Intención: v3 (Clasificación Estricta y Salida JSON para Recomendaciones)
+ * Lógica de Intención: v1
  * Compatible con Node 18+ en Netlify
- * * Este archivo ha sido revisado para asegurar:
- * 1. Correcta comunicación con la API de Gemini 2.5.
- * 2. Lógica de reintento implementada en sendMessageToGemini.
- * 3. Forzado de salida JSON para la intención de 'RECOMENDACION' con el esquema definido.
- * 4. El historial se devuelve al frontend (almacenando el user_message + model_response)
  */
 
-// Importa el catálogo de precios (asumiendo que existe un pricing.json en el mismo directorio)
-const fs = require('fs');
-const path = require('path');
-
-try {
-    const pricingPath = path.join(__dirname, 'pricing.json');
-    const pricingFileContent = fs.readFileSync(pricingPath, 'utf8');
-    var pricingData = JSON.parse(pricingFileContent);
-} catch (err) {
-    console.error("ERROR CRÍTICO: No se pudo leer o parsear pricing.json", err);
-    // Devolvemos una respuesta de error para que se vea en el log de la función
-    return {
-        statusCode: 500,
-        body: JSON.stringify({ message: 'Error interno del servidor: no se pudo cargar la configuración de precios.' })
-    };
-}
+const pricingData = require("./pricing.json");
 
 // --- CONFIGURACIÓN DE GEMINI ---
-
-// Asegúrate de definir GEMINI_API_KEY en las variables de entorno de Netlify.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = "gemini-2.5-flash";
-
+const GEMINI_MODEL = "gemini-2.5-flash"; 
 
 if (!GEMINI_API_KEY) {
   console.error("❌ GEMINI_API_KEY no está definida en variables de entorno.");
 }
 
+// --- FUNCIÓN DE BÚSQUEDA DE SERVICIOS ---
+function findRelevantServices(project_description) {
+  if (!project_description) throw new Error("Descripción de proyecto vacía.");
 
-// --- FUNCIÓN DE AYUDA PARA LA API DE GEMINI ---
+  const keywords = project_description.toLowerCase().match(/\b(\w{3,})\b/g) || [];
+  if (keywords.length === 0) return [];
+
+  const scores = {};
+  Object.values(pricingData.allServices).forEach((cat) => {
+    cat.items.forEach((item) => {
+      const content = `${item.name.toLowerCase()} ${item.description.toLowerCase()}`;
+      let score = 0;
+      keywords.forEach((k) => {
+        if (content.includes(k)) score++;
+      });
+      if (score > 0) scores[item.id] = score;
+    });
+  });
+
+  return Object.entries(scores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([id]) => id);
+}
 
 /**
- * Envía un mensaje a la API de Gemini con lógica de reintento y configuración de formato.
- * * @param {string} systemPrompt - Instrucciones de comportamiento para el modelo.
- * @param {Array<Object>} history - Historial de chat completo para mantener el contexto (incluye el último mensaje de usuario).
- * @param {string} userPrompt - Mensaje del usuario (usado solo para referencia en systemPrompt/debugging).
- * @param {string} geminiMode - Define el formato de respuesta: "TEXT" o "JSON".
- * @returns {Promise<string>} La respuesta de texto (o JSON stringificado) de Gemini.
+ * Función que usa Gemini para clasificar la intención del usuario.
+ * @param {string} userMessage - El último mensaje del usuario.
+ * @param {Array<Object>} history - El historial de la conversación.
+ * @returns {Promise<string>} - Una de las dos intenciones: 'RECOMMEND_SERVICE' o 'ASSIST_SALES'.
  */
-async function sendMessageToGemini(systemPrompt, history, userPrompt, geminiMode = "TEXT") {
-  
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-  
-  const contents = history; 
+async function detectUserIntent(userMessage, history) {
+  const classificationPrompt = `
+    Analiza el último mensaje del usuario y todo el historial para determinar su intención principal.
+    
+    INTENCIONES:
+    1. RECOMMEND_SERVICE: El usuario está pidiendo sugerencias de servicios basados en el proyecto de su cliente o preguntando sobre precios.
+    2. ASSIST_SALES: El usuario está pidiendo ayuda con la estrategia de venta, textos, emails, objeciones, o consejos generales para hablar con su cliente.
 
+    Tu respuesta debe ser **ESTRICTAMENTE** una de estas dos palabras clave, sin ninguna otra explicación, prefijo o texto adicional.
+
+    Ejemplos:
+    - Si el usuario dice: "Mi cliente es un fotógrafo que quiere mostrar su trabajo.", la respuesta es: RECOMMEND_SERVICE
+    - Si el usuario dice: "Dame un texto para enviarle este presupuesto por email.", la respuesta es: ASSIST_SALES
+  `;
+
+  const historyForApi = history.map(msg => ({
+    role: msg.role,
+    parts: msg.parts
+  }));
   
-  const payload = {
-    contents: contents,
-    config: {
-      systemInstruction: { 
-        parts: [{ text: systemPrompt }] 
-      }
+  // Enviamos el mensaje del usuario y el prompt de clasificación.
+  const response = await sendMessageToGemini(
+    classificationPrompt, // El prompt de clasificación es ahora el system prompt
+    historyForApi,
+    userMessage // El mensaje del usuario es el último mensaje
+  );
+
+  // Normalizar y limpiar la respuesta para obtener solo la palabra clave
+  const intent = response.trim().toUpperCase().replace(/[^A-Z_]/g, '');
+
+  if (intent.includes('ASSIST_SALES')) return 'ASSIST_SALES';
+  return 'RECOMMEND_SERVICE'; // Por defecto, o si incluye 'RECOMMEND_SERVICE'
+}
+
+// --- FUNCIÓN PARA COMUNICARSE CON GEMINI (ROBUSTA) ---
+async function sendMessageToGemini(systemPrompt, history, userPrompt) {
+  if (!GEMINI_API_KEY) throw new Error("Gemini API no configurada correctamente.");
+
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const contents = [
+    ...history.map((msg) => ({
+      role: msg.role,
+      parts: [{ text: msg.parts[0].text }],
+    })),
+    { 
+      role: "user", 
+      parts: [{ text: userPrompt }] 
+    },
+  ];
+
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: contents,
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Gemini API respondió con ${response.status}: ${text}`);
     }
-  };
 
+    const data = await response.json();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (geminiMode === "JSON") {
-    
-    // Configuración MANDATORIA para forzar la salida JSON con el esquema de recomendación
-    payload.config.responseMimeType = "application/json";
-    
-    // Esquema JSON estricto para asegurar la estructura de la recomendación de servicios.
-    payload.config.responseSchema = {
-        type: "OBJECT",
-        properties: {
-            introduction: { 
-              type: "STRING", 
-              description: "Breve introducción profesional para el cliente, antes de listar los IDs." 
-            },
-            services: { 
-                type: "ARRAY", 
-                items: { type: "STRING" }, 
-                description: "Array de IDs (ej: 's1', 'p3', 'm1') de los servicios recomendados." 
-            },
-            closing: { 
-              type: "STRING", 
-              description: "Conclusión amigable para el cliente, invitando a añadirlos." 
-            }
-        },
-        required: ["introduction", "services", "closing"]
-    };
-  }
-
-
-  // Lógica de reintento simple (hasta 3 intentos) y llamada fetch completa.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    
-    try {
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json', 
-        },
-        body: JSON.stringify(payload)
-      });
-
-
-      if (!response.ok) {
-        // Si la respuesta HTTP no es 2xx, lanzamos un error con el cuerpo de la respuesta.
-        const errorDetails = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorDetails.substring(0, 100)}...`);
+    if (!responseText) {
+      const blockReason = data.promptFeedback?.blockReason;
+      if (blockReason) {
+        console.warn(`Respuesta de Gemini bloqueada por: ${blockReason}`);
+        return `Mi respuesta fue bloqueada por políticas de seguridad (${blockReason}). Por favor, reformula tu pregunta.`;
       }
-
-
-      const result = await response.json();
-      
-      // Intentamos extraer el texto de la respuesta del candidato.
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!text) {
-        // Fallback robusto en caso de respuesta vacía o estructura inesperada.
-        throw new Error("Respuesta de Gemini vacía o mal formada.");
-      }
-      
-      return text; // Respuesta exitosa.
-
-    } catch (error) {
-      
-      console.error(`Error en intento ${attempt + 1}:`, error.message);
-      
-      if (attempt === 2) {
-        // Fallback final si todos los reintentos fallan.
-        // Se devuelve un JSON de error que el frontend puede manejar.
-        return JSON.stringify({ error: true, message: `Error al contactar con el asistente IA (máximo de reintentos): ${error.message}` });
-      }
-      
-      // Espera exponencial antes del próximo reintento.
-      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); 
+      console.error("Respuesta de Gemini vacía o en formato inesperado:", JSON.stringify(data, null, 2));
+      return "El asistente no pudo generar una respuesta. Intenta de nuevo.";
     }
+    
+    return responseText;
+  } catch (err) {
+    console.error("Error comunicándose con Gemini:", err.message);
+    throw new Error("No se pudo conectar con el motor Gemini.");
   }
 }
 
-
-// --- LÓGICA PRINCIPAL DE LA FUNCIÓN NETLIFY (HANDLER) ---
-
-/**
- * Controlador principal de la función serverless de Netlify.
- * Procesa la solicitud POST del frontend.
- */
+// --- HANDLER PRINCIPAL (CON LÓGICA DE INTENCIÓN) ---
 exports.handler = async (event) => {
-  
-  // 1. Verificación del método HTTP.
+  const invocationId = new Date().toISOString() + "_" + Math.random().toString(36).substr(2, 9);
+  console.log(`[${invocationId}] START`);
+
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  
-  let body;
   try {
-    // 2. Parseo del cuerpo de la solicitud (JSON).
-    body = JSON.parse(event.body);
-  } catch (e) {
-    return { statusCode: 400, body: "Invalid JSON body" };
-  }
-
-  
-  // Desestructuración de los datos de entrada:
-  const { userMessage, history: historyForApi } = body;
-  const invocationId = Date.now(); 
-
-
-  if (!userMessage || !historyForApi) {
-    return { statusCode: 400, body: "Faltan parámetros: userMessage o history." };
-  }
-
-
-  const lastUserMessage = userMessage;
-
-
-  try {
-    
-    // --- PASO 1: Clasificación de Intención ---
-    
-    let intent = "TEXTO"; 
-    let geminiMode = "TEXT";
-    let systemPrompt;
-    let userPrompt = lastUserMessage; 
-
-
-    let classificationSystemPrompt = `
-        Eres un clasificador de peticiones.
-        Analiza el siguiente mensaje del revendedor.
-        Tu única respuesta debe ser una de estas tres palabras:
-        - 'RECOMENDACION' si la pregunta es para pedir una sugerencia de servicio o un plan para un proyecto.
-        - 'TEXTO' para cualquier otra cosa (saludos, preguntas técnicas, dudas de precios, etc.).
-        - 'DESCONOCIDA' si no puedes clasificar la intención con certeza.
-        Responde solo con la palabra en mayúsculas, sin explicaciones.
-    `;
-    
-    
-    const intentResponse = await sendMessageToGemini(classificationSystemPrompt, historyForApi, lastUserMessage, "TEXT");
-    
-    
-    intent = intentResponse.toUpperCase().trim().replace(/['"]+/g, '');
-
-
-    // --- PASO 2: Ejecución Basada en la Intención ---
-    
-    let responseText;
-
-
-    if (intent === 'RECOMENDACION') {
-        
-        console.log(`[${invocationId}] INTENCIÓN: Recomendación de Servicios.`);
-        geminiMode = "JSON"; 
-        
-        // Extraemos los items de todas las categorías de 'allServices' en un solo array
-        const serviceList = Object.values(pricingData.allServices)
-            .flatMap(category => category.items) 
-            .map(s => `ID: ${s.id} | Nombre: ${s.name} | Descripción: ${s.description}`).join('\n');
-            
-        const planList = pricingData.monthlyPlans
-            .map(p => `ID: ${p.id} | Nombre: ${p.name} | Descripción: ${p.description}`).join('\n');
-        
-        const allServicesString = `--- CATÁLOGO COMPLETO DE SERVICIOS ---\nSERVICIOS ESTÁNDAR:\n${serviceList}\nPLANES MENSUALES:\n${planList}`;
-
-
-        systemPrompt = `
-            Eres Zen Assistant, un experto en presupuestos de desarrollo web.
-            Tu tarea es recomendar al revendedor la lista de IDs de servicios más adecuada 
-            para su proyecto, BASÁNDOSE SÓLO en el catálogo proporcionado.
-            
-            ${allServicesString}
-
-            INSTRUCCIONES CLAVE:
-            1. Genera una respuesta ESTRICTAMENTE en el formato JSON.
-            2. SÓLO incluye IDs de servicios que existan en el CATÁLOGO (ej: s1, p3, m1).
-            3. La 'introduction' debe ser profesional y persuasiva.
-        `;
-        
-    } else if (intent === 'TEXTO' || intent === 'DESCONOCIDA') {
-        
-        console.log(`[${invocationId}] INTENCIÓN: Texto general/Ventas (${intent}).`);
-        geminiMode = "TEXT";
-        
-        systemPrompt = `
-            Eres Zen Assistant. Actúa como un asistente de ventas general experto en desarrollo de software.
-            
-            INSTRUCCIONES CLAVE:
-            - Responde de forma cortés, profesional y concisa.
-            - Responde directamente a la consulta del revendedor.
-        `;
-        
-    } else {
-        
-        console.log(`[${invocationId}] INTENCIÓN: Inesperada (${intent}). Fallback a Texto simple.`);
-        geminiMode = "TEXT";
-
-        systemPrompt = `
-            Eres Zen Assistant. Responde al revendedor de forma cortés, indicando que hubo un pequeño problema con tu clasificación de su solicitud, pero que le ayudarás de todas formas.
-        `;
+    const { history } = JSON.parse(event.body);
+    if (!Array.isArray(history)) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Historial inválido." }) };
     }
 
-    // Llamada final al modelo con el prompt y modo definidos.
-    responseText = await sendMessageToGemini(systemPrompt, historyForApi, userPrompt, geminiMode);
+    const userMessage = history.length > 0 ? history[history.length - 1].parts[0].text : "";
+    if (!userMessage) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Mensaje vacío." }) };
+    }
+    
+    const historyForApi = history.filter(
+      (msg) => msg.parts[0].text !== '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.'
+    );
 
+    console.log(`[${invocationId}] MENSAJE: "${userMessage}"`);
+    
+    // --- LÓGICA DE INTENCIÓN APLICADA ---
+    const intent = detectUserIntent(userMessage);
+    let userPrompt;
+    
+    const systemPrompt = `
+      Eres "Zen Assistant", un asesor de ventas y coach de negocios experto para una agencia de desarrollo. Tu misión es ayudar a un revendedor a tener éxito. Tienes dos modos de operación:
 
-    // --- PASO 3: Verificación de Errores de API ---
-    try {
-        const errorCheck = JSON.parse(responseText);
-        if (errorCheck.error) {
-             // Si el JSON contiene 'error: true' (devuelto por sendMessageToGemini), retornamos el error 500.
-             return { statusCode: 500, body: responseText };
-        }
-    } catch (e) {
-        // Si no se puede parsear a JSON, asumimos que es un texto de respuesta válido.
+      1.  **Modo Recomendador**: Cuando el revendedor describe un nuevo proyecto, tu objetivo es analizarlo y recomendar servicios del catálogo. DEBES usar el formato estricto:
+          Servicios: [lista de IDs separados por coma]
+          Respuesta: [Texto persuasivo para el revendedor explicando la elección.]
+
+      2.  **Modo Coach de Ventas**: Cuando el revendedor pide ayuda sobre una propuesta ya creada (un texto, un email, un consejo), tu objetivo es actuar como un coach experto. Analiza la conversación y entrégale el material que necesita para hablar con su cliente final. NO generes una nueva lista de servicios en este modo.
+
+      Mantén siempre un tono profesional, útil y motivador.`;
+
+    if (intent === 'RECOMMEND_SERVICES') {
+      console.log(`[${invocationId}] INTENCIÓN: Recomendar Servicios`);
+      const relevantIds = findRelevantServices(userMessage);
+      
+      if (relevantIds.length > 0) {
+        const formattedServices = relevantIds.join(", ");
+        userPrompt = `El revendedor describe un nuevo proyecto: "${userMessage}".\nHe encontrado estos servicios relevantes: ${formattedServices}.\nActúa en **Modo Recomendador** y crea la respuesta para el revendedor usando el formato estricto.`;
+      } else {
+        userPrompt = `El revendedor describe un nuevo proyecto: "${userMessage}".\nNo encontré coincidencias claras. Pide más detalles de forma profesional para poder hacer una recomendación.`;
+      }
+    } else { // intent === 'ASSIST_SALES'
+      console.log(`[${invocationId}] INTENCIÓN: Asistente de Ventas`);
+      userPrompt = `El revendedor necesita ayuda con la propuesta que acabamos de discutir. Su solicitud es: "${userMessage}".\n\nAnaliza la conversación anterior para entender el contexto (ej. el fotógrafo). Ahora, actúa en **Modo Coach de Ventas** y genera el texto, el email o el consejo que le piden para que pueda comunicarse eficazmente con su cliente final. No uses el formato de recomendación.`;
     }
 
-
-    // --- PASO 4: Actualización del Historial y Respuesta Final ---
-
-    // Creamos el historial actualizado para devolver al frontend, incluyendo la respuesta del modelo.
+    const responseText = await sendMessageToGemini(systemPrompt, historyForApi, userPrompt);
+    
     const updatedHistory = [
-      ...historyForApi,
+      ...history,
       { role: 'model', parts: [{ text: responseText }] }
     ];
 
-
-    console.log(`[${invocationId}] OK. Intención: ${intent}. Devolviendo respuesta.`);
-    
-    // Retornamos la respuesta cruda de Gemini (JSON o Texto) junto con el historial actualizado.
-    return { 
-      statusCode: 200, 
-      body: JSON.stringify({ 
-        response: responseText, 
-        history: updatedHistory 
-      }) 
-    };
-    
+    console.log(`[${invocationId}] OK`);
+    return { statusCode: 200, body: JSON.stringify({ response: responseText, history: updatedHistory }) };
   } catch (err) {
-    
-    // Manejo de errores fatales en la lógica principal.
     console.error(`[${invocationId}] FATAL:`, err.message);
-    
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
-        error: true, 
-        message: `Error interno del servidor en la función Netlify: ${err.message}` 
-      }),
+      body: JSON.stringify({ error: `Error interno del asistente: ${err.message}` }),
     };
   }
 };

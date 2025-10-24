@@ -1,363 +1,234 @@
 // /js/chat-frontend.js
 /**
- * Lógica de frontend para Zen Assistant usando Gemini.
- * Se comunica con la función serverless de Netlify (chat.js) para la lógica de IA.
- * * * RUTA FINAL CORRECTA: Usando '/netlify/functions/chat' según la ruta que el usuario quiere usar.
- * * CORRECCIÓN DE ROBUSTEZ: Se mantiene lógica para evitar el 'SyntaxError: Unexpected end of JSON input'
- * en caso de errores de servidor (404, 500) al fallar la lectura del JSON.
- * * CORRECCIÓN DE HISTORIAL: Se mantiene la lógica de sincronización de historial con el backend.
+ * Frontend logic for Zen Assistant using Gemini 2.5 Flash Lite.
+ * Comunicates with Netlify serverless function backend.
  */
 
-// Importamos el estado para poder acceder al catálogo de servicios (necesario para el helper)
+// Importamos el estado para poder acceder al catálogo de servicios
 import { getState } from './state.js'; 
-import { showNotification } from './modals.js';
-import { updateSelectedItems, clearAllSelections } from './app.js';
-import { handlePlanSelection } from './points.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const chatMessagesContainer = document.getElementById('chat-messages');
   const chatInput = document.getElementById('chat-input');
   const sendChatBtn = document.getElementById('chat-send-btn');
-  const summaryCard = document.getElementById('summaryCard'); // Referencia al panel de resumen
+  const summaryCard = document.getElementById('summaryCard');
 
   if (!chatMessagesContainer || !chatInput || !sendChatBtn) {
     console.error("Elementos esenciales del chat no encontrados.");
     return;
   }
 
-  // Historial del chat para mantener el contexto con la API de Gemini
-  // Contiene objetos { role: 'user'/'model', parts: [{ text: '...' }] }
   let chatHistory = [];
-  let isSending = false;
 
   // --- AYUDANTE DE BÚSQUEDA DE SERVICIOS (usa getState para acceder al catálogo) ---
-  /**
-   * Busca un servicio en el catálogo (allServices y monthlyPlans) por su ID.
-   * @param {string} id - El ID del servicio a buscar (ej: 'p1', 's5', 'm1').
-   * @returns {Object|null} Objeto {type: string, item: Object} o null.
-   */
-const findServiceById = (id) => {
-      const state = getState();
-      
-      // Primero, busca en los Planes Mensuales (esto estaba bien)
-      let plan = state.monthlyPlans.find(p => p.id == id || `plan-${p.id}` === id);
-      if (plan) return { type: 'monthly', item: plan };
-
-      // Ahora, busca en TODOS los demás servicios (CORREGIDO)
-      // 1. Aplanamos todas las categorías de 'allServices' en un único array de items.
-      const allStandardServices = Object.values(state.allServices).flatMap(category => category.items);
-      
-      // 2. Buscamos el servicio por su ID en ese array aplanado.
-      let service = allStandardServices.find(s => s.id === id);
-      
-      if (service) {
-        // 3. Si lo encontramos, determinamos su tipo para manejarlo correctamente.
-        const isPackage = Object.values(state.allServices).find(cat => cat.isExclusive && cat.items.some(i => i.id === id));
-        
-        let serviceType = 'standard'; // Tipo por defecto
-        if (isPackage) {
-            serviceType = 'package';
-        } else if (service.pointCost) {
-            serviceType = 'plan-service';
-        }
-
-        return { type: serviceType, item: service };
-      }
-
-      // Si no se encontró en ningún lado, retorna null.
-      return null;
-  };
-
-  // --- RENDERING DE CHAT ---
-
-  /**
-   * Añade un mensaje al contenedor del chat.
-   * @param {string} role - 'user' o 'model'.
-   * @param {string} content - Contenido del mensaje.
-   */
-  const renderMessage = (role, content) => {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+  function findServiceById(id) {
+    const { allServices, monthlyPlans } = getState();
     
-    // Usamos el 'ai-message' como contenedor base para los mensajes del modelo
-    let innerClass = role === 'user' ? 'user-message text-right' : 'ai-message text-left';
-    
-    // Estilos para diferenciar mensajes de IA y usuario
-    const bgColor = role === 'user' ? 'bg-indigo-700 text-white' : 'card-bg text-slate-50 border border-slate-700';
-
-    messageDiv.innerHTML = `
-      <div class="max-w-[85%] p-3 text-sm whitespace-pre-wrap rounded-xl ${bgColor} ${innerClass}">
-        ${content}
-      </div>
-    `;
-    chatMessagesContainer.appendChild(messageDiv);
-    // Desplazarse al último mensaje
-    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-  };
-  
-  /**
-   * Renderiza el contenido del mensaje de la IA. Si es JSON, lo parsea y muestra la recomendación.
-   * @param {string} content - La respuesta cruda de la API (Texto o JSON stringificado).
-   * @returns {string} El contenido HTML/Texto a mostrar en el chat.
-   */
-  const renderMessageContent = (content) => {
-    // Intentamos parsear como JSON
-    try {
-      const { response_text, recommended_services } = parseRecommendedServices(content);
-
-      if (recommended_services && recommended_services.length > 0) {
-        // Estructura JSON válida de recomendación
-        let html = `<p class="mb-3 font-semibold">${response_text.introduction.replace(/\n/g, '<br>')}</p>`;
-        html += '<div class="space-y-2 mt-4 recommendation-list">';
-        
-        // Renderizar los botones de recomendación
-        recommended_services.forEach(service => {
-          html += `
-            <button data-service-id="${service.id}" 
-                    class="add-service-btn w-full text-left p-3 bg-slate-900 text-cyan-300 rounded-lg hover:bg-cyan-800 hover:text-white transition duration-200 shadow-md">
-              <span class="font-bold">${service.name}</span>
-              <span class="text-sm block text-slate-400">(${service.id}) - Añadir a Propuesta</span>
-            </button>
-          `;
-        });
-        html += `</div><p class="mt-3 text-sm text-slate-400">${response_text.closing.replace(/\n/g, '<br>')}</p>`;
-        return html;
-      }
-      // Si se pudo parsear pero el array de servicios estaba vacío o no era una recomendación
-      return response_text.introduction.replace(/\n/g, '<br>');
-
-    } catch (e) {
-      // Si falla el parseo, es un mensaje de texto normal
-      return content.replace(/\n/g, '<br>');
-    }
-  };
-
-  /**
-   * Intenta parsear la respuesta de Gemini como una recomendación de servicios.
-   * Espera la estructura JSON: { introduction: string, services: string[], closing: string }
-   * @param {string} text - El string de respuesta de la API.
-   * @returns {Object} {response_text: {introduction: string, closing: string}, recommended_services: Array<Object>} o lanza un error.
-   */
-  const parseRecommendedServices = (text) => {
-    let jsonString = text.trim();
-    
-    // 1. Verificar si parece JSON y limpiar el string si contiene ```json
-    if (jsonString.startsWith('```json')) {
-        jsonString = jsonString.substring(7, jsonString.lastIndexOf('```')).trim();
-    } 
-    
-    // 2. Parsear el JSON
-    const recommendation = JSON.parse(jsonString); 
-    
-    // 3. Validar la estructura esencial 
-    if (recommendation.error || !recommendation.services || !Array.isArray(recommendation.services)) {
-        // Si es un JSON de error del backend, usamos el mensaje como introducción
-        const introduction = recommendation.message || 'La IA no pudo generar una recomendación válida.';
-        return {
-            response_text: { introduction, closing: '' },
-            recommended_services: []
-        };
-    }
-    
-    // 4. Enriquecer los IDs de servicio con su nombre
-    const enrichedServices = recommendation.services.map(id => {
-        const serviceData = findServiceById(id);
-        // Si el servicio existe en el catálogo, lo incluimos
-        return serviceData ? { id: id, name: serviceData.item.name, type: serviceData.type } : null; 
-    }).filter(s => s !== null); // Filtramos cualquier ID que no se haya encontrado
-
-    // 5. Devolver el resultado final
-    return {
-        response_text: {
-            introduction: recommendation.introduction || 'Recomendación de servicios:',
-            closing: recommendation.closing || 'Haz clic en los botones para añadir los servicios a tu propuesta.'
-        },
-        recommended_services: enrichedServices
-    };
-  };
-
-  // --- LÓGICA DE ENVÍO Y RECEPCIÓN ---
-
-  /**
-   * Envía el mensaje del usuario al backend de Netlify.
-   * @param {string} userMessage - Mensaje del usuario.
-   */
-  const sendChat = async (userMessage) => {
-    const trimmedMessage = userMessage.trim();
-    if (isSending || !trimmedMessage) return;
-
-    isSending = true;
-    sendChatBtn.disabled = true;
-    chatInput.value = ''; // Limpiar la entrada inmediatamente
-
-    // 1. Renderizar mensaje de usuario
-    renderMessage('user', trimmedMessage);
-    
-    // 2. Construir el historial a enviar a la API (Historial existente + mensaje de usuario actual)
-    const historyForApi = [
-        ...chatHistory,
-        { role: 'user', parts: [{ text: trimmedMessage }] }
-    ];
-
-    // 3. Renderizar indicador de carga (AI)
-    const loadingMessageId = 'loading-' + Date.now();
-    renderMessage('model', `<div id="${loadingMessageId}" class="flex items-center space-x-2 text-slate-400">
-        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0s;"></div>
-        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
-        <div class="h-2 w-2 bg-purple-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
-        <span>Escribiendo...</span>
-    </div>`);
-
-    // 4. Llamada a la función Netlify (segura)
-    try {
-      // ************* RUTA DEFINITIVA A USAR *************
-      const apiUrl = `/netlify/functions/chat`; 
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Enviamos el historial TEMPORAL que incluye el último mensaje de usuario
-        body: JSON.stringify({ userMessage: trimmedMessage, history: historyForApi }) 
-      });
-
-      // --- CORRECCIÓN CRÍTICA DE ROBUSTEZ ---
-      let data = {};
-      let responseText = null;
-      
-      // Si la respuesta HTTP no es 200 (ej: 404, 500), leemos el cuerpo como texto para evitar SyntaxError.
-      if (response.ok) {
-          data = await response.json();
-      } else {
-          responseText = await response.text(); 
-      }
-      // ----------------------------------------
-      
-      // 5. Eliminar el indicador de carga
-      const loadingEl = document.getElementById(loadingMessageId);
-      if (loadingEl && loadingEl.parentElement) {
-          loadingEl.parentElement.remove();
-      }
-
-      // La condición de error se actualiza para manejar errores HTTP (response.ok=false)
-      if (!response.ok) { 
-        // Generamos un mensaje de error más claro.
-        const errorMessage = `Error de servidor (${response.status}). Asegúrate de que tu carpeta 'netlify/functions' existe, contiene 'chat.js' y las variables de entorno están configuradas.`;
-        renderMessage('model', `<span class="text-red-400 font-bold">Error de Conexión:</span> ${errorMessage}`);
-        
-      } else if (data.error) { // Error devuelto por chat.js (código 200 con payload de error)
-        const errorMessage = data.message || "La IA no pudo procesar la solicitud.";
-        renderMessage('model', `<span class="text-red-400 font-bold">Error del Asistente:</span> ${errorMessage}`);
-        
-      } else {
-        const aiResponseContent = renderMessageContent(data.response);
-        renderMessage('model', aiResponseContent);
-        
-        // 6. Sincronización CRÍTICA: Reemplazamos el historial con el historial completo y validado del backend.
-        chatHistory = data.history; 
-      }
-
-    } catch (error) {
-      console.error("Error al enviar el chat:", error);
-      // Eliminar el indicador de carga si existe
-      const loadingEl = document.getElementById(loadingMessageId);
-      if (loadingEl && loadingEl.parentElement) {
-          loadingEl.parentElement.remove();
-      }
-      // Este catch captura errores de red o errores fatales ANTES de la llamada fetch.
-      renderMessage('model', '<span class="text-red-400 font-bold">Error de Conexión:</span> Hubo un problema de red. Por favor, inténtalo de nuevo.');
-    } finally {
-      isSending = false;
-      sendChatBtn.disabled = false;
-      // Desplazarse al último mensaje
-      chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight; 
-    }
-  };
-
-  // --- MANEJO DE EVENTOS ---
-
-  // Botón de Envío
-  sendChatBtn.addEventListener('click', () => {
-    sendChat(chatInput.value);
-  });
-
-  // Tecla Enter
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      sendChat(chatInput.value);
-    }
-  });
-  
-  // Delegación de eventos para los botones de recomendación (Añadir)
-  chatMessagesContainer.addEventListener('click', (e) => {
-      const target = e.target.closest('.add-service-btn');
-      if (!target || target.disabled) return;
-
-      const serviceId = target.getAttribute('data-service-id');
-      if (!serviceId) return;
-
-      const serviceData = findServiceById(serviceId);
-      
-      if (serviceData) {
-        const serviceElement = document.querySelector(`input[data-service-id="${serviceData.id}"]`);
-        
-        // 1. Lógica de Presupuesto:
-        
-        if (serviceData.type === 'monthly') {
-             if (serviceElement) {
-                 handlePlanSelection(serviceData.id, serviceElement);
-             } else {
-                 showNotification('warning', 'Elemento No Encontrado', `El plan "${serviceData.item.name}" fue recomendado, pero su elemento de selección no está cargado.`);
-                 return;
-             }
-             
-        } else if (serviceData.type === 'standard') {
-            if (document.querySelector('input[name="selectionGroup"]:checked, input[name="monthlyPlanSelection"]:checked')) { 
-                clearAllSelections(); 
+    // Buscar en servicios estándar/paquetes
+    for (const key in allServices) {
+        const item = allServices[key].items.find(s => s.id === id);
+        if (item) {
+            // El tipo se infiere de la estructura del pricing.json (p1, s1, etc.)
+            let type = 'standard';
+            if (key === 'completeWebs' || key === 'complexPackages') {
+                type = 'package';
             }
-            
-            if (serviceElement) {
-                serviceElement.checked = true;
-            } else {
-                 showNotification('warning', 'Elemento No Encontrado', `El servicio "${serviceData.item.name}" fue recomendado, pero su casilla de selección no se encuentra visible.`);
-                 return;
-            }
-            
-        } else if (serviceData.type === 'plan-service') {
-             showNotification('info', 'Servicio de Puntos', `El servicio "${serviceData.item.name}" ha sido identificado. Si estás en modo Plan Mensual, selecciónalo en la lista de servicios con puntos.`);
-             return; 
-        } else {
-            showNotification('error', 'Error de Lógica', 'Tipo de servicio recomendado desconocido.');
-            return;
+            return { name: item.name, type: type };
         }
-        
-        // 2. Actualizar el resumen (si no se retorna)
-        updateSelectedItems(); 
+    }
 
-        // 3. Desplazarse al resumen
-        if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // 4. Actualizar el estilo del botón del chat para indicar que fue añadido
-        target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800', 'hover:text-white');
-        target.classList.add('bg-green-700', 'text-white', 'cursor-default');
-        target.textContent = `Añadido ✔️`;
-        target.disabled = true;
-
-      } else {
-        showNotification('error', 'Error', 'El servicio recomendado no se encuentra en el catálogo.');
-      }
-  });
-
-
-  // --- INICIALIZACIÓN ---
-
-  // Mensaje de bienvenida inicial
-  const welcomeMessage = `¡Hola! Soy Zen Assistant, tu IA de presupuestos. Dime qué tipo de proyecto tienes en mente (por ejemplo, "Necesito una web con e-commerce y CRM") y te sugeriré los servicios y planes más adecuados de nuestro catálogo.`;
-  
-  // Renderizar el mensaje de bienvenida
-  if (chatMessagesContainer.children.length === 0) {
-      renderMessage('model', welcomeMessage.replace(/\n/g, '<br>'));
-      // Añadir al historial
-      chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
+    // Buscar en planes mensuales
+    const plan = monthlyPlans.find(p => p.id == id);
+    if (plan) {
+        return { name: plan.name, type: 'plan' };
+    }
+    
+    return null;
   }
 
+  // --- AYUDANTE DE CREACIÓN DE BOTONES ---
+  function createServiceButtonHTML(serviceId, serviceType, serviceName) {
+    // Aseguramos que el type sea 'plan', 'package', o 'standard' para la función del clic en el frontend
+    const type = serviceType === 'plan' ? 'plan' : serviceType; // Usamos el tipo directo
+    
+    // El texto del botón ahora usa el nombre del servicio (serviceName)
+    return `<button 
+        data-action="add-service" 
+        data-service-id="${serviceId}" 
+        data-service-type="${type}" 
+        class="bg-slate-900 text-cyan-300 font-bold py-2 px-4 rounded-lg hover:bg-cyan-800 hover:text-white transition duration-200 mt-2 mr-2">
+        Añadir ${serviceName}
+    </button>`;
+  }
+
+  function addMessageToChat(message, role) {
+    const sender = role === 'user' ? 'user' : 'ai';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-message flex flex-col';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%]';
+    
+    let finalHTML = message.replace(/\n/g, '<br>');
+
+    if (sender === 'ai') {
+        // --- LÓGICA DE PARSEO JSON (Recomendación de Servicios) ---
+        try {
+            const jsonResponse = JSON.parse(message);
+            if (jsonResponse.message && Array.isArray(jsonResponse.recommendations)) {
+                // 1. Usar el mensaje de texto del JSON
+                let messageText = jsonResponse.message.replace(/\n/g, '<br>');
+                let buttonsHTML = '';
+                
+                // 2. Generar los botones HTML
+                jsonResponse.recommendations.forEach(rec => {
+                    const serviceInfo = findServiceById(rec.id);
+                    if (serviceInfo) {
+                        // AQUÍ ES DONDE SE USA serviceInfo.name
+                        buttonsHTML += createServiceButtonHTML(rec.id, serviceInfo.type, serviceInfo.name);
+                    } else {
+                        console.warn(`Servicio no encontrado en el catálogo: ${rec.id}`);
+                        // En caso de no encontrarlo, al menos mostramos el ID para depurar
+                        buttonsHTML += createServiceButtonHTML(rec.id, rec.type, `Servicio ID: ${rec.id}`);
+                    }
+                });
+                
+                finalHTML = messageText;
+                
+                if (buttonsHTML) {
+                    finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
+                        <p class="text-sm font-bold text-purple-300 mb-2">Acción Rápida (Recomendación):</p>
+                        <div class="flex flex-wrap gap-2">${buttonsHTML}</div>
+                    </div>`;
+                }
+            }
+        } catch (e) {
+            // El mensaje no es JSON (es un mensaje de ASSIST_SALES o un error), 
+            // se procesa como texto simple.
+        }
+    }
+    // --- FIN LÓGICA DE PARSEO JSON ---
+
+    if (sender === 'user') {
+      wrapper.classList.add('items-end');
+      bubble.classList.add('bg-cyan-500', 'text-slate-900', 'rounded-br-none');
+      bubble.textContent = message;
+    } else {
+      wrapper.classList.add('items-start');
+      bubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
+      bubble.innerHTML = finalHTML; // Usamos innerHTML para renderizar los botones
+    }
+
+    wrapper.appendChild(bubble);
+    chatMessagesContainer.appendChild(wrapper);
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+  }
+
+  function toggleTypingIndicator(show) {
+    let indicator = document.getElementById('typing-indicator');
+    if (show) {
+      if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'chat-message flex items-start';
+        indicator.innerHTML = `<div class="chat-bubble bg-slate-700 rounded-bl-none p-3 flex items-center space-x-1">
+          <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: -0.32s;"></span>
+          <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: -0.16s;"></span>
+          <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce"></span>
+        </div>`;
+        chatMessagesContainer.appendChild(indicator);
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+      }
+    } else {
+      if (indicator) indicator.remove();
+    }
+  }
+
+  async function sendMessage() {
+    const userMessage = chatInput.value.trim();
+    if (!userMessage) return;
+
+    addMessageToChat(userMessage, 'user');
+    
+    // Solo añadimos el mensaje del usuario al historial para la API
+    chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
+    
+    chatInput.value = '';
+    chatInput.focus();
+    toggleTypingIndicator(true);
+
+    try {
+      const response = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: chatHistory })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error de servidor no especificado.' }));
+        throw new Error(errorData.error || `Error de red: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // La respuesta del servidor ya trae el historial completo, incluyendo la respuesta de la IA
+      chatHistory = data.history; 
+      
+      // El último mensaje en el historial actualizado es la respuesta de la IA
+      const aiResponseText = data.response; 
+      
+      // addMessageToChat ahora maneja el JSON/Texto.
+      addMessageToChat(aiResponseText, 'model'); 
+
+    } catch (error) {
+      console.error("Error detallado al enviar mensaje:", error);
+      addMessageToChat("Lo siento, hubo un error de conexión con el asistente. Por favor, intenta de nuevo.", 'model');
+    } finally {
+      toggleTypingIndicator(false);
+    }
+  }
+
+  function initChat() {
+    chatMessagesContainer.innerHTML = '';
+    chatHistory = [];
+
+    const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios exactos en la herramienta.';
+    addMessageToChat(welcomeMessage, 'model');
+    chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
+
+    sendChatBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Delegación de eventos para los botones de servicio generados por la IA
+    chatMessagesContainer.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-action="add-service"]');
+      if (target) {
+        const { serviceId, serviceType } = target.dataset;
+        const elementId = serviceType === 'plan' ? `plan-${serviceId}` : `${serviceType}-${serviceId}`;
+        const serviceElement = document.getElementById(elementId);
+
+        if (serviceElement) {
+          serviceElement.click();
+          if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Actualizar el estilo del botón
+          target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800', 'hover:text-white');
+          target.classList.add('bg-green-700', 'text-white', 'cursor-default');
+          target.textContent = `Añadido ✔️`;
+          target.disabled = true;
+        } else {
+          // Si por alguna razón el servicio no existe en el DOM (catálogo no cargado, error de ID)
+          target.textContent = `No encontrado`;
+          target.disabled = true;
+        }
+      }
+    });
+  }
+
+  initChat();
 });
