@@ -69,7 +69,7 @@ if (geminiMode === "JSON") {
         properties: {
             introduction: { 
               type: "STRING", 
-              description: "Breve introducción profesional para el cliente, antes de listar los IDs." 
+              description: "Breve introducción profesional para el revendedor, antes de listar los IDs." 
             },
             services: { 
                 type: "ARRAY", 
@@ -78,16 +78,20 @@ if (geminiMode === "JSON") {
             },
             closing: { 
               type: "STRING", 
-              description: "Conclusión amigable para el cliente, invitando a añadirlos." 
+              description: "Conclusión amigable para el revendedor, invitando a añadirlos." 
             },
-            // --- NUEVA PROPIEDAD AÑADIDA ---
-            suggested_questions: {
+            client_questions: {
               type: "ARRAY",
               items: { type: "STRING" },
-              description: "Array con 2 o 3 preguntas de seguimiento inteligentes y cortas para ayudar al revendedor a clarificar el proyecto o hacer up-selling. Por ejemplo: '¿Necesitaremos un sistema de login para clientes VIP?' o '¿Será importante optimizar la velocidad para el SEO?'"
+              description: "Array con 2-3 preguntas estratégicas que el revendedor debe hacerle a su CLIENTE FINAL para clarificar el proyecto. Deben ser formuladas para ser usadas directamente con el cliente."
+            },
+            // --- NUEVA PROPIEDAD AÑADIDA ---
+            sales_pitch: {
+              type: "STRING",
+              description: "Un párrafo persuasivo y profesional, listo para copiar y pegar. Debe explicarle al CLIENTE FINAL los beneficios de la solución propuesta, enfocándose en el valor y los resultados, no en la jerga técnica. Debe empezar con una frase como 'Con esta propuesta, obtendrás...' o similar."
             }
         },
-        required: ["introduction", "services", "closing", "suggested_questions"]
+        required: ["introduction", "services", "closing", "client_questions", "sales_pitch"]
     };
   }
   // --- FIN DE LA CORRECCIÓN #1 ---
@@ -243,18 +247,17 @@ exports.handler = async (event) => {
         const allServicesString = `--- CATÁLOGO COMPLETO DE SERVICIOS ---\nSERVICIOS ESTÁNDAR:\n${serviceList}\nPLANES MENSUALES:\n${planList}`;
 
 
-         systemPrompt = `
-            Eres Zen Assistant, un experto en presupuestos de desarrollo web y un coach de ventas.
-            Tu tarea es recomendar al revendedor la lista de IDs de servicios más adecuada 
-            para su proyecto, BASÁNDOSE SÓLO en el catálogo proporcionado.
+          systemPrompt = `
+            Eres Zen Assistant, un experto en presupuestos de desarrollo web y un coach de ventas de élite.
+            Tu tarea es darle al revendedor un paquete completo de herramientas para cerrar una venta.
             
             ${allServicesString}
 
             INSTRUCCIONES CLAVE:
             1. Genera una respuesta ESTRICTAMENTE en el formato JSON.
-            2. SÓLO incluye IDs de servicios que existan en el CATÁLOGO (ej: s1, p3, m1).
-            3. La 'introduction' debe ser profesional y persuasiva.
-            4. MUY IMPORTANTE: En 'suggested_questions', crea 2 o 3 preguntas cortas y estratégicas que el revendedor pueda usar para (a) entender mejor las necesidades de su cliente, (b) justificar un servicio de mayor valor, o (c) demostrar su experiencia.
+            2. La 'introduction' y 'closing' son mensajes para el revendedor.
+            3. En 'client_questions', crea 2 o 3 preguntas que el revendedor usará para entrevistar a su cliente final. Deben ser claras y estratégicas.
+            4. MUY IMPORTANTE: En 'sales_pitch', escribe un párrafo de venta convincente. Este texto es para que el revendedor se lo envíe a su cliente. Debe enfocarse en los BENEFICIOS (ej: 'atraer más clientes', 'vender 24/7', 'proyectar una imagen premium') y evitar la jerga técnica.
         `;
         
     } else if (intent === 'TEXTO' || intent === 'DESCONOCIDA') {

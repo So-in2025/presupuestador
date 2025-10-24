@@ -91,20 +91,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
                     }
 
-                    // --- NUEVO BLOQUE PARA LAS PREGUNTAS SUGERIDAS ---
-                    if (Array.isArray(jsonResponse.suggested_questions) && jsonResponse.suggested_questions.length > 0) {
-                        let suggestionButtonsHTML = '';
-                        jsonResponse.suggested_questions.forEach(question => {
-                            // Usamos comillas simples para el onclick para no interferir con las dobles del atributo
-                            suggestionButtonsHTML += `<button onclick='document.getElementById("chat-input").value = "${question}"; document.getElementById("chat-input").focus();' 
-                                class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2">
-                                ${question}
+                    // --- BLOQUE MEJORADO PARA LAS PREGUNTAS AL CLIENTE ---
+                    if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
+                        let questionButtonsHTML = '';
+                        jsonResponse.client_questions.forEach(question => {
+                            const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                            questionButtonsHTML += `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a '${escapedQuestion}', y dijo que..."; document.getElementById("chat-input").focus();' 
+                                class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">
+                                ❔ ${question}
                             </button>`;
                         });
 
                         finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
-                            <p class="text-sm font-bold text-yellow-300 mb-2">Siguiente Paso (Sugerencias):</p>
-                            <div class="flex flex-col items-start gap-2">${suggestionButtonsHTML}</div>
+                            <p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p>
+                            <div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div>
+                        </div>`;
+                    }
+                    
+                    // --- NUEVO BLOQUE PARA EL ARGUMENTO DE VENTA ---
+                    if (jsonResponse.sales_pitch) {
+                        // Creamos un ID único para el texto para poder copiarlo
+                        const pitchId = `pitch-${Date.now()}`;
+                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
+                            <p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p>
+                            <div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative">
+                                <p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p>
+                                <button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';"
+                                    class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">
+                                    Copiar
+                                </button>
+                            </div>
                         </div>`;
                     }
                     // --- FIN DEL NUEVO BLOQUE ---
