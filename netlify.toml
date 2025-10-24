@@ -1,0 +1,15 @@
+# Este es el archivo de configuración completo y correcto
+
+[build]
+  # Directorio de publicación (la raíz del proyecto)
+  publish = "."
+  # Directorio de funciones
+  functions = "netlify/functions"
+
+[functions]
+  # Incluye el archivo JSON en el paquete de la función
+  included_files = ["netlify/functions/pricing.json"]
+
+[functions."*"]
+  # Asegúrate de que usa el empaquetador correcto
+  node_bundler = "esbuild"
