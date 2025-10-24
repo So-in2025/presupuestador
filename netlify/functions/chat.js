@@ -12,8 +12,21 @@
  */
 
 // Importa el catálogo de precios (asumiendo que existe un pricing.json en el mismo directorio)
-const pricingData = require("./pricing.json");
+const fs = require('fs');
+const path = require('path');
 
+try {
+    const pricingPath = path.join(__dirname, 'pricing.json');
+    const pricingFileContent = fs.readFileSync(pricingPath, 'utf8');
+    var pricingData = JSON.parse(pricingFileContent);
+} catch (err) {
+    console.error("ERROR CRÍTICO: No se pudo leer o parsear pricing.json", err);
+    // Devolvemos una respuesta de error para que se vea en el log de la función
+    return {
+        statusCode: 500,
+        body: JSON.stringify({ message: 'Error interno del servidor: no se pudo cargar la configuración de precios.' })
+    };
+}
 
 // --- CONFIGURACIÓN DE GEMINI ---
 
