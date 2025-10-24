@@ -1,7 +1,7 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * VERSIÓN FINAL Y COMPATIBLE.
+ * VERSIÓN MEJORADA CON TEXT-TO-SPEECH (TTS).
  */
 
 import { getState } from './state.js';
@@ -23,7 +23,129 @@ document.addEventListener('DOMContentLoaded', () => {
     let chatHistory = [];
     let isSending = false;
 
-    // --- FUNCIÓN DE BÚSQUEDA ROBUSTA ---
+    // --- INICIO: NUEVO BLOQUE DEL MOTOR Y SELECTOR TTS ---
+
+    let voices = [];
+    let selectedVoiceURI = localStorage.getItem('zenAssistantVoiceURI');
+    let shouldAutoplay = true; // El autoplay está activado por defecto
+
+    const ttsManager = {
+        isPlaying: false,
+        
+        stop: function() {
+            window.speechSynthesis.cancel();
+            this.isPlaying = false;
+            document.querySelectorAll('.tts-btn.playing').forEach(btn => {
+                btn.innerHTML = '▶️ Escuchar';
+                btn.classList.remove('playing');
+            });
+        },
+
+        speak: function(text, buttonElement) {
+            if (this.isPlaying) {
+                this.stop();
+                // Si el usuario presionó el mismo botón para detener, no inicies de nuevo
+                if (buttonElement && buttonElement.classList.contains('was-playing')) {
+                    buttonElement.classList.remove('was-playing');
+                    return;
+                }
+            }
+            
+            shouldAutoplay = true; // Reactiva el autoplay si se inicia manualmente
+            const utterance = new SpeechSynthesisUtterance(text);
+            const selectedVoice = voices.find(v => v.voiceURI === selectedVoiceURI);
+
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            } else {
+                 // Fallback a la primera voz en español si la guardada no existe
+                const fallbackVoice = voices.find(v => v.lang.startsWith('es-'));
+                if (fallbackVoice) utterance.voice = fallbackVoice;
+            }
+
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.05;
+            utterance.pitch = 1;
+
+            utterance.onstart = () => {
+                this.isPlaying = true;
+                if (buttonElement) {
+                    document.querySelectorAll('.tts-btn.playing').forEach(btn => btn.classList.remove('playing', 'was-playing'));
+                    buttonElement.innerHTML = '⏹️ Detener';
+                    buttonElement.classList.add('playing', 'was-playing');
+                }
+            };
+
+            utterance.onend = () => {
+                this.isPlaying = false;
+                if (buttonElement) {
+                    buttonElement.innerHTML = '▶️ Escuchar';
+                    buttonElement.classList.remove('playing', 'was-playing');
+                }
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
+    function populateVoiceList() {
+        voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es-'));
+        const voiceSelect = document.getElementById('voice-selector');
+        if (!voiceSelect || voices.length === 0) return;
+
+        voiceSelect.innerHTML = '';
+        voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-uri', voice.voiceURI);
+            voiceSelect.appendChild(option);
+        });
+
+        if (selectedVoiceURI) {
+            voiceSelect.value = voices.find(v => v.voiceURI === selectedVoiceURI)?.name;
+        }
+        
+        // Si no hay voz guardada, selecciona Google Español por defecto
+        if (!voiceSelect.value) {
+            const googleVoice = voices.find(v => v.name.includes('Google') && v.name.includes('español'));
+            if (googleVoice) {
+                 voiceSelect.value = googleVoice.name;
+                 selectedVoiceURI = googleVoice.voiceURI;
+                 localStorage.setItem('zenAssistantVoiceURI', selectedVoiceURI);
+            }
+        }
+    }
+    
+    function createVoiceSelector() {
+        const selectorContainer = document.createElement('div');
+        selectorContainer.className = 'mb-2 p-2 bg-slate-800 rounded-md flex items-center gap-2';
+        selectorContainer.innerHTML = `
+            <label for="voice-selector" class="text-sm font-bold text-slate-300">Voz:</label>
+            <select id="voice-selector" class="w-full styled-input text-sm text-cyan-300"></select>
+        `;
+        chatMessagesContainer.parentNode.insertBefore(selectorContainer, chatMessagesContainer);
+
+        const voiceSelect = document.getElementById('voice-selector');
+        voiceSelect.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            selectedVoiceURI = selectedOption.getAttribute('data-uri');
+            localStorage.setItem('zenAssistantVoiceURI', selectedVoiceURI);
+            ttsManager.stop();
+        });
+    }
+
+    if (typeof speechSynthesis !== 'undefined') {
+        createVoiceSelector();
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+    }
+    
+    window.addEventListener('beforeunload', () => ttsManager.stop());
+
+    // --- FIN: NUEVO BLOQUE DEL MOTOR Y SELECTOR TTS ---
+
     const findServiceById = (id) => {
         const state = getState();
         let plan = state.monthlyPlans.find(p => p.id == id);
@@ -40,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     };
 
-    // --- LÓGICA DE RENDERIZADO (CORREGIDA PARA SER COMPATIBLE) ---
     function createServiceButtonHTML(serviceId, serviceType, serviceName) {
         return `<button 
             data-action="add-service" 
@@ -57,30 +178,35 @@ document.addEventListener('DOMContentLoaded', () => {
         wrapper.className = 'chat-message flex flex-col my-2';
 
         const bubble = document.createElement('div');
-        bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%]';
+        bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%] relative';
         
         let finalHTML = message.replace(/\n/g, '<br>');
+        let textToSpeak = message;
 
-         if (sender === 'ai') {
+        if (sender === 'ai') {
             try {
                 const jsonResponse = JSON.parse(message);
-
                 if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
+                    
+                    let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
+                    if (jsonResponse.sales_pitch) {
+                        cleanText += `Aquí tienes un argumento de venta para tu cliente: ${jsonResponse.sales_pitch}\n\n`;
+                    }
+                    if (jsonResponse.client_questions) {
+                        cleanText += `Para definir mejor el proyecto, puedes preguntarle a tu cliente: ${jsonResponse.client_questions.join(' ')}`;
+                    }
+                    textToSpeak = cleanText;
+                    
                     let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
                     let serviceButtonsHTML = '';
                     
                     jsonResponse.services.forEach(serviceId => {
                         const serviceInfo = findServiceById(serviceId);
-                        if (serviceInfo) {
-                            serviceButtonsHTML += createServiceButtonHTML(serviceId, serviceInfo.type, serviceInfo.item.name);
-                        } else {
-                            console.warn(`Servicio recomendado no encontrado en catálogo: ${serviceId}`);
-                        }
+                        if (serviceInfo) serviceButtonsHTML += createServiceButtonHTML(serviceId, serviceInfo.type, serviceInfo.item.name);
+                        else console.warn(`Servicio recomendado no encontrado en catálogo: ${serviceId}`);
                     });
                     
-                    if (jsonResponse.closing) {
-                        messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
-                    }
+                    if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
                     
                     finalHTML = messageText;
                     
@@ -91,12 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
                     }
 
-                    // --- BLOQUE MEJORADO PARA LAS PREGUNTAS AL CLIENTE ---
                     if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
                         let questionButtonsHTML = '';
                         jsonResponse.client_questions.forEach(question => {
                             const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                            questionButtonsHTML += `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a '${escapedQuestion}', y dijo que..."; document.getElementById("chat-input").focus();' 
+                            questionButtonsHTML += `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' 
                                 class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">
                                 ❔ ${question}
                             </button>`;
@@ -108,9 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
                     }
                     
-                    // --- NUEVO BLOQUE PARA EL ARGUMENTO DE VENTA ---
                     if (jsonResponse.sales_pitch) {
-                        // Creamos un ID único para el texto para poder copiarlo
                         const pitchId = `pitch-${Date.now()}`;
                         finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">
                             <p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p>
@@ -123,11 +246,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>`;
                     }
-                    // --- FIN DEL NUEVO BLOQUE ---
                 }
-            } catch (e) {
-                // No es JSON, es texto plano. No hacer nada.
-            }
+            } catch (e) { /* No es JSON, es texto plano */ }
+
+            const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+            const ttsButtonHTML = `
+                <button onclick='ttsManager.speak(this.dataset.text, this); shouldAutoplay = false;' 
+                        data-text='${escapedTextToSpeak}'
+                        class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">
+                    ▶️ Escuchar
+                </button>
+            `;
+            finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
         }
 
         if (sender === 'user') {
@@ -138,6 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.classList.add('items-start');
             bubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
             bubble.innerHTML = finalHTML;
+            
+            if (shouldAutoplay) {
+                setTimeout(() => {
+                    const lastButton = bubble.querySelector('.tts-btn');
+                    if (lastButton) ttsManager.speak(lastButton.dataset.text, lastButton);
+                }, 300);
+            }
         }
 
         wrapper.appendChild(bubble);
@@ -145,9 +282,9 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
-    // --- LÓGICA DE ENVÍO Y MANEJO DE EVENTOS (SIN CAMBIOS) ---
-    
     async function sendMessage() {
+        ttsManager.stop();
+        shouldAutoplay = true;
         const userMessage = chatInput.value.trim();
         if (!userMessage || isSending) return;
 
@@ -155,12 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sendChatBtn.disabled = true;
         addMessageToChat(userMessage, 'user');
         
-        // El frontend ahora envía el formato que espera el backend robusto
-        const payload = {
-            userMessage: userMessage,
-            history: chatHistory
-        };
-        
+        const payload = { userMessage: userMessage, history: chatHistory };
         chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
         chatInput.value = '';
         chatInput.focus();
@@ -170,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/.netlify/functions/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload) // Enviamos el payload correcto
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
