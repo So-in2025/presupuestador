@@ -1,0 +1,396 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Operaciones - Gestor de Propuestas</title>
+    <!-- Incluye Tailwind CSS CDN y jsPDF -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* --- BRANDING VARIABLES --- */
+        :root {
+            --accent-color: #22D3EE;
+            --accent-color-hover: #06B6D4;
+            --accent-text-color: #0F172A;
+        }
+
+        /* --- ESTILOS COMPARTIDOS --- */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #0F172A; /* Slate-900: Azul marino oscuro */
+        }
+        .accent-color { 
+            color: var(--accent-color); 
+        }
+        .accent-bg { 
+            background-color: var(--accent-color); 
+            color: var(--accent-text-color); 
+        }
+        .accent-bg:hover {
+            background-color: var(--accent-color-hover);
+        }
+        .card-bg { 
+            background-color: #1E293B; /* Slate-800: Fondo de tarjeta */
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+        }
+        .item-disabled {
+            opacity: 0.3; 
+            pointer-events: none;
+            cursor: not-allowed;
+            background-color: #111827 !important; 
+            border-color: #334155 !important;
+        }
+        
+        /* --- UX EN TARJETAS --- */
+        .item-card, .item-card label {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .tooltip-container { position: relative; }
+        .tooltip-content {
+            visibility: hidden; opacity: 0; position: absolute; top: 100%; left: 50%;
+            transform: translateX(-50%) translateY(5px); z-index: 100; width: max-content; 
+            max-width: 380px; padding: 10px 14px; border-radius: 8px; background-color: #1E293B;
+            border: 1px solid var(--accent-color); color: #F8FAFC; box-shadow: 0 4px 12px rgba(0, 0, 0, 1);
+            font-size: 0.875rem; line-height: 1.5; transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none; text-align: left;
+        }
+        .item-card:hover .tooltip-content { visibility: visible; opacity: 1; }
+        .tooltip-content::before {
+            content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            border-width: 6px; border-style: solid; border-color: transparent transparent #1E293B transparent;
+        }
+        .custom-checkbox, .custom-radio {
+            appearance: none; -webkit-appearance: none; width: 1.5rem; height: 1.5rem;
+            border-radius: 0.375rem; border: 2px solid #64748B; cursor: pointer;
+            transition: all 0.2s; position: relative; flex-shrink: 0;
+        }
+        .custom-checkbox:checked, .custom-radio:checked {
+            background-color: var(--accent-color); border-color: var(--accent-color);
+        }
+        .custom-checkbox:checked::after {
+            content: '✓'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: var(--accent-text-color); 
+            font-size: 0.9rem; font-weight: bold;
+        }
+        .custom-radio { border-radius: 50%; }
+        .item-card:not(.item-disabled):hover {
+            background-color: #334155; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px); z-index: 20;
+        }
+        .styled-input, .styled-textarea, .styled-select {
+            padding: 0.75rem; background-color: #1F2937; color: #94A3B8; 
+            border: 1px solid #374151; border-radius: 0.5rem; transition: all 0.2s;
+        }
+        .styled-input:focus, .styled-textarea:focus, .styled-select:focus {
+            outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color);
+        }
+        .styled-textarea { min-height: 80px; }
+        .action-button {
+            padding: 0.5rem 0.75rem; font-size: 0.875rem;
+            border-radius: 0.5rem; transition: background-color 0.2s;
+        }
+
+        /* --- ESTILOS SISTEMA DE PUNTOS --- */
+        .points-display {
+            background-color: #0F172A; border: 1px solid var(--accent-color);
+            border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1rem;
+            text-align: center; font-weight: bold; font-size: 1.1rem; color: #F8FAFC;
+        }
+        .points-display span { color: var(--accent-color); }
+
+        /* --- ESTILOS CHAT IA --- */
+        .chat-mode-btn { padding: 8px 16px; border: none; background: transparent; color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.3s; border-bottom: 3px solid transparent; }
+        .chat-mode-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .animate-bounce { animation: bounce 1.4s infinite ease-in-out both; }
+        
+        /* --- ESTILOS TOUR GUIADO --- */
+        .tour-highlight {
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 0 0 4px var(--accent-color);
+            border-radius: 8px;
+            position: relative;
+            z-index: 102;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-50 min-h-screen p-4 sm:p-6 md:p-10">
+
+    <!-- MODALES -->
+    <div id="notificationModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center">
+                <h3 id="notificationTitle" class="text-lg"></h3>
+                <button onclick="closeNotificationModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5">
+                <p id="notificationMessage" class="text-sm text-slate-300"></p>
+                <div class="mt-4 text-right">
+                    <button onclick="closeNotificationModal()" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition duration-300">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="customServiceModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-purple-600 flex justify-between items-center">
+                <h3 class="text-lg">Añadir Ítem Personalizado</h3>
+                <button onclick="closeCustomServiceModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label for="customServiceName" class="block text-sm font-medium text-slate-300 mb-1">Nombre del Servicio:</label>
+                    <input type="text" id="customServiceName" class="w-full styled-input" placeholder="Ej: Integración con API de terceros">
+                </div>
+                <div>
+                    <label for="customServicePrice" class="block text-sm font-medium text-slate-300 mb-1">Costo de Producción (USD):</label>
+                    <input type="number" id="customServicePrice" class="w-full styled-input" placeholder="0.00" min="0">
+                </div>
+                <div class="text-right pt-2">
+                    <button onclick="addCustomServiceToSelection()" class="bg-purple-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition">Añadir Ítem</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
+                <h3 class="text-lg">Generar Documentos de Propuesta</h3>
+                <button onclick="closePdfOptionsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div>
+                    <label for="pdfLogoInput" class="block text-sm font-medium text-slate-300 mb-1">Tu Logo (Marca Blanca):</label>
+                    <input type="file" id="pdfLogoInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800">
+                </div>
+                <div>
+                    <label for="pdfResellerInfo" class="block text-sm font-medium text-slate-300 mb-1">Tus Datos de Contacto:</label>
+                    <textarea id="pdfResellerInfo" class="w-full styled-textarea" rows="3" placeholder="Tu Nombre / Nombre de tu Agencia&#10;tupaginaweb.com&#10;tu@email.com"></textarea>
+                </div>
+                <div>
+                    <label for="pdfClientInfo" class="block text-sm font-medium text-slate-300 mb-1">Datos del Cliente Final:</label>
+                    <textarea id="pdfClientInfo" class="w-full styled-textarea" rows="3" placeholder="Nombre del Contacto del Cliente&#10;Nombre de la Empresa Cliente&#10;email@cliente.com"></textarea>
+                </div>
+                <div>
+                    <label for="pdfTerms" class="block text-sm font-medium text-slate-300 mb-1">Tus Términos y Condiciones:</label>
+                    <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
+                </div>
+                <div class="pt-2 space-y-3">
+                    <button onclick="generatePdf(true)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
+                        Generar Propuesta para Cliente
+                    </button>
+                    <button onclick="generatePdf(false)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition">
+                        Generar Reporte Interno (Para tu control)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- NUEVO: MODAL DE CONFIGURACIÓN DE MARCA -->
+    <div id="brandingModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-teal-600 flex justify-between items-center">
+                <h3 class="text-lg">Configuración de Marca</h3>
+                <button onclick="closeBrandingModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label for="brandLogoInput" class="block text-sm font-medium text-slate-300 mb-2">Tu Logo (para UI y PDFs):</label>
+                    <input type="file" id="brandLogoInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-900 file:text-teal-300 hover:file:bg-teal-800">
+                    <button id="removeBrandLogo" class="text-xs text-red-400 hover:underline mt-1">Quitar logo</button>
+                </div>
+                <div>
+                    <label for="brandColorInput" class="block text-sm font-medium text-slate-300 mb-2">Color de Acento:</label>
+                    <input type="color" id="brandColorInput" class="w-full h-10 p-1 bg-slate-700 border border-slate-600 rounded-lg cursor-pointer">
+                </div>
+                <div class="text-right pt-2">
+                    <button onclick="saveBranding()" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-teal-700 transition">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- NUEVO: MODAL BUILDER BUENO/MEJOR/ÓPTIMO -->
+    <div id="tieredBuilderModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+        <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform transition-all max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
+                <button onclick="closeTieredBuilderModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 flex-grow overflow-y-auto">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="tiered-builder-columns">
+                    <!-- Columnas se generarán aquí -->
+                </div>
+            </div>
+            <div class="p-4 bg-slate-900/50 rounded-b-xl flex-shrink-0 flex justify-end items-center gap-4">
+                 <button onclick="closeTieredBuilderModal()" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition">Cancelar</button>
+                <button onclick="addTieredProposal()" class="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700 transition">Guardar Propuesta por Niveles</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NUEVO: TOUR GUIADO -->
+    <div id="tour-tooltip" class="hidden absolute bg-slate-800 border-2 border-cyan-400 p-4 rounded-lg shadow-2xl z-[101] max-w-sm">
+        <p id="tour-text" class="text-slate-200"></p>
+        <div class="flex justify-between items-center mt-4">
+            <span id="tour-step-counter" class="text-xs text-slate-400"></span>
+            <div class="space-x-2">
+                <button id="tour-end" class="text-sm py-1 px-3 rounded bg-red-800 hover:bg-red-700 transition">Finalizar</button>
+                <button id="tour-prev" class="text-sm py-1 px-3 rounded bg-slate-600 hover:bg-slate-500 transition">Anterior</button>
+                <button id="tour-next" class="text-sm py-1 px-3 rounded accent-bg">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TÍTULO PRINCIPAL Y CONTROLES -->
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <div class="flex justify-center items-center gap-4">
+                <img id="brand-logo-display" src="" alt="Logo" class="hidden h-12"/>
+                <h1 id="main-title" class="text-3xl sm:text-4xl font-extrabold accent-color tracking-wider">
+                    Centro de Operaciones
+                </h1>
+            </div>
+            <p class="text-slate-400 mt-2">Crea, gestiona y exporta propuestas de alto impacto.</p>
+             <div class="mt-4 flex justify-center gap-3">
+                <button onclick="showBrandingModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                    ⚙️ Configuración de Marca
+                </button>
+                 <button onclick="showTieredBuilderModal()" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                    📊 Propuesta por Niveles
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENEDOR DEL CHAT IA -->
+        <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px] mb-8">
+            <div class="flex items-center mb-2">
+                <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
+                <span class="ml-3 h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
+            </div>
+            
+            <div id="chat-mode-selector" class="flex justify-start mb-2 border-b border-slate-700 -mx-5 px-5">
+                <button data-mode="builder" class="chat-mode-btn active">Constructor de Propuestas</button>
+                <button data-mode="objection" class="chat-mode-btn">Manejo de Objeciones</button>
+            </div>
+            
+            <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto p-2 bg-slate-900/50 rounded-lg border border-slate-700">
+                <!-- Los mensajes del chat aparecerán aquí dinámicamente -->
+            </div>
+
+            <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
+                <input type="text" id="chat-input" class="w-full styled-input" placeholder="Ej: 'Necesito una web para un fotógrafo...' ">
+                <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                        <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Contenedor Principal -->
+        <div id="appContainer" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- COLUMNA 1 & 2: Formulario -->
+            <div class="lg:col-span-2 xl:col-span-3 space-y-6">
+                <div id="proposal-details-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">1. Iniciar Nueva Propuesta</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="clientName" placeholder="Nombre del Cliente" class="styled-input">
+                        <input type="text" id="webName" placeholder="Nombre del Proyecto" class="styled-input">
+                        <select id="serviceType" class="styled-input styled-select accent-color">
+                            <option value="puntual">Proyecto de Pago Único</option>
+                            <option value="mensual">Servicio Mensual (Retainer)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="solution-config-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">2. Configurar la Solución</h2>
+                    <p class="text-sm text-slate-400 mb-4">Elige una solución integral (Paquete/Plan) o selecciona ítems específicos.</p>
+                    
+                    <div id="modeIndicator" class="mb-4 p-3 rounded-lg border border-yellow-500 bg-yellow-900/20 text-yellow-300 font-bold text-center">
+                        Modo Activo: Selección Personalizada
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                        <button id="clearSelectionsBtn" class="hidden flex-grow bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg">
+                            Limpiar Selección y Activar Modo Personalizado
+                        </button>
+                        <button onclick="showCustomServiceModal()" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg">
+                            + Añadir Ítem Personalizado
+                        </button>
+                    </div>
+
+                    <div id="monthlyPlansContainer" class="hidden space-y-6"></div>
+
+                    <!-- ESTRUCTURA PARA SERVICIOS MENSUALES (SISTEMA DE PUNTOS) -->
+                    <div id="monthlyServicesContainer" class="hidden space-y-6">
+                        <div id="pointsDisplay" class="points-display">
+                            Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span>
+                        </div>
+                        <div id="servicesTabs" class="space-y-4">
+                            <!-- Categorías se insertarán dinámicamente aquí -->
+                        </div>
+                    </div>
+
+                    <div id="servicesSelection" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <!-- COLUMNA 3 & 4: Resumen y Dashboard -->
+            <div class="lg:col-span-1 xl:col-span-1 space-y-6">
+                
+                <div id="summaryCard" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 top-4">
+                    <h2 class="text-2xl font-semibold mb-4 accent-color">3. Calcular Rentabilidad</h2>
+                    <div class="mb-4">
+                        <label for="marginPercentage" class="block text-sm font-medium text-slate-300 mb-2">Tu Margen de Ganancia (%)</label>
+                        <input type="number" id="marginPercentage" value="60" min="0" class="w-full styled-input accent-color">
+                        <p id="marginFeedback" class="text-xs mt-1 text-slate-400"></p>
+                    </div>
+                    <div class="text-lg font-bold space-y-2 pt-4 border-t border-slate-700">
+                        <p>Costo Producción: $<span id="totalDeveloperPrice">0.00</span> USD</p>
+                        <p class="accent-color">Precio a Cliente: $<span id="totalClientPrice">0.00</span> USD</p>
+                    </div>
+                    <button id="addTask" class="w-full accent-bg font-bold py-3 mt-4 rounded-lg transition shadow-xl">Guardar Propuesta</button>
+                    <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
+                    <div id="selectedItems" class="text-sm space-y-2 p-3 bg-slate-900 rounded-lg h-40 overflow-y-auto border border-slate-700">
+                        <p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>
+                    </div>
+                </div>
+
+                <div id="saved-proposals-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700">
+                    <h2 class="text-2xl font-semibold mb-4 text-pink-400">4. Propuestas Guardadas</h2>
+                    <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
+                    <div class="text-lg font-bold space-y-2 pt-4 mt-4 border-t border-slate-700">
+                        <p>COSTO TOTAL (Prod): $<span id="grandTotalDeveloperPrice">0.00</span> USD</p>
+                        <p class="text-green-400">VENTA TOTAL: $<span id="grandTotalClientPrice">0.00</span> USD</p>
+                        <p class="text-yellow-400">GANANCIA TOTAL: $<span id="totalProfit">0.00</span> USD</p>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button">Generar Documentos</button>
+                        <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button">Limpiar Todo</button>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-500 text-center border-t border-slate-700 pt-4">
+                        <a href="pricing.html" class="accent-color hover:underline">Gestionar Catálogo de Servicios</a>
+                    </div>
+                </div>
+                <div id="messageContainer" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/modals.js"></script>
+<script type="module" src="js/pdf.js"></script>
+<!-- SCRIPT PARA EL CHAT CON IA (FRONTEND) -->
+<script type="module" src="js/chat-frontend.js"></script>
+
+</body>
+</html>

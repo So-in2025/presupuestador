@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyecto Zen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; background: #0F172A; color: #E2E8F0;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        body.fade-out {
+            opacity: 0;
+        }
+        .splash-container {
+            text-align: center;
+            opacity: 0;
+            animation: fadeInContainer 1s ease-out forwards;
+        }
+        .lotus-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1.5rem;
+            stroke: #22D3EE;
+            stroke-width: 2;
+            fill: transparent;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 2s ease-in-out forwards;
+        }
+        .splash-title {
+            font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem);
+            line-height: 1.1; text-transform: uppercase; letter-spacing: 4px;
+            text-shadow: 0 0 15px rgba(34, 211, 238, 0.6);
+        }
+        .splash-title span {
+            opacity: 0;
+            animation: fadeInLetter 0.5s forwards;
+            animation-delay: calc(1s + 0.1s * var(--i));
+        }
+        .splash-byline {
+            font-size: clamp(0.9rem, 2vw, 1.0rem); color: #94A3B8;
+            letter-spacing: 2px; margin-top: 0.5rem;
+            opacity: 0;
+            animation: fadeInGeneric 1s 2s ease-out forwards;
+        }
+
+        @keyframes fadeInContainer {
+            to { opacity: 1; }
+        }
+        @keyframes draw {
+            to { stroke-dashoffset: 0; }
+        }
+        @keyframes fadeInLetter {
+            to { opacity: 1; }
+        }
+        @keyframes fadeInGeneric {
+            to { opacity: 1; }
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+    <div class="splash-container">
+        <svg class="lotus-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+            <path d="M12 5c-3.86 0-7 3.14-7 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+            <path d="M12 8.5c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z"/>
+        </svg>
+        <h1 class="splash-title">
+            <span style="--i:1;">P</span><span style="--i:2;">r</span><span style="--i:3;">o</span><span style="--i:4;">y</span><span style="--i:5;">e</span><span style="--i:6;">c</span><span style="--i:7;">t</span><span style="--i:8;">o</span>
+            <span style="--i:9; margin-left: 2rem;">Z</span><span style="--i:10;">e</span><span style="--i:11;">n</span>
+        </h1>
+        <p class="splash-byline">by SO->IN</p>
+    </div>
+    
+    <script>
+        setTimeout(() => {
+            document.body.classList.add('fade-out');
+            
+            // Wait for the fade-out animation to finish before redirecting
+            setTimeout(() => {
+                window.location.href = "presupuestador.html";
+            }, 500);
+
+        }, 3000); // Total splash screen duration
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

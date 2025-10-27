@@ -1,0 +1,181 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Tarifas - SO→IN</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0F172A; }
+    .accent-color { color: #22D3EE; }
+    .accent-bg { background-color: #22D3EE; color: #0F172A; }
+    .accent-bg:hover { background-color: #06B6D4; }
+    .card-bg { background-color: #1E293B; }
+    table th, table td { padding: 8px 12px; vertical-align: top; }
+  </style>
+</head>
+
+<body class="text-slate-50 min-h-screen p-6">
+
+  <div class="max-w-6xl mx-auto">
+    <!-- Encabezado -->
+    <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-extrabold accent-color tracking-wider">Panel de Tarifas</h1>
+      <div class="flex gap-4 mt-4 sm:mt-0">
+        <a href="presupuestador.html" class="accent-bg font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">← Volver al Centro de Operaciones</a>
+        <button id="downloadJson" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">💾 Exportar JSON</button>
+      </div>
+    </header>
+
+    <!-- Controles -->
+    <div class="card-bg p-6 rounded-xl shadow-lg border border-slate-700 mb-8">
+      <h2 class="text-xl font-semibold mb-3 accent-color">Ajuste global de precios</h2>
+      <p class="text-slate-400 text-sm mb-3">Usá este control para aplicar un descuento o aumento a todos los precios mostrados.</p>
+      <div class="flex items-center gap-4">
+        <label for="discountInput" class="text-slate-200 font-medium">Porcentaje (%):</label>
+        <input id="discountInput" type="number" value="0" class="w-24 px-3 py-2 rounded bg-slate-800 text-center border border-slate-600 text-white" />
+        <button id="applyDiscount" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">Aplicar</button>
+      </div>
+    </div>
+
+    <!-- Contenedor de tablas -->
+    <div id="pricingContainer" class="space-y-10"></div>
+  </div>
+
+  <script>
+    // === DATA BASE (se carga desde el JSON, este es un fallback) ===
+    let pricingData = {
+      allServices: {},
+      monthlyPlans: []
+    };
+
+    // === RENDER ===
+    const container = document.getElementById('pricingContainer');
+
+    function renderPricing(data) {
+      container.innerHTML = '';
+      if (data.allServices) {
+          Object.values(data.allServices).forEach(section => {
+            const sectionHTML = `
+              <section class="card-bg p-6 rounded-xl shadow-lg border border-slate-700">
+                <h2 class="text-2xl font-semibold text-cyan-300 mb-3">${section.name}</h2>
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="text-left text-slate-300 border-b border-slate-700">
+                      <th class="pb-2 w-1/4">Servicio</th>
+                      <th class="pb-2 w-1/2">Descripción</th>
+                      <th class="pb-2 w-1/4 text-right">USD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${section.items.map(item => `
+                      <tr class="border-t border-slate-700 hover:bg-slate-800 transition">
+                        <td class="py-3 font-medium text-slate-200">${item.name}</td>
+                        <td class="py-3 text-slate-400">${item.description}</td>
+                        <td class="py-3 font-bold text-red-400 text-right">$${item.price.toFixed(2)}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </section>`;
+            container.insertAdjacentHTML('beforeend', sectionHTML);
+          });
+      }
+
+      // Planes mensuales
+      if (data.monthlyPlans && data.monthlyPlans.length > 0) {
+          const plansHTML = `
+            <section class="card-bg p-6 rounded-xl shadow-lg border border-slate-700">
+              <h2 class="text-2xl font-semibold text-cyan-300 mb-3">Planes Mensuales</h2>
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="text-left text-slate-300 border-b border-slate-700">
+                    <th class="pb-2 w-1/4">Plan</th>
+                    <th class="pb-2 w-1/2">Descripción / Incluye</th>
+                    <th class="pb-2 w-1/4 text-right">USD/mes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.monthlyPlans.map(plan => `
+                    <tr class="border-t border-slate-700 hover:bg-slate-800 transition">
+                      <td class="py-3 font-medium text-slate-200">${plan.name}</td>
+                      <td class="py-3 text-slate-400">${plan.description} (Hasta ${plan.maxItems} ítems por proyecto)</td>
+                      <td class="py-3 font-bold text-red-400 text-right">$${plan.price.toFixed(2)}</td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </section>`;
+          container.insertAdjacentHTML('beforeend', plansHTML);
+      }
+    }
+
+    // === CARGAR DATOS DEL JSON ===
+    async function loadPricing() {
+        try {
+            const response = await fetch('pricing.json?v=' + new Date().getTime()); // Evita caché
+            if (!response.ok) throw new Error('No se pudo cargar pricing.json');
+            pricingData = await response.json();
+            renderPricing(pricingData);
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = `<div class="text-red-400 text-center card-bg p-6 rounded-lg">Error: No se pudo cargar el archivo 'pricing.json'. Asegúrate de que el archivo exista y esté en la misma carpeta.</div>`;
+        }
+    }
+
+    // === APLICAR DESCUENTO ===
+    document.getElementById('applyDiscount').addEventListener('click', () => {
+      const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+      const factor = 1 - (discount / 100);
+
+      // aplicar a cada ítem de servicio
+      if (pricingData.allServices) {
+          Object.values(pricingData.allServices).forEach(section => {
+            section.items.forEach(item => {
+                const originalPrice = item.originalPrice ?? item.price;
+                if(item.originalPrice == null) item.originalPrice = item.price;
+                item.price = Math.max(originalPrice * factor, 0)
+            });
+          });
+      }
+      
+      // aplicar a cada plan mensual
+      if (pricingData.monthlyPlans) {
+          pricingData.monthlyPlans.forEach(plan => {
+            const originalPrice = plan.originalPrice ?? plan.price;
+            if(plan.originalPrice == null) plan.originalPrice = plan.price;
+            plan.price = Math.max(originalPrice * factor, 0)
+          });
+      }
+
+      renderPricing(pricingData);
+    });
+
+    // === EXPORTAR JSON ===
+    document.getElementById('downloadJson').addEventListener('click', () => {
+      // Limpiar precios originales antes de exportar
+      const exportData = JSON.parse(JSON.stringify(pricingData));
+       if (exportData.allServices) {
+          Object.values(exportData.allServices).forEach(section => {
+            section.items.forEach(item => delete item.originalPrice);
+          });
+      }
+      if (exportData.monthlyPlans) {
+          exportData.monthlyPlans.forEach(plan => delete plan.originalPrice);
+      }
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pricing.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Carga inicial
+    loadPricing();
+
+  </script>
+
+</body>
+</html>
