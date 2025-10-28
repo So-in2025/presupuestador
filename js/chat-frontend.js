@@ -347,26 +347,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initChat() {
         chatMessagesContainer.innerHTML = '';
-        const loadedHistory = loadChatHistory();
+        let loadedHistory = loadChatHistory();
 
-        // Sanitize history: ensure every entry has the correct structure.
-        chatHistory = loadedHistory.filter(msg => 
-            msg && msg.role && msg.parts && Array.isArray(msg.parts) && msg.parts.length > 0 && typeof msg.parts[0].text === 'string'
-        );
+        // Si el historial no es un array (ej: JSON corrupto), empezar de cero.
+        if (!Array.isArray(loadedHistory)) {
+            console.warn("El historial del chat no era un array, se está reiniciando.");
+            loadedHistory = [];
+        }
 
-        // If sanitization removed items, log it and save the clean version.
-        if (chatHistory.length < loadedHistory.length) {
-            console.warn("Se detectaron y eliminaron mensajes corruptos del historial del chat.");
+        const sanitizedHistory = [];
+        loadedHistory.forEach(msg => {
+            // Realizar una comprobación estricta de la estructura de cada mensaje.
+            if (msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string') {
+                sanitizedHistory.push(msg);
+            } else {
+                // Registrar el mensaje corrupto para depuración, pero no añadirlo.
+                console.warn('Descartando mensaje corrupto del historial:', msg);
+            }
+        });
+
+        chatHistory = sanitizedHistory;
+
+        // Si el historial saneado es diferente al cargado, guardar la versión limpia.
+        if (chatHistory.length !== loadedHistory.length) {
+            console.log("Historial de chat limpiado. Guardando la versión saneada.");
             saveChatHistory(chatHistory);
         }
 
         if (chatHistory.length > 0) {
-            chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
+            // Al cargar el historial, nunca reproducir automáticamente.
+            shouldAutoplay = false; 
+            chatHistory.forEach(msg => {
+                addMessageToChat(msg.parts[0].text, msg.role)
+            });
         } else {
-            // This block now runs if history was empty or fully corrupted.
+            // El historial está vacío, así que mostraremos y reproduciremos el mensaje de bienvenida.
+            shouldAutoplay = true;
             const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
             addMessageToChat(welcomeMessage, 'model');
-            chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
+            chatHistory = [{ role: 'model', parts: [{ text: welcomeMessage }] }];
             saveChatHistory(chatHistory);
         }
 
