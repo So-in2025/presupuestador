@@ -1,16 +1,24 @@
-# Environment variables
-# Nunca subas tus claves de API u otros secretos al repositorio.
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Archivos de log generados por npm/yarn
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Archivos de metadatos del sistema operativo
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

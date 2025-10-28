@@ -1,8 +1,7 @@
-
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v4: Persistencia total en localStorage (historial, servicios locales).
+ * v5: Resiliencia contra historial corrupto.
  */
 
 import { getState, setLocalServices } from './state.js';
@@ -348,11 +347,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initChat() {
         chatMessagesContainer.innerHTML = '';
-        chatHistory = loadChatHistory();
+        const loadedHistory = loadChatHistory();
+
+        // Sanitize history: ensure every entry has the correct structure.
+        chatHistory = loadedHistory.filter(msg => 
+            msg && msg.role && msg.parts && Array.isArray(msg.parts) && msg.parts.length > 0 && typeof msg.parts[0].text === 'string'
+        );
+
+        // If sanitization removed items, log it and save the clean version.
+        if (chatHistory.length < loadedHistory.length) {
+            console.warn("Se detectaron y eliminaron mensajes corruptos del historial del chat.");
+            saveChatHistory(chatHistory);
+        }
 
         if (chatHistory.length > 0) {
             chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
         } else {
+            // This block now runs if history was empty or fully corrupted.
             const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
             addMessageToChat(welcomeMessage, 'model');
             chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
