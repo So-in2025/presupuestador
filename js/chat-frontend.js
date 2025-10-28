@@ -1,7 +1,7 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v5: Resiliencia contra historial corrupto.
+ * v6: Inicialización a prueba de fallos (fail-safe).
  */
 
 import { getState, setLocalServices } from './state.js';
@@ -347,53 +347,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initChat() {
         chatMessagesContainer.innerHTML = '';
-        let loadedHistory = loadChatHistory();
-
-        // Si el historial no es un array (ej: JSON corrupto), empezar de cero.
-        if (!Array.isArray(loadedHistory)) {
-            console.warn("El historial del chat no era un array, se está reiniciando.");
-            loadedHistory = [];
-        }
-
-        const sanitizedHistory = [];
-        loadedHistory.forEach(msg => {
-            // Realizar una comprobación estricta de la estructura de cada mensaje.
-            if (msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string') {
-                sanitizedHistory.push(msg);
-            } else {
-                // Registrar el mensaje corrupto para depuración, pero no añadirlo.
-                console.warn('Descartando mensaje corrupto del historial:', msg);
-            }
-        });
-
-        chatHistory = sanitizedHistory;
-
-        // Si el historial saneado es diferente al cargado, guardar la versión limpia.
-        if (chatHistory.length !== loadedHistory.length) {
-            console.log("Historial de chat limpiado. Guardando la versión saneada.");
-            saveChatHistory(chatHistory);
-        }
-
-        if (chatHistory.length > 0) {
-            // Al cargar el historial, nunca reproducir automáticamente.
-            shouldAutoplay = false; 
-            chatHistory.forEach(msg => {
-                addMessageToChat(msg.parts[0].text, msg.role)
+        let successfullyLoaded = false;
+    
+        try {
+            let loadedHistory = loadChatHistory();
+            if (!Array.isArray(loadedHistory)) throw new Error("History is not an array");
+    
+            const sanitizedHistory = [];
+            loadedHistory.forEach(msg => {
+                // Check for a valid message structure, otherwise discard it.
+                if (msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string') {
+                    sanitizedHistory.push(msg);
+                } else {
+                    console.warn('Discarding corrupt message from history:', msg);
+                }
             });
-        } else {
-            // El historial está vacío, así que mostraremos y reproduciremos el mensaje de bienvenida.
+    
+            if (sanitizedHistory.length > 0) {
+                chatHistory = sanitizedHistory;
+                // If some messages were corrupt, save the clean version.
+                if (chatHistory.length !== loadedHistory.length) {
+                    saveChatHistory(chatHistory);
+                }
+                
+                shouldAutoplay = false; 
+                chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
+                successfullyLoaded = true;
+            }
+        } catch (error) {
+            console.error("Failed to load or process chat history. The chat will be reset.", error);
+            // Let it fall through to the welcome message block.
+        }
+    
+        if (!successfullyLoaded) {
+            // This block runs if history is empty, corrupt, or loading fails.
+            localStorage.removeItem('zenChatHistory'); // Clear any bad data.
             shouldAutoplay = true;
             const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
             addMessageToChat(welcomeMessage, 'model');
             chatHistory = [{ role: 'model', parts: [{ text: welcomeMessage }] }];
-            saveChatHistory(chatHistory);
+            saveChatHistory(chatHistory); // Save the fresh, valid history.
         }
-
+    
+        // Attach event listeners *after* the UI is guaranteed to be stable.
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
         });
-
+    
         chatMessagesContainer.addEventListener('click', (event) => {
             const target = event.target.closest('[data-action="add-service"]');
             if (target && !target.disabled) {
