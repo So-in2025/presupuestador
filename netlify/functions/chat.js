@@ -49,7 +49,20 @@ exports.handler = async (event) => {
         const GEMINI_MODEL = "gemini-2.5-flash";
 
         const lastUserMessage = userMessage;
-        const chatHistoryForSDK = historyFromClient.slice(0, -1);
+        
+        // SANITIZE HISTORY: The conversation history for the API must start with a 'user' role.
+        let sanitizedHistory = historyFromClient.slice(0, -1); // Remove the last user message which will be sent separately.
+        const firstUserIndex = sanitizedHistory.findIndex(msg => msg.role === 'user');
+
+        if (firstUserIndex > -1) {
+            // If a 'user' message is found, slice the array to start from there.
+            sanitizedHistory = sanitizedHistory.slice(firstUserIndex);
+        } else {
+            // If no 'user' message is found (e.g., only the initial welcome message),
+            // start with an empty history.
+            sanitizedHistory = [];
+        }
+        const chatHistoryForSDK = sanitizedHistory;
 
         let contextText = "";
         if (selectedServicesContext && selectedServicesContext.length > 0) {
