@@ -1,4 +1,3 @@
-
 // js/modals.js
 
 import * as dom from './dom.js';
@@ -210,7 +209,7 @@ export async function handleSaveApiKey(button) {
     try {
         // Prueba de validación real contra la API
         const genAI = new GoogleGenerativeAI(key);
-        await genAI.getGenerativeModel({ model: "gemini-pro" }).generateContent("test");
+        await genAI.getGenerativeModel({ model: "gemini-2.5-flash" }).generateContent("test");
 
         setSessionApiKey(key);
         closeApiKeyModal();

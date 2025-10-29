@@ -8,6 +8,7 @@ import { showNotification, closePdfOptionsModal } from './modals.js';
 export async function generatePdf(isForClient, button) {
     const spinner = button.querySelector('.spinner');
     const btnText = button.querySelector('.btn-text');
+    const originalText = btnText.textContent;
 
     spinner.classList.remove('hidden');
     btnText.textContent = 'Generando...';
@@ -381,7 +382,7 @@ export async function generatePdf(isForClient, button) {
         showNotification('error', 'Error de PDF', 'No se pudo generar el documento. Revisa la consola para más detalles.');
     } finally {
         spinner.classList.add('hidden');
-        btnText.textContent = isForClient ? 'Generar Propuesta para Cliente' : 'Generar Reporte Interno';
+        btnText.textContent = originalText;
         button.disabled = false;
     }
 }

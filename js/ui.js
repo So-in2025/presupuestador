@@ -38,7 +38,7 @@ export function initializeServiceCheckboxes() {
         const localItemsHTML = localServices.map(svc => createServiceItemHTML(svc, 'standard', `item-${svc.id}`, false, 'local')).join('');
         servicesHTML += `
             <div id="local-services-container" class="p-4 bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
-                <h3 class="text-xl font-semibold mb-3 text-purple-400">E. Servicios Personalizados (Guardados)</h3>
+                <h3 class="text-xl font-semibold mb-3 text-purple-400">H. Servicios Personalizados (Guardados)</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${localItemsHTML}</div>
             </div>`;
     }
@@ -52,7 +52,7 @@ export function appendLocalServiceToUI(service) {
     if (!container) {
         dom.servicesSelectionDiv.insertAdjacentHTML('beforeend', `
              <div id="local-services-container" class="p-4 bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
-                <h3 class="text-xl font-semibold mb-3 text-purple-400">E. Servicios Personalizados (Guardados)</h3>
+                <h3 class="text-xl font-semibold mb-3 text-purple-400">H. Servicios Personalizados (Guardados)</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </div>
         `);
@@ -92,20 +92,25 @@ export function renderTasksDashboard() {
         : tasks.map((task, index) => {
             let serviceList = '';
             let priceText = '';
+            let icon = '';
 
             if (task.isTiered) {
+                icon = '📊';
                 const prices = task.tiers.map(t => t.totalDev).sort((a,b) => a-b);
                 serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
                 priceText = `<p class="text-xs text-red-300">Costos Dev: $${prices.map(p => p.toFixed(2)).join(' / ')}</p>`;
             } else if (task.package) {
+                icon = '📦';
                 serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
                 priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
             } else if (task.plan) {
+                icon = '📅';
                 const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
                 const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
                 serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
                 priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
             } else {
+                icon = '🧩';
                 serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
                 priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
             }
@@ -113,7 +118,7 @@ export function renderTasksDashboard() {
             return `
                 <div class="p-3 border border-slate-700 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
                     <div class="flex justify-between items-start mb-1">
-                        <h4 class="font-bold text-base text-white">${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
+                        <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
                         <div class="flex gap-2">
                             <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button">Editar</button>
                             <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button">Eliminar</button>

@@ -1,4 +1,3 @@
-
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
@@ -47,7 +46,7 @@ exports.handler = async (event) => {
     try {
         // --- INICIALIZACIÓN DE GEMINI CON LA CLAVE DEL USUARIO ---
         const genAI = new GoogleGenerativeAI(apiKey);
-        const GEMINI_MODEL = "gemini-pro";
+        const GEMINI_MODEL = "gemini-2.5-flash";
 
         const lastUserMessage = userMessage;
         const chatHistoryForSDK = historyFromClient.slice(0, -1);
@@ -66,7 +65,7 @@ exports.handler = async (event) => {
                 Eres un analista de negocios experto. Tu única tarea es leer la conversación que te proporciona el revendedor y extraer una lista concisa y clara de 3 a 5 requisitos o necesidades clave del cliente final.
                 INSTRUCCIONES CLAVE:
                 1. Formatea tu respuesta como una lista de viñetas, usando '-' para cada punto.
-                2. No saludes, no te despidas, no sugieras servicios.
+                2. No saludes, no te despides, no sugieras servicios.
                 3. Solo devuelve la lista de requisitos extraídos.
             `;
         } else if (intent === 'objection') {
