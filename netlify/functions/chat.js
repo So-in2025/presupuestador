@@ -18,7 +18,8 @@ exports.handler = async (event) => {
 
     let pricingData;
     try {
-        const pricingPath = path.resolve(__dirname, '../../pricing.json');
+        // CORRECCIÓN: Leer la copia local de pricing.json
+        const pricingPath = path.resolve(__dirname, 'pricing.json');
         pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
     } catch (err) {
         console.error("ERROR CRÍTICO al cargar pricing.json:", err);
