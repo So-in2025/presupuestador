@@ -1,4 +1,3 @@
-
 // js/app.js
 
 import * as dom from './dom.js';
@@ -9,7 +8,7 @@ import { handlePlanSelection, updatePointSystemUI } from './points.js';
 
 export function updateSummary() {
     let totalDevCost = 0;
-    const { selectedServices, COMBO_DISCOUNT } = state.getState();
+    const { selectedServices } = state.getState();
     const margin = parseFloat(dom.marginPercentageInput.value) / 100 || 0;
     let feedback = '';
 
@@ -28,13 +27,7 @@ export function updateSummary() {
         feedback = `Costo fijo de ${exclusiveSelection.type}: $${totalDevCost.toFixed(2)}`;
     } else {
         totalDevCost = standardItems.reduce((sum, item) => sum + item.price, 0);
-        if (standardItems.filter(s => s.type === 'standard').length >= 3) {
-            const discountAmount = totalDevCost * COMBO_DISCOUNT;
-            totalDevCost *= (1 - COMBO_DISCOUNT);
-            feedback = `Aplicado ${COMBO_DISCOUNT * 100}% Dcto. (Ahorro: $${discountAmount.toFixed(2)})`;
-        } else {
-            feedback = `Total de ${standardItems.length} ítems. (3+ estándar para descuento)`;
-        }
+        feedback = `Total de ${standardItems.length} ítems individuales.`;
     }
     
     const totalClientPrice = margin < 1 ? totalDevCost / (1 - margin) : totalDevCost * (1 + margin);

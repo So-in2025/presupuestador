@@ -6,8 +6,31 @@ import * as state from './state.js';
 import { loadPricingData, loadLocalData, saveTasks } from './data.js';
 import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
-import { removeCustomService, showNotification } from './modals.js';
+import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
 import { initializeBranding, initializeTour } from './ui.js';
+
+// --- GESTIÓN DE API KEY (NUEVO) ---
+let sessionApiKey = null;
+export const getSessionApiKey = () => sessionApiKey;
+export const setSessionApiKey = (key) => { 
+    sessionApiKey = key; 
+    const indicator = document.getElementById('ai-status-indicator');
+    if(indicator) {
+        indicator.classList.remove('bg-red-500');
+        indicator.classList.add('bg-green-400', 'animate-pulse');
+    }
+};
+
+function checkApiKey() {
+    if (!sessionApiKey) {
+        showApiKeyModal();
+        const indicator = document.getElementById('ai-status-indicator');
+        if(indicator) {
+            indicator.classList.remove('bg-green-400', 'animate-pulse');
+            indicator.classList.add('bg-red-500');
+        }
+    }
+}
 
 // --- EVENT LISTENERS PRINCIPALES ---
 
@@ -15,10 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeBranding();
     loadLocalData();
     loadPricingData().then(() => {
-        // Solo inicializar el tour después de que la UI esté cargada con los datos
         initializeTour();
     });
     resetForm();
+    checkApiKey(); // Comprobar la API Key al inicio
 });
 
 dom.serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));

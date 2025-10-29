@@ -1,13 +1,15 @@
+
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v8: Lógica de inicialización a prueba de fallos y recuperación automática.
+ * v11 (INFALIBLE + API Key de Usuario)
  */
 
 import { getState, setLocalServices } from './state.js';
 import { saveLocalServices, loadChatHistory, saveChatHistory } from './data.js';
-import { showNotification } from './modals.js';
+import { showNotification, showApiKeyModal } from './modals.js';
 import { appendLocalServiceToUI } from './ui.js';
+import { getSessionApiKey } from './main.js';
 
 // --- INICIO: BLOQUE TTS MODIFICADO ---
 window.handleTTSButtonClick = (buttonElement) => {
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let chatHistory = [];
     let isSending = false;
-    let currentAiMode = 'builder'; // 'builder' o 'objection'
+    let currentAiMode = 'builder'; // 'builder', 'objection', o 'analyze'
 
     modeSelector.addEventListener('click', (e) => {
         const button = e.target.closest('.chat-mode-btn');
@@ -95,8 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateChatUIForMode() {
         if (currentAiMode === 'builder') {
             chatInput.placeholder = "Ej: 'Necesito una web para un fotógrafo...'";
-        } else {
+        } else if (currentAiMode === 'objection') {
             chatInput.placeholder = "Escribe la objeción de tu cliente aquí...";
+        } else { // analyze
+            chatInput.placeholder = "Pega aquí la conversación con tu cliente (email, chat...)"
         }
     }
     
@@ -159,34 +163,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveAndRenderNewLocalService(service) {
         const { localServices } = getState();
-        // Evita duplicados
         if (localServices.find(s => s.id === service.id) || document.getElementById(`standard-${service.id}`)) {
             return;
         }
-
         const newLocalServices = [...localServices, service];
         setLocalServices(newLocalServices);
         saveLocalServices();
-        appendLocalServiceToUI(service); // Actualiza la UI al instante
+        appendLocalServiceToUI(service);
         showNotification('info', 'Servicio Personalizado Guardado', `"${service.name}" ha sido añadido a tu catálogo local.`);
     }
 
     const findServiceById = (id) => {
         const { allServices, monthlyPlans, localServices } = getState();
-        
         let plan = monthlyPlans.find(p => p.id == id);
         if (plan) return { type: 'plan', item: plan };
-        
         const allStandardServices = Object.values(allServices).flatMap(category => category.items);
         let service = allStandardServices.find(s => s.id === id);
         if (service) {
             const isPackage = Object.values(allServices).find(cat => cat.isExclusive && cat.items.some(i => i.id === id));
             return { type: isPackage ? 'package' : 'standard', item: service };
         }
-
         let localService = localServices.find(s => s.id === id);
         if (localService) return { type: 'standard', item: localService };
-        
         return null;
     };
 
@@ -205,54 +203,57 @@ document.addEventListener('DOMContentLoaded', () => {
         let textToSpeak = message;
 
         if (sender === 'ai') {
-            try {
-                const jsonResponse = JSON.parse(message);
-                if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
-                    // ... (resto de la lógica de parseo de JSON, ahora con la nueva función de guardado)
-                     jsonResponse.services.forEach(serviceObject => {
-                        if (serviceObject.is_new) {
-                            // ¡Es un servicio nuevo! Lo guardamos y renderizamos.
-                            saveAndRenderNewLocalService(serviceObject);
-                        }
-                    });
+            if (currentAiMode === 'analyze') {
+                finalHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
+                textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
+            } else {
+                 try {
+                    const jsonResponse = JSON.parse(message);
+                    if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
+                        jsonResponse.services.forEach(serviceObject => {
+                            if (serviceObject.is_new) {
+                                saveAndRenderNewLocalService(serviceObject);
+                            }
+                        });
 
-                    let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
-                    if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
-                    if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
-                    textToSpeak = cleanText;
-                    
-                    let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                    let serviceButtonsHTML = '';
-                    
-                    jsonResponse.services.forEach(serviceObject => {
-                        const serviceInfo = findServiceById(serviceObject.id);
-                        if (serviceInfo) {
-                             serviceButtonsHTML += createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name);
-                        } else {
-                            console.warn(`Servicio recomendado no encontrado: ID=${serviceObject.id}`);
-                             serviceButtonsHTML += `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg mt-2 mr-2 cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
-                        }
-                    });
-                    
-                    if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
-                    finalHTML = messageText;
-                    
-                    if (serviceButtonsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p><div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div></div>`;
+                        let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
+                        if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
+                        if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
+                        textToSpeak = cleanText;
+                        
+                        let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
+                        let serviceButtonsHTML = '';
+                        
+                        jsonResponse.services.forEach(serviceObject => {
+                            const serviceInfo = findServiceById(serviceObject.id);
+                            if (serviceInfo) {
+                                 serviceButtonsHTML += createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name);
+                            } else {
+                                console.warn(`Servicio recomendado no encontrado: ID=${serviceObject.id}`);
+                                 serviceButtonsHTML += `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg mt-2 mr-2 cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                            }
+                        });
+                        
+                        if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
+                        finalHTML = messageText;
+                        
+                        if (serviceButtonsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p><div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div></div>`;
 
-                    if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
-                        let questionButtonsHTML = jsonResponse.client_questions.map(question => {
-                            const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                            return `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
-                        }).join('');
-                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
+                        if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
+                            let questionButtonsHTML = jsonResponse.client_questions.map(question => {
+                                const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                return `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
+                            }).join('');
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
+                        }
+                        
+                        if (jsonResponse.sales_pitch) {
+                            const pitchId = `pitch-${Date.now()}`;
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
+                        }
                     }
-                    
-                    if (jsonResponse.sales_pitch) {
-                        const pitchId = `pitch-${Date.now()}`;
-                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
-                    }
-                }
-            } catch (e) { /* No es JSON, es texto plano */ }
+                } catch (e) { /* No es JSON, es texto plano (objeción, etc) */ }
+            }
 
             const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
             const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️ Escuchar</button>`;
@@ -284,15 +285,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const userMessage = chatInput.value.trim();
         if (!userMessage || isSending) return;
 
+        const apiKey = getSessionApiKey();
+        if (!apiKey) {
+            showApiKeyModal();
+            showNotification('error', 'API Key Requerida', 'Por favor, introduce tu API Key de Google AI para usar el asistente.');
+            return;
+        }
+
         isSending = true;
         sendChatBtn.disabled = true;
         addMessageToChat(userMessage, 'user');
         
+        const { selectedServices } = getState();
+        const simpleSelectedServices = selectedServices.map(({ id, name, type }) => ({ id, name, type }));
+        
         const payload = { 
             userMessage: userMessage, 
             history: chatHistory,
-            mode: currentAiMode
+            mode: currentAiMode,
+            selectedServicesContext: simpleSelectedServices,
+            apiKey: apiKey 
         };
+
         chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
         chatInput.value = '';
         chatInput.focus();
@@ -306,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: 'Error de servidor. Revisa el log de la función en Netlify.' }));
+                const errorData = await response.json().catch(() => ({ message: `Error de servidor (${response.status}). Revisa el log de la función en Netlify.` }));
                 throw new Error(errorData.message || `Error de red: ${response.status}`);
             }
 
@@ -322,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isSending = false;
             sendChatBtn.disabled = false;
             toggleTypingIndicator(false);
-            saveChatHistory(chatHistory); // Guardar historial después de cada interacción
+            saveChatHistory(chatHistory);
         }
     }
 
@@ -352,17 +366,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const loadedHistory = loadChatHistory();
             if (Array.isArray(loadedHistory) && loadedHistory.length > 0) {
-                // Validación rigurosa: cada mensaje DEBE tener la estructura correcta.
                 const allMessagesAreValid = loadedHistory.every(msg => 
                     msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && 
                     msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string'
                 );
-
-                if (!allMessagesAreValid) {
-                    throw new Error("El historial contiene al menos un mensaje corrupto.");
-                }
-                
-                // Si la validación pasa, cargamos el historial.
+                if (!allMessagesAreValid) throw new Error("El historial contiene al menos un mensaje corrupto.");
                 chatHistory = loadedHistory;
                 shouldAutoplay = false; 
                 chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
@@ -370,14 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.warn("Fallo al cargar el historial, se reiniciará el chat:", error);
-            // La variable isHistoryValid se mantiene en false, lo que activará la recuperación.
         }
 
         if (!isHistoryValid) {
-            // Mecanismo de recuperación: limpiar y reiniciar.
             localStorage.removeItem('zenChatHistory');
             shouldAutoplay = true;
-            const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
+            const welcomeMessage = 'Para comenzar, configura tu API Key de Google AI usando el botón "Cambiar API Key" en la cabecera.';
             addMessageToChat(welcomeMessage, 'model');
             chatHistory = [{ role: 'model', parts: [{ text: welcomeMessage }] }];
             saveChatHistory(chatHistory);

@@ -5,6 +5,7 @@ import * as dom from './dom.js';
 import { getState, setCustomServices, setTieredBuilderActive } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML } from './ui.js';
+import { setSessionApiKey } from './main.js';
 
 export function showNotification(type, title, message) {
     dom.notificationTitle.textContent = title;
@@ -33,7 +34,6 @@ export function showPdfOptionsModal() {
     const { tasks } = getState();
     if (tasks.length === 0) return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
     
-    // Rellenar datos de contacto desde localStorage si existen
     const brandInfo = localStorage.getItem('zenBrandInfo');
     if(brandInfo) {
         const { resellerInfo } = JSON.parse(brandInfo);
@@ -66,7 +66,6 @@ export function removeCustomService(id) {
     updateSelectedItems();
 }
 
-// --- NUEVO: BRANDING MODAL ---
 export function showBrandingModal() {
     const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
     document.getElementById('brandColorInput').value = brandInfo.color || '#22D3EE';
@@ -75,7 +74,6 @@ export function showBrandingModal() {
 
 export function closeBrandingModal() { document.getElementById('brandingModal').classList.add('hidden'); }
 
-// --- NUEVO: TIERED BUILDER MODAL ---
 export function showTieredBuilderModal(taskToEdit = null) {
     const { allServices } = getState();
     const container = document.getElementById('tiered-builder-columns');
@@ -177,6 +175,28 @@ export function addTieredProposal() {
     closeTieredBuilderModal();
 }
 
+// --- NUEVO: API KEY MODAL ---
+export function showApiKeyModal() {
+    dom.apiKeyModal.classList.remove('hidden');
+    dom.apiKeyInput.focus();
+}
+
+export function closeApiKeyModal() {
+    dom.apiKeyModal.classList.add('hidden');
+}
+
+export function handleSaveApiKey() {
+    const key = dom.apiKeyInput.value.trim();
+    if (!key) {
+        showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key válida.');
+        return;
+    }
+    // La clave se guarda de forma segura en una variable de sesión, no en localStorage.
+    setSessionApiKey(key);
+    closeApiKeyModal();
+    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
+}
+
 // Asociar funciones al scope global para que los `onclick` funcionen.
 window.closeNotificationModal = closeNotificationModal;
 window.closeCustomServiceModal = closeCustomServiceModal;
@@ -189,3 +209,5 @@ window.closeBrandingModal = closeBrandingModal;
 window.showTieredBuilderModal = showTieredBuilderModal;
 window.closeTieredBuilderModal = closeTieredBuilderModal;
 window.addTieredProposal = addTieredProposal;
+window.showApiKeyModal = showApiKeyModal;
+window.handleSaveApiKey = handleSaveApiKey;

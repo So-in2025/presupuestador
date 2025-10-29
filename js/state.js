@@ -1,7 +1,4 @@
-
 // js/state.js
-
-export const COMBO_DISCOUNT = 0.10;
 
 // Estado mutable de la aplicación
 let state = {
