@@ -1,72 +1,21 @@
 // /netlify/functions/chat.js
 /**
- * Backend actualizado para Asistente Zen
- * Modelo: Gemini 2.5 Flash
- * Lógica de Intención: v6 (SDK @google/genai moderno y manejo de errores robusto)
- * SDK: @google/genai
+ * Backend para Asistente Zen
+ * SDK: @google/generative-ai (versión original funcional)
+ * Lógica de Intención: v7 (Compatible con SDK original, manejo de errores robusto)
  */
 
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenAI, Type } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // --- CONFIGURACIÓN DE GEMINI ---
 if (!process.env.API_KEY) {
   console.error("❌ API_KEY no está definida en variables de entorno.");
 }
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const GEMINI_MODEL = "gemini-2.5-flash";
-
-// --- FUNCIÓN DE AYUDA PARA LA API DE GEMINI (ROBUSTA) ---
-async function callGemini(systemInstruction, history, geminiMode = "TEXT") {
-  const modelConfig = {
-    systemInstruction: systemInstruction,
-  };
-
-  if (geminiMode === "JSON") {
-    modelConfig.responseMimeType = "application/json";
-    modelConfig.responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        introduction: { type: Type.STRING },
-        services: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              is_new: { type: Type.BOOLEAN },
-              name: { type: Type.STRING },
-              description: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-            },
-            required: ["id", "is_new", "name"],
-          },
-        },
-        closing: { type: Type.STRING },
-        client_questions: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-        },
-        sales_pitch: { type: Type.STRING },
-      },
-      required: ["introduction", "services", "closing", "client_questions", "sales_pitch"],
-    };
-  }
-  
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: history,
-    config: modelConfig,
-  });
-
-  const text = response.text;
-  if (!text) {
-    throw new Error("La respuesta de la IA llegó vacía.");
-  }
-  return text;
-}
-
+const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+// Usamos un modelo estable y compatible con este SDK.
+const GEMINI_MODEL = "gemini-pro";
 
 // --- LÓGICA PRINCIPAL DE LA FUNCIÓN NETLIFY (HANDLER) ---
 exports.handler = async (event) => {
@@ -77,7 +26,6 @@ exports.handler = async (event) => {
 
     let pricingData;
     try {
-        // CORRECCIÓN: Apuntar al pricing.json de la raíz del proyecto.
         const pricingPath = path.resolve(__dirname, '../../pricing.json');
         pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
     } catch (err) {
@@ -101,12 +49,15 @@ exports.handler = async (event) => {
     }
 
     try {
+        const lastUserMessage = userMessage;
+        // El SDK antiguo maneja el historial completo en startChat.
+        // Se excluye el último mensaje de 'model' si es un mensaje de error previo o de bienvenida.
+        const chatHistoryForSDK = historyFromClient.slice(0, -1);
+
         // 2. Determinar intención y prompt del sistema
         let intent = "TEXTO";
-        let geminiMode = "TEXT";
         let systemPrompt;
-        const lastUserMessage = userMessage;
-
+        
         if (mode === 'objection') {
             intent = "OBJECION";
             systemPrompt = `
@@ -121,19 +72,17 @@ exports.handler = async (event) => {
                 7. NO generes JSON. Responde en texto plano y amigable.
             `;
         } else { // modo 'builder'
-            const classificationSystemPrompt = `
-                Eres un clasificador de peticiones. Analiza el mensaje del revendedor.
-                Tu única respuesta debe ser 'RECOMENDACION' si la pregunta es para pedir una sugerencia de servicios para un proyecto, o 'TEXTO' para cualquier otra cosa.
-                Responde solo con la palabra en mayúsculas.
-            `;
-            const classificationHistory = [{ role: 'user', parts: [{ text: lastUserMessage }] }];
-            const intentResponseText = await callGemini(classificationSystemPrompt, classificationHistory, "TEXT");
+            const classificationModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+            const classificationPrompt = `Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta es para pedir una sugerencia de servicios para un proyecto, o 'TEXTO' para cualquier otra cosa. Responde solo con la palabra en mayúsculas.`;
+            const result = await classificationModel.generateContent(classificationPrompt + "\n\nMensaje: " + lastUserMessage);
+            const intentResponseText = result.response.text();
             intent = intentResponseText.toUpperCase().trim().replace(/['"]+/g, '');
         }
 
         // 3. Preparar la llamada principal según la intención
+        let finalPrompt = lastUserMessage;
+
         if (intent === 'RECOMENDACION') {
-            geminiMode = "JSON";
             const serviceList = Object.values(pricingData.allServices)
                 .flatMap(category => category.items)
                 .map(s => `ID: ${s.id} | Nombre: ${s.name} | Descripción: ${s.description}`).join('\n');
@@ -146,21 +95,28 @@ exports.handler = async (event) => {
                 ${allServicesString}
                 INSTRUCCIONES CLAVE:
                 1. Analiza la petición. Para cada servicio que recomiendes, crea un objeto en el array 'services'.
-                2. **Para servicios existentes:** Usa su 'id' y 'name' reales, y pon 'is_new: false'.
-                3. **Si un servicio necesario no existe:** ¡Créalo! Pon 'is_new: true', inventa un 'id' único (ej: 'custom-crm-integration'), un 'name' claro, una 'description' vendedora y un 'price' de producción justo.
+                2. Para servicios existentes: Usa su 'id' y 'name' reales, y pon 'is_new: false'.
+                3. Si un servicio necesario no existe: ¡Créalo! Pon 'is_new: true', inventa un 'id' único (ej: 'custom-crm-integration'), un 'name' claro, una 'description' vendedora y un 'price' de producción justo.
                 4. En 'client_questions', crea preguntas para descubrir más oportunidades.
                 5. En 'sales_pitch', escribe un párrafo de venta enfocado en los beneficios.
+                IMPORTANTE: Tu respuesta DEBE ser un objeto JSON válido con esta estructura, y NADA MÁS. No incluyas \`\`\`json.
+                {
+                  "introduction": "string",
+                  "services": [{ "id": "string", "is_new": boolean, "name": "string", "description": "string", "price": number }],
+                  "closing": "string",
+                  "client_questions": ["string"],
+                  "sales_pitch": "string"
+                }
             `;
         } else if (intent !== 'OBJECION') { // Captura TEXTO, DESCONOCIDA, etc.
-            geminiMode = "TEXT";
-            systemPrompt = `
-                Eres Zen Assistant. Actúa como un asistente de ventas general experto en desarrollo web.
-                Responde de forma cortés, profesional y concisa a la consulta del revendedor.
-            `;
+            systemPrompt = `Eres Zen Assistant. Actúa como un asistente de ventas general experto en desarrollo web. Responde de forma cortés, profesional y concisa a la consulta del revendedor.`;
         }
         
         // 4. Realizar la llamada principal a Gemini
-        const responseText = await callGemini(systemPrompt, historyFromClient, geminiMode);
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL, systemInstruction: systemPrompt });
+        const chat = model.startChat({ history: chatHistoryForSDK });
+        const result = await chat.sendMessage(finalPrompt);
+        const responseText = result.response.text();
 
         // 5. Construir una respuesta e historial válidos
         const updatedHistory = [
@@ -179,15 +135,12 @@ exports.handler = async (event) => {
     } catch (err) {
         console.error("FATAL en handler de Netlify:", err.message, err.stack);
         const errorMessage = `Lo siento, ocurrió un error inesperado al procesar tu solicitud: ${err.message}`;
-        
-        // Devolver un historial válido con el mensaje de error para no corromper el estado del cliente.
         const errorHistory = [
             ...historyFromClient,
             { role: 'model', parts: [{ text: errorMessage }] }
         ];
-        
         return {
-            statusCode: 200, // Devolver 200 para que el frontend procese el error de forma controlada.
+            statusCode: 200,
             body: JSON.stringify({
                 response: errorMessage,
                 history: errorHistory
