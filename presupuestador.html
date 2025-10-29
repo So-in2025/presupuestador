@@ -28,7 +28,7 @@
             background-color: var(--accent-color); 
             color: var(--accent-text-color); 
         }
-        .accent-bg:hover {
+        .accent-bg:hover:not(:disabled) {
             background-color: var(--accent-color-hover);
         }
         .card-bg { 
@@ -121,6 +121,14 @@
             z-index: 102;
             transition: box-shadow 0.3s ease-in-out;
         }
+        /* Spinner */
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen p-4 sm:p-6 md:p-10">
@@ -185,11 +193,19 @@
                     <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
                 </div>
                 <div class="pt-2 space-y-3">
-                    <button onclick="generatePdf(true)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
-                        Generar Propuesta para Cliente
+                    <button onclick="generatePdf(true, this)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2" disabled>
+                        <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="btn-text">Generar Propuesta para Cliente</span>
                     </button>
-                    <button onclick="generatePdf(false)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition">
-                        Generar Reporte Interno (Para tu control)
+                    <button onclick="generatePdf(false, this)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition flex justify-center items-center gap-2" disabled>
+                        <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="btn-text">Generar Reporte Interno</span>
                     </button>
                 </div>
             </div>
@@ -268,7 +284,13 @@
                     </a>
                 </p>
                 <div class="text-right pt-2">
-                    <button onclick="handleSaveApiKey()" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition">Guardar y Activar</button>
+                    <button onclick="handleSaveApiKey(this)" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition flex justify-center items-center gap-2">
+                         <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="btn-text">Guardar y Activar</span>
+                    </button>
                 </div>
             </div>
         </div>

@@ -361,29 +361,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initChat() {
         chatMessagesContainer.innerHTML = '';
-        let isHistoryValid = false;
-
+    
         try {
             const loadedHistory = loadChatHistory();
-            if (Array.isArray(loadedHistory) && loadedHistory.length > 0) {
-                const allMessagesAreValid = loadedHistory.every(msg => 
-                    msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && 
-                    msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string'
-                );
-                if (!allMessagesAreValid) throw new Error("El historial contiene al menos un mensaje corrupto.");
-                chatHistory = loadedHistory;
-                shouldAutoplay = false; 
-                chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
-                isHistoryValid = true;
+            if (!Array.isArray(loadedHistory) || loadedHistory.length === 0) {
+                throw new Error("Historial no encontrado o vacío.");
             }
-        } catch (error) {
-            console.warn("Fallo al cargar el historial, se reiniciará el chat:", error);
-        }
+            
+            loadedHistory.forEach(msg => {
+                if (!msg || typeof msg.role !== 'string' || !Array.isArray(msg.parts) || msg.parts.length === 0 || !msg.parts[0] || typeof msg.parts[0].text !== 'string') {
+                    // Si un mensaje está corrupto, lo ignoramos en lugar de lanzar un error.
+                    console.warn(`Mensaje corrupto encontrado y omitido en el historial: ${JSON.stringify(msg)}`);
+                    return; 
+                }
+            });
 
-        if (!isHistoryValid) {
+            // Filtramos cualquier mensaje corrupto que no pasó la validación.
+            const cleanHistory = loadedHistory.filter(msg => msg && typeof msg.role === 'string' && Array.isArray(msg.parts) && msg.parts.length > 0 && msg.parts[0] && typeof msg.parts[0].text === 'string');
+
+            if(cleanHistory.length === 0) {
+                throw new Error("El historial estaba vacío o completamente corrupto.");
+            }
+            
+            chatHistory = cleanHistory;
+            shouldAutoplay = false; 
+            chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
+    
+        } catch (error) {
+            console.warn("Fallo al cargar el historial, se reiniciará el chat:", error.message);
+            
             localStorage.removeItem('zenChatHistory');
-            shouldAutoplay = true;
-            const welcomeMessage = 'Para comenzar, configura tu API Key de Google AI usando el botón "Cambiar API Key" en la cabecera.';
+            shouldAutoplay = true; 
+            
+            const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
             addMessageToChat(welcomeMessage, 'model');
             chatHistory = [{ role: 'model', parts: [{ text: welcomeMessage }] }];
             saveChatHistory(chatHistory);

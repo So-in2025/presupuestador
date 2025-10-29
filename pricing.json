@@ -156,6 +156,73 @@
               "description": "Escalabilidad infinita. Reestructuración del backend en servicios independientes para aplicaciones complejas, mejorando el rendimiento, la mantenibilidad y la velocidad de desarrollo futuro."
             }
         ]
+    },
+    "marketing": {
+      "name": "E. Marketing y Contenido",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "m1",
+          "name": "SEO On-Page Básico",
+          "price": 30,
+          "pointCost": 5,
+          "description": "Optimización fundamental para que Google entienda y clasifique tu web. Incluye investigación de palabras clave, optimización de títulos, metadescripciones, encabezados y alt-text de imágenes."
+        },
+        {
+          "id": "m2",
+          "name": "Redacción de Contenido (por pág.)",
+          "price": 25,
+          "pointCost": 4,
+          "description": "Creación de textos persuasivos y profesionales para una sección de la web, optimizados para la marca y el SEO."
+        },
+        {
+          "id": "m3",
+          "name": "Integración Social y Píxeles",
+          "price": 15,
+          "pointCost": 2,
+          "description": "Conexión de la web con perfiles sociales y configuración del Píxel de Meta y/o la etiqueta de Google Ads para el seguimiento de conversiones y retargeting."
+        }
+      ]
+    },
+    "postLaunch": {
+      "name": "F. Post-Lanzamiento",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "pl1",
+          "name": "Setup de Google Analytics (GA4)",
+          "price": 20,
+          "pointCost": 3,
+          "description": "Instalación y configuración de Google Analytics 4 con seguimiento de eventos clave (clics, formularios) para medir el rendimiento de la web desde el día uno."
+        },
+        {
+          "id": "pl2",
+          "name": "Capacitación de CMS (1h)",
+          "price": 30,
+          "pointCost": 4,
+          "description": "Sesión de formación de una hora por videollamada para enseñar al cliente a gestionar y actualizar el contenido de su blog o las secciones autogestionables."
+        }
+      ]
+    },
+    "ecommerce": {
+      "name": "G. Mejoras de E-commerce",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "e1",
+          "name": "Módulo de Cupones de Descuento",
+          "price": 25,
+          "pointCost": 4,
+          "description": "Implementación de un sistema para que el cliente pueda crear y gestionar cupones de descuento (porcentaje, cantidad fija) para sus campañas de marketing."
+        },
+        {
+          "id": "e2",
+          "name": "Sistema de Reseñas de Clientes",
+          "price": 20,
+          "pointCost": 3,
+          "description": "Permite a los compradores dejar valoraciones y comentarios en los productos, aumentando la prueba social y la confianza para futuras ventas."
+        }
+      ]
     }
   },
   "monthlyPlans": [

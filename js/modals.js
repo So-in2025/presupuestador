@@ -6,6 +6,8 @@ import { getState, setCustomServices, setTieredBuilderActive } from './state.js'
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML } from './ui.js';
 import { setSessionApiKey } from './main.js';
+import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
 
 export function showNotification(type, title, message) {
     dom.notificationTitle.textContent = title;
@@ -32,7 +34,13 @@ export function closeCustomServiceModal() { dom.customServiceModal.classList.add
 
 export function showPdfOptionsModal() {
     const { tasks } = getState();
-    if (tasks.length === 0) return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
+    if (tasks.length === 0) {
+        // Habilitar botones de PDF si hay al menos una tarea
+        document.querySelectorAll('#pdfOptionsModal button[onclick^="generatePdf"]').forEach(btn => btn.disabled = true);
+        return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
+    }
+    document.querySelectorAll('#pdfOptionsModal button[onclick^="generatePdf"]').forEach(btn => btn.disabled = false);
+
     
     const brandInfo = localStorage.getItem('zenBrandInfo');
     if(brandInfo) {
@@ -185,16 +193,37 @@ export function closeApiKeyModal() {
     dom.apiKeyModal.classList.add('hidden');
 }
 
-export function handleSaveApiKey() {
+export async function handleSaveApiKey(button) {
     const key = dom.apiKeyInput.value.trim();
     if (!key) {
         showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key válida.');
         return;
     }
-    // La clave se guarda de forma segura en una variable de sesión, no en localStorage.
-    setSessionApiKey(key);
-    closeApiKeyModal();
-    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
+
+    const spinner = button.querySelector('.spinner');
+    const btnText = button.querySelector('.btn-text');
+    
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Validando...';
+    button.disabled = true;
+
+    try {
+        // Prueba de validación real contra la API
+        const genAI = new GoogleGenerativeAI(key);
+        await genAI.getGenerativeModel({ model: "gemini-pro" }).generateContent("test");
+
+        setSessionApiKey(key);
+        closeApiKeyModal();
+        showNotification('success', 'API Key Válida', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
+
+    } catch (error) {
+        console.error("Error de validación de API Key:", error);
+        showNotification('error', 'Clave Inválida', 'La API Key proporcionada no es válida o no tiene acceso a la API de Gemini. Por favor, verifica tu clave en Google AI Studio.');
+    } finally {
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Guardar y Activar';
+        button.disabled = false;
+    }
 }
 
 // Asociar funciones al scope global para que los `onclick` funcionen.
