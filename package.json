@@ -12,7 +12,5 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1"
   },
-  "devDependencies": {
-    "@types/node": "^20.14.9"
-  }
+  "devDependencies": {}
 }
