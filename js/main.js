@@ -1,4 +1,3 @@
-
 // js/main.js
 
 import * as dom from './dom.js';
@@ -7,7 +6,7 @@ import { loadPricingData, loadLocalData, saveTasks } from './data.js';
 import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
-import { initializeBranding, initializeTour } from './ui.js';
+import { initializeBranding } from './ui.js';
 
 // --- GESTIÓN DE API KEY (NUEVO) ---
 let sessionApiKey = null;
@@ -37,9 +36,7 @@ function checkApiKey() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeBranding();
     loadLocalData();
-    loadPricingData().then(() => {
-        initializeTour();
-    });
+    loadPricingData(); // Se quita el .then() que iniciaba el tour
     resetForm();
     checkApiKey(); // Comprobar la API Key al inicio
 });

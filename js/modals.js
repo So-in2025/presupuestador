@@ -3,7 +3,7 @@
 import * as dom from './dom.js';
 import { getState, setCustomServices, setTieredBuilderActive } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
-import { createServiceItemHTML } from './ui.js';
+import { createServiceItemHTML, initializeTour } from './ui.js';
 import { setSessionApiKey } from './main.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 
@@ -214,6 +214,9 @@ export async function handleSaveApiKey(button) {
         setSessionApiKey(key);
         closeApiKeyModal();
         showNotification('success', 'API Key Válida', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
+        
+        // CORRECCIÓN: Iniciar el tour DESPUÉS de que la app esté lista.
+        initializeTour();
 
     } catch (error) {
         console.error("Error de validación de API Key:", error);

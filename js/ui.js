@@ -235,20 +235,20 @@ export function initializeTour() {
             endTour();
             return;
         }
+        
+        // Comprobación de visibilidad
+        const isVisible = !!( targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length );
+        if (!isVisible) {
+             console.warn(`Tour target for step ${index + 1} (${step.el}) is not visible. Ending tour.`);
+             endTour();
+             return;
+        }
 
         targetElement.classList.add('tour-highlight');
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
         // Esperar a que el scroll termine antes de posicionar el tooltip
         setTimeout(() => {
-            // Comprobación de visibilidad
-            const isVisible = !!( targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length );
-            if (!isVisible) {
-                console.warn(`Tour target became hidden after scroll. Ending tour.`);
-                endTour();
-                return;
-            }
-
             tourText.textContent = step.text;
             stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
             tooltip.classList.remove('hidden');
@@ -284,7 +284,7 @@ export function initializeTour() {
                 tooltip.style.top = `${top}px`;
                 tooltip.style.left = `${left}px`;
             });
-        }, 300); // 300ms de espera para el smooth scroll
+        }, 350); // Aumentar espera para asegurar que el scroll termine
 
         prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
         nextBtn.textContent = index === tourSteps.length - 1 ? 'Finalizar Tour' : 'Siguiente';
@@ -296,13 +296,24 @@ export function initializeTour() {
         tooltip.classList.add('hidden');
         localStorage.setItem('zenTourCompleted', 'true');
     }
+    
+    function startTourWhenReady() {
+        // Esperar a que los elementos principales estén cargados.
+        const checkInterval = setInterval(() => {
+            const aiContainer = document.querySelector('#ai-assistant-container');
+            if (aiContainer && aiContainer.offsetParent !== null) {
+                clearInterval(checkInterval);
+                showStep(0);
+            }
+        }, 100);
+    }
 
     nextBtn.addEventListener('click', () => showStep(currentStep + 1));
     prevBtn.addEventListener('click', () => showStep(currentStep - 1));
     endBtn.addEventListener('click', endTour);
 
-    // Iniciar el tour
-    showStep(0);
+    // Iniciar el tour solo si la UI está lista
+    startTourWhenReady();
 }
 
 
