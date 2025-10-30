@@ -1,10 +1,10 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour } from './ui.js';
-import { setSessionApiKey } from './main.js';
+import { setSessionApiKey, fetchExchangeRate } from './main.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 
 
@@ -117,7 +117,7 @@ export function showTieredBuilderModal(taskToEdit = null) {
                 }).join('')}
             </div>
             <div class="mt-4 pt-4 border-t border-slate-700 text-right">
-                <p class="text-lg font-bold text-white">Costo: $<span class="tier-total-cost">0.00</span> USD</p>
+                <p class="text-lg font-bold text-white">Costo: <span class="tier-total-cost">${formatPrice(0)}</span></p>
             </div>
         `;
         container.appendChild(column);
@@ -136,7 +136,7 @@ function updateTieredTotals() {
         column.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
             total += parseFloat(cb.dataset.price);
         });
-        column.querySelector('.tier-total-cost').textContent = total.toFixed(2);
+        column.querySelector('.tier-total-cost').innerHTML = formatPrice(total);
     });
 }
 
@@ -214,6 +214,8 @@ export async function handleSaveApiKey(button) {
         setSessionApiKey(key);
         closeApiKeyModal();
         showNotification('success', 'API Key Válida', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
+        
+        await fetchExchangeRate(); // Obtener tipo de cambio
         
         // CORRECCIÓN: Iniciar el tour DESPUÉS de que la app esté lista.
         initializeTour();

@@ -14,7 +14,19 @@ let state = {
     selectedPlanId: null,
     selectedPlanServices: [],
     isTieredBuilderActive: false,
+    currentCurrency: 'USD',
+    usdToArsRate: null,
 };
+
+// --- HELPERS ---
+export const formatPrice = (usdAmount) => {
+    if (state.currentCurrency === 'ARS' && state.usdToArsRate) {
+        const arsAmount = usdAmount * state.usdToArsRate;
+        return `$${arsAmount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ARS`;
+    }
+    return `$${usdAmount.toFixed(2)} USD`;
+};
+
 
 // Funciones para obtener y modificar el estado de forma controlada
 export const getState = () => state;
@@ -31,3 +43,5 @@ export const setUsedPlanPoints = (points) => { state.usedPlanPoints = points; };
 export const setSelectedPlanId = (id) => { state.selectedPlanId = id; };
 export const setSelectedPlanServices = (services) => { state.selectedPlanServices = services; };
 export const setTieredBuilderActive = (isActive) => { state.isTieredBuilderActive = isActive; };
+export const setCurrentCurrency = (currency) => { state.currentCurrency = currency; };
+export const setUsdToArsRate = (rate) => { state.usdToArsRate = rate; };

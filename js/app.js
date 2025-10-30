@@ -24,15 +24,15 @@ export function updateSummary() {
     
     if (exclusiveSelection) {
         totalDevCost = exclusiveSelection.price;
-        feedback = `Costo fijo de ${exclusiveSelection.type}: $${totalDevCost.toFixed(2)}`;
+        feedback = `Costo fijo de ${exclusiveSelection.type}: ${state.formatPrice(totalDevCost)}`;
     } else {
         totalDevCost = standardItems.reduce((sum, item) => sum + item.price, 0);
         feedback = `Total de ${standardItems.length} ítems individuales.`;
     }
     
     const totalClientPrice = margin < 1 ? totalDevCost / (1 - margin) : totalDevCost * (1 + margin);
-    dom.totalDevPriceSpan.textContent = totalDevCost.toFixed(2);
-    dom.totalClientPriceSpan.textContent = totalClientPrice.toFixed(2);
+    dom.totalDevPriceSpan.innerHTML = state.formatPrice(totalDevCost);
+    dom.totalClientPriceSpan.innerHTML = state.formatPrice(totalClientPrice);
     dom.marginFeedback.textContent = feedback;
     dom.addTaskButton.textContent = state.getState().editingIndex !== -1 ? 'Guardar Cambios' : 'Guardar Propuesta';
 }
@@ -123,13 +123,25 @@ export function handleAddTask(taskData = null) {
         const planSelection = selectedServices.find(s => s.type === 'plan');
         const individualItems = selectedServices.filter(s => s.type === 'standard' || s.type === 'custom');
         const { selectedPlanId, selectedPlanServices, usedPlanPoints, totalPlanPoints } = state.getState();
+        
+        let totalDevCost = 0;
+        if (packageSelection) {
+            totalDevCost = packageSelection.price;
+        } else if (planSelection) {
+            totalDevCost = planSelection.price;
+        } else {
+            totalDevCost = individualItems.reduce((sum, item) => sum + item.price, 0);
+        }
+        const margin = parseFloat(dom.marginPercentageInput.value) / 100 || 0;
+        const totalClientPrice = margin < 1 ? totalDevCost / (1 - margin) : totalDevCost * (1 + margin);
+
 
         newTask = {
             clientName: document.getElementById('clientName').value || 'Sin Cliente',
             webName: document.getElementById('webName').value || 'Sin Web',
-            margin: parseFloat(dom.marginPercentageInput.value) / 100 || 0,
-            totalDev: parseFloat(dom.totalDevPriceSpan.textContent),
-            totalClient: parseFloat(dom.totalClientPriceSpan.textContent),
+            margin: margin,
+            totalDev: totalDevCost,
+            totalClient: totalClientPrice,
             package: packageSelection || null,
             plan: planSelection ? { 
                 id: selectedPlanId, 

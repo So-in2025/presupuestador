@@ -419,6 +419,16 @@
                             ?
                         </button>
                      </div>
+                      <div class="flex items-center gap-2">
+                        <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                            USD
+                        </button>
+                        <button id="refresh-rate-btn" disabled class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Actualizar tipo de cambio">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                                <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201-4.42 5.5 5.5 0 011.66-1.991l2.543 2.544a.75.75 0 001.06-1.06L9.31 4.439a.75.75 0 00-1.06 0L5.698 7.03a.75.75 0 001.06 1.06l2.36-2.36a4 4 0 006.182 3.182.75.75 0 00.81-1.488zM4.688 8.576a5.5 5.5 0 019.201 4.42 5.5 5.5 0 01-1.66 1.991l-2.543-2.544a.75.75 0 00-1.06 1.06l2.558 2.559a.75.75 0 001.06 0l2.552-2.551a.75.75 0 00-1.06-1.06l-2.36 2.36a4 4 0 00-6.182-3.182.75.75 0 00-.81 1.488z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -509,8 +519,8 @@
                             <p id="marginFeedback" class="text-xs mt-1 text-slate-400"></p>
                         </div>
                         <div class="text-lg font-bold space-y-2 pt-4 border-t border-slate-700">
-                            <p>Costo Producción: $<span id="totalDeveloperPrice">0.00</span> USD</p>
-                            <p class="accent-color">Precio a Cliente: $<span id="totalClientPrice">0.00</span> USD</p>
+                            <p>Costo Producción: <span id="totalDeveloperPrice">$0.00 USD</span></p>
+                            <p class="accent-color">Precio a Cliente: <span id="totalClientPrice">$0.00 USD</span></p>
                         </div>
                         <button id="addTask" class="w-full accent-bg font-bold py-3 mt-4 rounded-lg transition shadow-xl">Guardar Propuesta</button>
                         <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
@@ -523,9 +533,9 @@
                         <h2 class="text-2xl font-semibold mb-4 text-pink-400">4. Propuestas Guardadas</h2>
                         <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
                         <div class="text-lg font-bold space-y-2 pt-4 mt-4 border-t border-slate-700">
-                            <p>COSTO TOTAL (Prod): $<span id="grandTotalDeveloperPrice">0.00</span> USD</p>
-                            <p class="text-green-400">VENTA TOTAL: $<span id="grandTotalClientPrice">0.00</span> USD</p>
-                            <p class="text-yellow-400">GANANCIA TOTAL: $<span id="totalProfit">0.00</span> USD</p>
+                            <p>COSTO TOTAL (Prod): <span id="grandTotalDeveloperPrice">$0.00 USD</span></p>
+                            <p class="text-green-400">VENTA TOTAL: <span id="grandTotalClientPrice">$0.00 USD</span></p>
+                            <p class="text-yellow-400">GANANCIA TOTAL: <span id="totalProfit">$0.00 USD</span></p>
                         </div>
                         <div class="mt-4 flex gap-2">
                             <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button">Generar Documentos</button>

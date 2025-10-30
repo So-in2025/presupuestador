@@ -1,11 +1,13 @@
 // js/ui.js
 
 import * as dom from './dom.js';
-import { getState } from './state.js';
+import { getState, formatPrice } from './state.js';
+import { updateSummary } from './app.js';
+
 
 export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null) {
     const pointCostHTML = svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
-    const priceText = svc.price > 0 ? `$${svc.price.toFixed(2)} USD` : 'A cotizar';
+    const priceText = svc.price > 0 ? formatPrice(svc.price) : 'A cotizar';
     return `
         <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
             <label class="flex-grow cursor-pointer text-sm pr-2">${svc.name}</label>
@@ -71,7 +73,7 @@ export function initializeMonthlyPlansSelection() {
     const plansHTML = monthlyPlans.map(plan => `
         <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
             <label class="flex-grow cursor-pointer text-sm pr-2">${plan.name}</label>
-            <span class="font-bold text-red-400 ml-2">$${plan.price.toFixed(2)} USD</span>
+            <span class="font-bold text-red-400 ml-2">${formatPrice(plan.price)}</span>
             <input type="radio" name="monthlyPlanSelection" class="custom-radio ml-4" id="plan-${plan.id}" value="${plan.id}"
                 data-price="${plan.price}" data-name="${plan.name}" data-points="${plan.points}">
             <div class="tooltip-content">${plan.description || 'Sin descripción.'}</div>
@@ -95,23 +97,23 @@ export function renderTasksDashboard() {
 
             if (task.isTiered) {
                 icon = '📊';
-                const prices = task.tiers.map(t => t.totalDev).sort((a,b) => a-b);
+                const prices = task.tiers.map(t => formatPrice(t.totalDev)).join(' / ');
                 serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
-                priceText = `<p class="text-xs text-red-300">Costos Dev: $${prices.map(p => p.toFixed(2)).join(' / ')}</p>`;
+                priceText = `<p class="text-xs text-red-300">Costos Dev: ${prices}</p>`;
             } else if (task.package) {
                 icon = '📦';
                 serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
+                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
             } else if (task.plan) {
                 icon = '📅';
                 const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
                 const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
                 serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
+                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
             } else {
                 icon = '🧩';
                 serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: $${task.totalDev.toFixed(2)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: $${task.totalClient.toFixed(2)}</p>`;
+                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
             }
 
             return `
@@ -132,12 +134,27 @@ export function renderTasksDashboard() {
     dom.exportPdfBtn.disabled = tasks.length === 0;
     dom.clearAllTasksBtn.disabled = tasks.length === 0;
 
-    let grandTotalDev = tasks.reduce((sum, t) => sum + (t.isTiered ? 0 : t.totalDev), 0);
-    let grandTotalClient = tasks.reduce((sum, t) => sum + (t.isTiered ? 0 : t.totalClient), 0);
-    dom.grandTotalDevSpan.textContent = grandTotalDev.toFixed(2);
-    dom.grandTotalClientSpan.textContent = grandTotalClient.toFixed(2);
-    dom.totalProfitSpan.textContent = (grandTotalClient - grandTotalDev).toFixed(2);
+    let grandTotalDev = tasks.reduce((sum, t) => {
+        if (t.isTiered) return sum; // Ignorar tiered para el total general por ahora
+        return sum + t.totalDev;
+    }, 0);
+    let grandTotalClient = tasks.reduce((sum, t) => {
+        if (t.isTiered) return sum;
+        return sum + t.totalClient;
+    }, 0);
+
+    dom.grandTotalDevSpan.innerHTML = formatPrice(grandTotalDev);
+    dom.grandTotalClientSpan.innerHTML = formatPrice(grandTotalClient);
+    dom.totalProfitSpan.innerHTML = formatPrice(grandTotalClient - grandTotalDev);
 }
+
+export function rerenderAllPrices() {
+    initializeServiceCheckboxes();
+    initializeMonthlyPlansSelection();
+    renderTasksDashboard();
+    updateSummary();
+}
+
 
 // --- NUEVO: BRANDING ---
 function applyBranding(logo, color) {
@@ -209,7 +226,10 @@ export function initializeTour() {
         { el: '#saved-proposals-container', text: 'Desde aquí podrás editar, eliminar y generar los PDFs de todas tus propuestas.' },
         { el: '#tieredBuilderBtn', text: 'Consejo Pro: Usa el constructor por niveles para presentar 3 opciones a tu cliente (Básico, Recomendado, Completo). ¡Es una técnica de venta muy poderosa!' }
     ];
-    let currentStep = 0;
+    let currentStep = parseInt(localStorage.getItem('zenTourProgress') || '0', 10);
+    if (isNaN(currentStep) || currentStep < 0) {
+        currentStep = 0;
+    }
 
     const tooltip = document.getElementById('tour-tooltip');
     const tourText = document.getElementById('tour-text');
@@ -227,6 +247,7 @@ export function initializeTour() {
         }
 
         currentStep = index;
+        localStorage.setItem('zenTourProgress', currentStep.toString());
         const step = tourSteps[index];
         const targetElement = document.querySelector(step.el);
 
@@ -295,15 +316,31 @@ export function initializeTour() {
         if (highlighted) highlighted.classList.remove('tour-highlight');
         tooltip.classList.add('hidden');
         localStorage.setItem('zenTourCompleted', 'true');
+        localStorage.removeItem('zenTourProgress');
     }
     
     function startTourWhenReady() {
-        // Esperar a que los elementos principales estén cargados.
+        let attempts = 0;
+        const maxAttempts = 50; // Try for 5 seconds
         const checkInterval = setInterval(() => {
-            const aiContainer = document.querySelector('#ai-assistant-container');
-            if (aiContainer && aiContainer.offsetParent !== null) {
+            const stepConfig = tourSteps[currentStep];
+            if (!stepConfig) { // Safety check for corrupted progress
                 clearInterval(checkInterval);
-                showStep(0);
+                endTour();
+                return;
+            }
+            const initialStepElement = document.querySelector(stepConfig.el);
+
+            if (initialStepElement && initialStepElement.offsetParent !== null) {
+                clearInterval(checkInterval);
+                showStep(currentStep);
+            } else {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.warn(`Tour couldn't start at step ${currentStep}. Element not visible. Resetting tour progress.`);
+                    localStorage.removeItem('zenTourProgress');
+                }
             }
         }, 100);
     }
