@@ -1,8 +1,7 @@
-
 // js/points.js
 
 import * as dom from './dom.js';
-import { getState, setSelectedPlanId, setTotalPlanPoints, setUsedPlanPoints, setSelectedPlanServices } from './state.js';
+import { getState, setSelectedPlanId, setTotalPlanPoints, setUsedPlanPoints, setSelectedPlanServices, setExtraPointsPurchased, setExtraPointsCost } from './state.js';
 import { createServiceItemHTML } from './ui.js';
 import { updateSelectedItems } from './app.js';
 
@@ -10,6 +9,10 @@ export function handlePlanSelection(planId, preSelectedIds = []) {
     const { monthlyPlans, allServices } = getState();
     const plan = monthlyPlans.find(p => p.id == planId);
     if (!plan) return;
+    
+    // Resetear puntos extra al seleccionar un nuevo plan
+    setExtraPointsPurchased(0);
+    setExtraPointsCost(0);
 
     setSelectedPlanId(planId);
     setTotalPlanPoints(plan.points);
@@ -19,7 +22,7 @@ export function handlePlanSelection(planId, preSelectedIds = []) {
 
     dom.servicesTabsDiv.innerHTML = Object.keys(allServices).filter(k => !allServices[k].isExclusive).map(key => {
         const category = allServices[key];
-        const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, 'plan-service', `plan-service-${key}`, false, key)).join('');
+        const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, 'plan-service', `plan-service-${key}`, false, key, true)).join('');
         return `
             <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
                 <h3 class="text-xl font-semibold mb-3 text-cyan-500">${category.name}</h3>
@@ -41,6 +44,7 @@ export function handlePlanSelection(planId, preSelectedIds = []) {
     setUsedPlanPoints(initialUsedPoints);
     setSelectedPlanServices(initialSelectedServices);
     
+    document.getElementById('buyExtraPointsBtn').classList.remove('hidden');
     updatePointSystemUI();
 }
 
@@ -65,19 +69,43 @@ export function handleServiceSelection(checkbox, isChecked) {
 }
 
 export function updatePointSystemUI() {
-    const { usedPlanPoints, totalPlanPoints } = getState();
-    dom.planPointsCounterSpan.textContent = `${usedPlanPoints} / ${totalPlanPoints}`;
-    const remainingPoints = totalPlanPoints - usedPlanPoints;
+    const { usedPlanPoints, totalPlanPoints, extraPointsPurchased } = getState();
+    const availablePoints = totalPlanPoints + extraPointsPurchased;
+
+    if (!dom.planPointsCounterSpan) return;
+    
+    dom.planPointsCounterSpan.textContent = `${usedPlanPoints} / ${availablePoints}`;
+    const remainingPoints = availablePoints - usedPlanPoints;
 
     const allServiceCheckboxes = dom.monthlyServicesContainer.querySelectorAll('input[type="checkbox"]');
     allServiceCheckboxes.forEach(cb => {
         const servicePointCost = parseInt(cb.dataset.pointCost);
+        const card = cb.closest('.item-card');
+        const tooltip = card.querySelector('.tooltip-content');
+
         if (!cb.checked && servicePointCost > remainingPoints) {
             cb.disabled = true;
-            cb.closest('.item-card').classList.add('item-disabled');
+            card.classList.add('item-disabled');
+            if (tooltip) {
+                const needed = servicePointCost - remainingPoints;
+                tooltip.innerHTML = `Necesitas <strong>${needed}</strong> punto${needed > 1 ? 's' : ''} más para añadir este servicio. <span class="text-yellow-300">Compra puntos extra para activarlo.</span>`;
+            }
         } else {
             cb.disabled = false;
-            cb.closest('.item-card').classList.remove('item-disabled');
+            card.classList.remove('item-disabled');
+             if (tooltip) {
+                const serviceId = cb.value;
+                const categoryKey = cb.dataset.categoryKey;
+                const { allServices } = getState();
+                const service = allServices[categoryKey]?.items.find(s => s.id === serviceId);
+                if (service) tooltip.textContent = service.description;
+            }
         }
     });
+
+    const buyButton = document.getElementById('buyExtraPointsBtn');
+    if (buyButton) {
+        const planSelected = !!getState().selectedPlanId;
+        buyButton.classList.toggle('hidden', !planSelected);
+    }
 }

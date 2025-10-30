@@ -1,11 +1,12 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour } from './ui.js';
 import { setSessionApiKey, fetchExchangeRate } from './main.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+import { updatePointSystemUI } from './points.js';
 
 
 export function showNotification(type, title, message) {
@@ -182,6 +183,43 @@ export function addTieredProposal() {
     closeTieredBuilderModal();
 }
 
+export function showExtraPointsModal() {
+    document.getElementById('extraPointsAmount').value = '';
+    document.getElementById('extraPointsCostFeedback').textContent = '';
+    document.getElementById('extraPointsModal').classList.remove('hidden');
+}
+
+export function closeExtraPointsModal() {
+    document.getElementById('extraPointsModal').classList.add('hidden');
+}
+
+export function addExtraPoints() {
+    const amountInput = document.getElementById('extraPointsAmount');
+    const amount = parseInt(amountInput.value);
+    if (isNaN(amount) || amount <= 0) {
+        return showNotification('error', 'Cantidad Inválida', 'Por favor, introduce un número de puntos válido.');
+    }
+    const { pointPrice, extraPointsPurchased } = getState();
+    const newTotalPoints = extraPointsPurchased + amount;
+    const newTotalCost = newTotalPoints * pointPrice;
+
+    setExtraPointsPurchased(newTotalPoints);
+    setExtraPointsCost(newTotalCost);
+    
+    updatePointSystemUI();
+    updateSelectedItems();
+    closeExtraPointsModal();
+    showNotification('success', 'Puntos Añadidos', `${amount} puntos extra han sido añadidos al presupuesto del plan.`);
+}
+
+document.getElementById('extraPointsAmount')?.addEventListener('input', (e) => {
+    const amount = parseInt(e.target.value) || 0;
+    const { pointPrice } = getState();
+    const cost = amount * pointPrice;
+    document.getElementById('extraPointsCostFeedback').textContent = amount > 0 ? `Costo Adicional: ${formatPrice(cost)}` : '';
+});
+
+
 // --- NUEVO: API KEY MODAL ---
 export function showApiKeyModal() {
     dom.apiKeyModal.classList.remove('hidden');
@@ -259,3 +297,6 @@ window.addTieredProposal = addTieredProposal;
 window.showApiKeyModal = showApiKeyModal;
 window.handleSaveApiKey = handleSaveApiKey;
 window.showTieredBuilderHelp = showTieredBuilderHelp;
+window.showExtraPointsModal = showExtraPointsModal;
+window.closeExtraPointsModal = closeExtraPointsModal;
+window.addExtraPoints = addExtraPoints;

@@ -1,6 +1,6 @@
 // js/data.js
 
-import { setAllServices, setMonthlyPlans, setTasks, setLocalServices, getState } from './state.js';
+import { setAllServices, setMonthlyPlans, setTasks, setLocalServices, getState, setPointPrice } from './state.js';
 import { initializeUI, renderTasksDashboard } from './ui.js';
 import * as dom from './dom.js';
 
@@ -11,6 +11,7 @@ export async function loadPricingData() {
         const data = await resp.json();
         setAllServices(data.allServices || {});
         setMonthlyPlans(data.monthlyPlans || []);
+        setPointPrice(data.pointPrice || 0); // Cargar el precio por punto
         dom.messageContainer.innerHTML = '';
         initializeUI();
     } catch (err) {

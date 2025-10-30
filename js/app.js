@@ -8,7 +8,7 @@ import { handlePlanSelection, updatePointSystemUI } from './points.js';
 
 export function updateSummary() {
     let totalDevCost = 0;
-    const { selectedServices } = state.getState();
+    const { selectedServices, extraPointsCost } = state.getState();
     const margin = parseFloat(dom.marginPercentageInput.value) / 100 || 0;
     let feedback = '';
 
@@ -24,7 +24,13 @@ export function updateSummary() {
     
     if (exclusiveSelection) {
         totalDevCost = exclusiveSelection.price;
-        feedback = `Costo fijo de ${exclusiveSelection.type}: ${state.formatPrice(totalDevCost)}`;
+        if (exclusiveSelection.type === 'plan') {
+            totalDevCost += extraPointsCost;
+            const pointsFeedback = extraPointsCost > 0 ? ` + ${state.formatPrice(extraPointsCost)} en puntos extra` : '';
+            feedback = `Costo del plan: ${state.formatPrice(exclusiveSelection.price)}${pointsFeedback}`;
+        } else {
+            feedback = `Costo fijo de paquete: ${state.formatPrice(totalDevCost)}`;
+        }
     } else {
         totalDevCost = standardItems.reduce((sum, item) => sum + item.price, 0);
         feedback = `Total de ${standardItems.length} ítems individuales.`;
@@ -91,6 +97,8 @@ export function clearAllSelections() {
     state.setSelectedPlanServices([]);
     state.setTotalPlanPoints(0);
     state.setUsedPlanPoints(0);
+    state.setExtraPointsPurchased(0);
+    state.setExtraPointsCost(0);
     updatePointSystemUI();
     
     updateSelectedItems();
@@ -122,13 +130,13 @@ export function handleAddTask(taskData = null) {
         const packageSelection = selectedServices.find(s => s.type === 'package');
         const planSelection = selectedServices.find(s => s.type === 'plan');
         const individualItems = selectedServices.filter(s => s.type === 'standard' || s.type === 'custom');
-        const { selectedPlanId, selectedPlanServices, usedPlanPoints, totalPlanPoints } = state.getState();
+        const { selectedPlanId, selectedPlanServices, usedPlanPoints, totalPlanPoints, extraPointsPurchased, extraPointsCost } = state.getState();
         
         let totalDevCost = 0;
         if (packageSelection) {
             totalDevCost = packageSelection.price;
         } else if (planSelection) {
-            totalDevCost = planSelection.price;
+            totalDevCost = planSelection.price + extraPointsCost;
         } else {
             totalDevCost = individualItems.reduce((sum, item) => sum + item.price, 0);
         }
@@ -148,7 +156,9 @@ export function handleAddTask(taskData = null) {
                 selectedServiceIds: selectedPlanServices.map(s => s.id),
                 pointsUsed: usedPlanPoints,
                 totalPointsInBudget: totalPlanPoints,
-                remainingPoints: totalPlanPoints - usedPlanPoints
+                remainingPoints: (totalPlanPoints + extraPointsPurchased) - usedPlanPoints,
+                extraPointsPurchased: extraPointsPurchased,
+                extraPointsCost: extraPointsCost
             } : null,
             services: individualItems,
             type: dom.serviceTypeSelect.value,
@@ -203,6 +213,8 @@ export function editTask(index) {
         if (task.package) {
             document.getElementById(`package-${task.package.id}`).checked = true;
         } else if (task.plan) {
+            state.setExtraPointsPurchased(task.plan.extraPointsPurchased || 0);
+            state.setExtraPointsCost(task.plan.extraPointsCost || 0);
             document.getElementById(`plan-${task.plan.id}`).checked = true;
             handlePlanSelection(task.plan.id, task.plan.selectedServiceIds);
         } else {

@@ -317,11 +317,19 @@ export async function generatePdf(isForClient, button) {
                  y += descLines.length * 8 + 10;
             } else if (task.plan) {
                 const planDetails = monthlyPlans.find(p => p.id == task.plan.id);
+                const extraPoints = task.plan.extraPointsPurchased || 0;
+                const totalPointsInBudget = planDetails.points + extraPoints;
                 doc.text(`PLAN MENSUAL: ${planDetails.name}`, leftMargin, y);
                 y += 12;
                 doc.setFontSize(10); doc.setTextColor('#F8FAFC');
-                doc.text(`Puntos Asignados: ${task.plan.pointsUsed} / ${planDetails.points}`, leftMargin, y);
-                y += 15;
+                doc.text(`Puntos Asignados: ${task.plan.pointsUsed} / ${totalPointsInBudget} (Base: ${planDetails.points} + Extra: ${extraPoints})`, leftMargin, y);
+                y += 10;
+                if (extraPoints > 0) {
+                     doc.text(`Costo Puntos Extra: ${formatPdfPrice(task.plan.extraPointsCost)}`, leftMargin, y);
+                     y += 15;
+                } else {
+                     y += 5;
+                }
                 doc.setFontSize(11); doc.setFont('helvetica', 'bold');
                 doc.text('Servicios a Desarrollar en el Plan:', leftMargin, y);
                 y += 12;

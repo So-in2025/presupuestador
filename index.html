@@ -321,6 +321,25 @@
                 </div>
             </div>
         </div>
+         <div id="extraPointsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+                <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-yellow-600 flex justify-between items-center">
+                    <h3 class="text-lg text-slate-900">Comprar Puntos Extra</h3>
+                    <button onclick="closeExtraPointsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-sm text-slate-300">Añade puntos de desarrollo adicionales a tu plan mensual para incluir más servicios.</p>
+                    <div>
+                        <label for="extraPointsAmount" class="block text-sm font-medium text-slate-300 mb-1">Cantidad de Puntos a Comprar:</label>
+                        <input type="number" id="extraPointsAmount" class="w-full styled-input" placeholder="0" min="1">
+                    </div>
+                    <p id="extraPointsCostFeedback" class="text-sm text-center font-bold text-yellow-300 h-5"></p>
+                    <div class="text-right pt-2">
+                        <button onclick="addExtraPoints()" class="bg-yellow-600 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition">Añadir Puntos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
             <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
@@ -561,8 +580,9 @@
 
                         <!-- ESTRUCTURA PARA SERVICIOS MENSUALES (SISTEMA DE PUNTOS) -->
                         <div id="monthlyServicesContainer" class="hidden space-y-6">
-                            <div id="pointsDisplay" class="points-display">
-                                Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span>
+                            <div id="pointsDisplay" class="points-display flex justify-between items-center">
+                                <div>Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span></div>
+                                <button id="buyExtraPointsBtn" onclick="showExtraPointsModal()" class="hidden text-sm bg-yellow-600 text-slate-900 font-bold py-1 px-3 rounded-lg hover:bg-yellow-500 transition shadow-md">+ Comprar Puntos</button>
                             </div>
                             <div id="servicesTabs" class="space-y-4">
                                 <!-- Categorías se insertarán dinámicamente aquí -->

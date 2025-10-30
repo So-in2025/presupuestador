@@ -5,8 +5,8 @@ import { getState, formatPrice } from './state.js';
 import { updateSummary } from './app.js';
 
 
-export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null) {
-    const pointCostHTML = svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
+export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null, showPoints = false) {
+    const pointCostHTML = showPoints && svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
     const priceText = svc.price > 0 ? formatPrice(svc.price) : 'A cotizar';
     return `
         <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
@@ -26,7 +26,7 @@ export function initializeServiceCheckboxes() {
     const { allServices, localServices } = getState();
     let servicesHTML = Object.keys(allServices).map(key => {
         const category = allServices[key];
-        const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, category.isExclusive ? 'package' : 'standard', category.isExclusive ? 'selectionGroup' : `item-${svc.id}`, category.isExclusive, key)).join('');
+        const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, category.isExclusive ? 'package' : 'standard', category.isExclusive ? 'selectionGroup' : `item-${svc.id}`, category.isExclusive, key, false)).join('');
         return `
             <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
                 <h3 class="text-xl font-semibold mb-3 accent-color">${category.name}</h3>
@@ -36,7 +36,7 @@ export function initializeServiceCheckboxes() {
 
     // Renderizar servicios locales guardados
     if (localServices.length > 0) {
-        const localItemsHTML = localServices.map(svc => createServiceItemHTML(svc, 'standard', `item-${svc.id}`, false, 'local')).join('');
+        const localItemsHTML = localServices.map(svc => createServiceItemHTML(svc, 'standard', `item-${svc.id}`, false, 'local', false)).join('');
         servicesHTML += `
             <div id="local-services-container" class="p-4 bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
                 <h3 class="text-xl font-semibold mb-3 text-purple-400">H. Servicios Personalizados (Guardados)</h3>
@@ -60,7 +60,7 @@ export function appendLocalServiceToUI(service) {
         container = document.getElementById('local-services-container');
     }
     const grid = container.querySelector('.grid');
-    const itemHTML = createServiceItemHTML(service, 'standard', `item-${service.id}`, false, 'local');
+    const itemHTML = createServiceItemHTML(service, 'standard', `item-${service.id}`, false, 'local', false);
     grid.insertAdjacentHTML('beforeend', itemHTML);
 }
 

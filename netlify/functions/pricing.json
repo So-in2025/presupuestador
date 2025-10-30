@@ -1,5 +1,6 @@
 
 {
+  "pointPrice": 5,
   "allServices": {
     "completeWebs": {
       "name": "A. Soluciones Web Integrales (Paquetes)",

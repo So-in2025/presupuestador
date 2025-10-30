@@ -16,6 +16,9 @@ let state = {
     isTieredBuilderActive: false,
     currentCurrency: 'USD',
     usdToArsRate: null,
+    pointPrice: 0, // NUEVO: Costo por punto extra
+    extraPointsPurchased: 0, // NUEVO: Cantidad de puntos extra comprados
+    extraPointsCost: 0, // NUEVO: Costo total de los puntos extra
 };
 
 // --- HELPERS ---
@@ -45,3 +48,6 @@ export const setSelectedPlanServices = (services) => { state.selectedPlanService
 export const setTieredBuilderActive = (isActive) => { state.isTieredBuilderActive = isActive; };
 export const setCurrentCurrency = (currency) => { state.currentCurrency = currency; };
 export const setUsdToArsRate = (rate) => { state.usdToArsRate = rate; };
+export const setPointPrice = (price) => { state.pointPrice = price; };
+export const setExtraPointsPurchased = (points) => { state.extraPointsPurchased = points; };
+export const setExtraPointsCost = (cost) => { state.extraPointsCost = cost; };
