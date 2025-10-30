@@ -2,7 +2,7 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (versión original funcional)
- * Lógica de Intención: v12 (Restauración de la "Magia" del Asistente)
+ * Lógica de Intención: v13 (Restauración de la "Magia" del Asistente con Clasificación Mejorada)
  */
 
 const fs = require('fs');
@@ -89,10 +89,34 @@ exports.handler = async (event) => {
             `;
         } else { // modo 'builder' por defecto
             const classificationModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-            const classificationPrompt = `Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta pide una sugerencia de servicios para un proyecto (ej: 'necesito una web para un restaurante', 'qué me sugieres para un fotógrafo'), o 'TEXTO' para cualquier otra cosa (saludos, preguntas generales, etc.). Responde solo con la palabra en mayúsculas.`;
-            const result = await classificationModel.generateContent(classificationPrompt + "\n\nMensaje: " + lastUserMessage);
+            
+            // --- INICIO DE LA CORRECCIÓN: Prompt de Clasificación Mejorado (Few-Shot) ---
+            const classificationPrompt = `
+                Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta pide una sugerencia de servicios para un proyecto, o 'TEXTO' para cualquier otra cosa. Responde solo con la palabra en mayúsculas.
+
+                Aquí tienes ejemplos:
+                Mensaje: "necesito una web para un restaurante"
+                Respuesta: RECOMENDACION
+
+                Mensaje: "qué me sugieres para un fotógrafo que empieza?"
+                Respuesta: RECOMENDACION
+                
+                Mensaje: "hola, cómo estás?"
+                Respuesta: TEXTO
+
+                Mensaje: "cuál es el precio del e-commerce avanzado?"
+                Respuesta: TEXTO
+
+                Mensaje: "para un gimnasio que quiere vender membresías online"
+                Respuesta: RECOMENDACION
+
+                Mensaje: "${lastUserMessage}"
+                Respuesta:`;
+            // --- FIN DE LA CORRECCIÓN ---
+
+            const result = await classificationModel.generateContent(classificationPrompt);
             const intentResponseText = result.response.text();
-            let subIntent = intentResponseText.toUpperCase().trim().replace(/['"]+/g, '');
+            let subIntent = intentResponseText.toUpperCase().trim().replace(/['".,]+/g, '');
             
             if (subIntent === 'RECOMENDACION') {
                 const serviceList = Object.values(pricingData.allServices)
