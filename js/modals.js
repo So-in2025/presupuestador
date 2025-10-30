@@ -5,7 +5,7 @@ import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setEx
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
 import { setSessionApiKey } from './main.js';
-import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai@0.24.1';
+import { GoogleGenerativeAI } from 'https://cdn.jsdelivr.net/npm/@google/generative-ai@0.24.1/+esm';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
