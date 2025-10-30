@@ -31,7 +31,7 @@ const ttsManager = {
         window.speechSynthesis.cancel();
         this.isPlaying = false;
         document.querySelectorAll('.tts-btn.playing').forEach(btn => {
-            btn.innerHTML = '▶️ Escuchar';
+            btn.innerHTML = '▶️';
             btn.classList.remove('playing');
         });
     },
@@ -51,14 +51,14 @@ const ttsManager = {
         utterance.onstart = () => {
             this.isPlaying = true;
             if (buttonElement) {
-                buttonElement.innerHTML = '⏹️ Detener';
+                buttonElement.innerHTML = '⏹️';
                 buttonElement.classList.add('playing');
             }
         };
         utterance.onend = () => {
             this.isPlaying = false;
             if (buttonElement) {
-                buttonElement.innerHTML = '▶️ Escuchar';
+                buttonElement.innerHTML = '▶️';
                 buttonElement.classList.remove('playing');
             }
         };
@@ -166,7 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
         voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es-'));
         const voiceSelect = document.getElementById('voice-selector');
         if (!voiceSelect || voices.length === 0) {
-            document.getElementById('voice-selector-container')?.remove();
+            const container = document.getElementById('voice-selector-container');
+            if (container) container.remove();
             return;
         };
 
@@ -192,11 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function createVoiceSelector() {
+        if (document.getElementById('voice-selector-container')) return;
         const selectorContainer = document.createElement('div');
         selectorContainer.id = 'voice-selector-container';
         selectorContainer.className = 'mb-2 p-2 bg-slate-800 rounded-md flex items-center gap-2';
         selectorContainer.innerHTML = `
-            <label for="voice-selector" class="text-sm font-bold text-slate-300">Voz del Asistente:</label>
+            <label for="voice-selector" class="text-sm font-bold text-slate-300">Voz:</label>
             <select id="voice-selector" class="w-full styled-input text-sm accent-color"></select>
         `;
         chatMessagesContainer.parentNode.insertBefore(selectorContainer, chatMessagesContainer);
@@ -321,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-            const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️ Escuchar</button>`;
+            const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
             finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
         }
 
@@ -454,8 +456,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const target = event.target.closest('[data-action="add-service"]');
             if (target && !target.disabled) {
                 const { serviceId, serviceType } = target.dataset;
-                const elementId = serviceType === 'plan' ? `plan-${serviceId}` : `standard-${serviceId}`;
+                let elementId;
+                switch (serviceType) {
+                    case 'package':
+                        elementId = `package-${serviceId}`;
+                        break;
+                    case 'plan':
+                         elementId = `plan-${serviceId}`;
+                         break;
+                    default:
+                         elementId = `standard-${serviceId}`;
+                }
+                
                 const serviceElement = document.getElementById(elementId);
+                
                 if (serviceElement) {
                     serviceElement.click();
                     if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
