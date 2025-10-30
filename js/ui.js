@@ -230,51 +230,61 @@ export function initializeTour() {
         const step = tourSteps[index];
         const targetElement = document.querySelector(step.el);
 
-        // Comprobación de visibilidad
-        if (!targetElement || targetElement.offsetParent === null) {
-            console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
+        if (!targetElement) {
+            console.warn(`Tour step ${index + 1} target (${step.el}) not found. Ending tour.`);
             endTour();
             return;
         }
 
         targetElement.classList.add('tour-highlight');
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        tourText.textContent = step.text;
-        stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-        tooltip.classList.remove('hidden');
-
-        // Posicionamiento inteligente con requestAnimationFrame
-        requestAnimationFrame(() => {
-            const targetRect = targetElement.getBoundingClientRect();
-            const tooltipRect = tooltip.getBoundingClientRect();
-            const spaceAbove = targetRect.top;
-            const spaceBelow = window.innerHeight - targetRect.bottom;
-            
-            let top, left;
-
-            if (spaceBelow > tooltipRect.height + 20) {
-                // Posicionar debajo
-                top = targetRect.bottom + 10 + window.scrollY;
-            } else if (spaceAbove > tooltipRect.height + 20) {
-                // Posicionar encima
-                top = targetRect.top - tooltipRect.height - 10 + window.scrollY;
-            } else {
-                 // Fallback al centro de la pantalla
-                top = (window.innerHeight - tooltipRect.height) / 2 + window.scrollY;
+        
+        // Esperar a que el scroll termine antes de posicionar el tooltip
+        setTimeout(() => {
+            // Comprobación de visibilidad
+            const isVisible = !!( targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length );
+            if (!isVisible) {
+                console.warn(`Tour target became hidden after scroll. Ending tour.`);
+                endTour();
+                return;
             }
 
-            left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+            tourText.textContent = step.text;
+            stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
+            tooltip.classList.remove('hidden');
 
-            // Comprobación de límites horizontales
-            if (left < 10) left = 10;
-            if (left + tooltipRect.width > window.innerWidth - 10) {
-                left = window.innerWidth - tooltipRect.width - 10;
-            }
+            // Posicionamiento inteligente con requestAnimationFrame
+            requestAnimationFrame(() => {
+                const targetRect = targetElement.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const spaceAbove = targetRect.top;
+                const spaceBelow = window.innerHeight - targetRect.bottom;
+                
+                let top, left;
 
-            tooltip.style.top = `${top}px`;
-            tooltip.style.left = `${left}px`;
-        });
+                if (spaceBelow > tooltipRect.height + 20) {
+                    // Posicionar debajo
+                    top = targetRect.bottom + 10 + window.scrollY;
+                } else if (spaceAbove > tooltipRect.height + 20) {
+                    // Posicionar encima
+                    top = targetRect.top - tooltipRect.height - 10 + window.scrollY;
+                } else {
+                     // Fallback al centro de la pantalla
+                    top = (window.innerHeight - tooltipRect.height) / 2 + window.scrollY;
+                }
+
+                left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+
+                // Comprobación de límites horizontales
+                if (left < 10) left = 10;
+                if (left + tooltipRect.width > window.innerWidth - 10) {
+                    left = window.innerWidth - tooltipRect.width - 10;
+                }
+
+                tooltip.style.top = `${top}px`;
+                tooltip.style.left = `${left}px`;
+            });
+        }, 300); // 300ms de espera para el smooth scroll
 
         prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
         nextBtn.textContent = index === tourSteps.length - 1 ? 'Finalizar Tour' : 'Siguiente';
