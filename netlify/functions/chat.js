@@ -1,13 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * SDK: @google/generative-ai (versión original funcional)
- * Lógica de Intención: v13 (Restauración de la "Magia" del Asistente con Clasificación Mejorada)
+ * SDK: @google/genai (Modernizado a v14)
+ * Lógica de Intención: v13
  */
 
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/generative-ai');
 
 // --- LÓGICA PRINCIPAL DE LA FUNCIÓN NETLIFY (HANDLER) ---
 exports.handler = async (event) => {
@@ -43,7 +43,7 @@ exports.handler = async (event) => {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const ai = new GoogleGenAI({ apiKey });
         const GEMINI_MODEL = "gemini-2.5-flash";
 
         const lastUserMessage = userMessage;
@@ -88,9 +88,7 @@ exports.handler = async (event) => {
                 7. NO generes JSON. Responde en texto plano y amigable.
             `;
         } else { // modo 'builder' por defecto
-            const classificationModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
             
-            // --- INICIO DE LA CORRECCIÓN: Prompt de Clasificación Mejorado (Few-Shot) ---
             const classificationPrompt = `
                 Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta pide una sugerencia de servicios para un proyecto, o 'TEXTO' para cualquier otra cosa. Responde solo con la palabra en mayúsculas.
 
@@ -112,10 +110,12 @@ exports.handler = async (event) => {
 
                 Mensaje: "${lastUserMessage}"
                 Respuesta:`;
-            // --- FIN DE LA CORRECCIÓN ---
 
-            const result = await classificationModel.generateContent(classificationPrompt);
-            const intentResponseText = result.response.text();
+            const classificationResult = await ai.models.generateContent({
+                model: GEMINI_MODEL,
+                contents: classificationPrompt,
+            });
+            const intentResponseText = classificationResult.text;
             let subIntent = intentResponseText.toUpperCase().trim().replace(/['".,]+/g, '');
             
             if (subIntent === 'RECOMENDACION') {
@@ -152,10 +152,15 @@ exports.handler = async (event) => {
             }
         }
         
-        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL, systemInstruction: systemPrompt });
-        const chat = model.startChat({ history: chatHistoryForSDK });
-        const result = await chat.sendMessage(lastUserMessage);
-        const responseText = result.response.text();
+        const chat = ai.chats.create({
+            model: GEMINI_MODEL,
+            history: chatHistoryForSDK,
+            config: {
+                systemInstruction: systemPrompt
+            }
+        });
+        const result = await chat.sendMessage({ message: lastUserMessage });
+        const responseText = result.text;
 
         const updatedHistory = [
             ...historyFromClient,
@@ -172,7 +177,7 @@ exports.handler = async (event) => {
 
     } catch (err) {
         console.error("FATAL en handler de Netlify:", err.message, err.stack);
-        if (err.message && err.message.includes('API key not valid')) {
+        if (err.message && (err.message.includes('API key not valid') || err.message.includes('API_KEY_INVALID'))) {
              const errorMessage = `La API Key proporcionada no es válida. Por favor, revísala e inténtalo de nuevo.`;
              const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorMessage }] }];
              return { statusCode: 200, body: JSON.stringify({ response: errorMessage, history: errorHistory }) };

@@ -5,7 +5,7 @@ import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setEx
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
 import { setSessionApiKey } from './main.js';
-import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+import { GoogleGenAI } from 'https://esm.run/@google/generative-ai';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
@@ -265,8 +265,11 @@ export async function handleSaveApiKey(button) {
 
     try {
         // Prueba de validación real contra la API
-        const genAI = new GoogleGenerativeAI(key);
-        await genAI.getGenerativeModel({ model: "gemini-2.5-flash" }).generateContent("test");
+        const ai = new GoogleGenAI({ apiKey: key });
+        await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: "test"
+        });
 
         setSessionApiKey(key);
         closeApiKeyModal();
