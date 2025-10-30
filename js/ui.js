@@ -196,7 +196,7 @@ export function initializeBranding() {
     });
 }
 
-// --- NUEVO: TOUR GUIADO ---
+// --- TOUR GUIADO (RECONSTRUIDO Y ROBUSTO) ---
 export function initializeTour() {
     if (localStorage.getItem('zenTourCompleted')) return;
 
@@ -220,10 +220,19 @@ export function initializeTour() {
 
     function showStep(index) {
         document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    
+        if (index >= tourSteps.length) {
+            endTour();
+            return;
+        }
 
+        currentStep = index;
         const step = tourSteps[index];
         const targetElement = document.querySelector(step.el);
-        if (!targetElement) {
+
+        // Comprobación de visibilidad
+        if (!targetElement || targetElement.offsetParent === null) {
+            console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
             endTour();
             return;
         }
@@ -234,41 +243,58 @@ export function initializeTour() {
         tourText.textContent = step.text;
         stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
         tooltip.classList.remove('hidden');
-        
-        const targetRect = targetElement.getBoundingClientRect();
-        tooltip.style.left = `${targetRect.left + (targetRect.width / 2) - (tooltip.offsetWidth / 2)}px`;
-        tooltip.style.top = `${targetRect.bottom + 10}px`;
+
+        // Posicionamiento inteligente con requestAnimationFrame
+        requestAnimationFrame(() => {
+            const targetRect = targetElement.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const spaceAbove = targetRect.top;
+            const spaceBelow = window.innerHeight - targetRect.bottom;
+            
+            let top, left;
+
+            if (spaceBelow > tooltipRect.height + 20) {
+                // Posicionar debajo
+                top = targetRect.bottom + 10 + window.scrollY;
+            } else if (spaceAbove > tooltipRect.height + 20) {
+                // Posicionar encima
+                top = targetRect.top - tooltipRect.height - 10 + window.scrollY;
+            } else {
+                 // Fallback al centro de la pantalla
+                top = (window.innerHeight - tooltipRect.height) / 2 + window.scrollY;
+            }
+
+            left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+
+            // Comprobación de límites horizontales
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+        });
 
         prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
         nextBtn.textContent = index === tourSteps.length - 1 ? 'Finalizar Tour' : 'Siguiente';
     }
     
     function endTour() {
-        document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+        const highlighted = document.querySelector('.tour-highlight');
+        if (highlighted) highlighted.classList.remove('tour-highlight');
         tooltip.classList.add('hidden');
         localStorage.setItem('zenTourCompleted', 'true');
     }
 
-    nextBtn.addEventListener('click', () => {
-        currentStep++;
-        if (currentStep >= tourSteps.length) {
-            endTour();
-        } else {
-            showStep(currentStep);
-        }
-    });
-
-    prevBtn.addEventListener('click', () => {
-        currentStep--;
-        if (currentStep >= 0) {
-            showStep(currentStep);
-        }
-    });
-
+    nextBtn.addEventListener('click', () => showStep(currentStep + 1));
+    prevBtn.addEventListener('click', () => showStep(currentStep - 1));
     endBtn.addEventListener('click', endTour);
 
+    // Iniciar el tour
     showStep(0);
 }
+
 
 export function initializeUI() {
     initializeServiceCheckboxes();
