@@ -5,7 +5,7 @@ import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setEx
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
 import { setSessionApiKey } from './main.js';
-import { GoogleGenAI } from 'https://esm.run/@google/genai';
+import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
@@ -264,12 +264,10 @@ export async function handleSaveApiKey(button) {
     button.disabled = true;
 
     try {
-        // Prueba de validación real contra la API (SDK moderno)
-        const ai = new GoogleGenAI({ apiKey: key });
-        await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: 'test',
-        });
+        // Validation test using the legacy SDK syntax
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        await model.generateContent("test");
 
         setSessionApiKey(key);
         closeApiKeyModal();
@@ -278,7 +276,7 @@ export async function handleSaveApiKey(button) {
         initializeTour();
 
     } catch (error) {
-        console.error("Error de validación de API Key:", error);
+        console.error("API Key validation error:", error);
         showNotification('error', 'Clave Inválida', 'La API Key proporcionada no es válida o no tiene acceso a la API de Gemini. Por favor, verifica tu clave en Google AI Studio.');
     } finally {
         spinner.classList.add('hidden');

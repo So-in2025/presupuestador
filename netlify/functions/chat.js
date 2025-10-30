@@ -1,53 +1,79 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * SDK: @google/genai (Modern SDK)
- * Lógica de Intención: v14 - JSON Mode
+ * SDK: @google/generative-ai (Legacy SDK v0.24.1)
+ * Lógica de Intención: v17 - Robust JSON Handling
  */
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenAI, Type } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// --- Carga de datos de precios (una sola vez) ---
+// --- CONSTANTS & CONFIGURATION ---
+
 let pricingData;
 try {
     const pricingPath = path.resolve(__dirname, 'pricing.json');
     pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
 } catch (err) {
-    console.error("ERROR CRÍTICO al cargar pricing.json:", err);
+    console.error("CRITICAL ERROR: Could not load pricing.json. Function will not work.", err);
 }
 
-// --- Esquema JSON para el modo constructor ---
-const builderResponseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    introduction: { type: Type.STRING, description: 'Un saludo inicial y una breve introducción a la solución propuesta.' },
-    services: {
-      type: Type.ARRAY,
-      description: 'Una lista de servicios recomendados para el cliente.',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING, description: 'El ID único del servicio del catálogo. Si es un servicio nuevo, inventa un ID único (ej: custom-api-xyz).' },
-          is_new: { type: Type.BOOLEAN, description: 'Verdadero si el servicio no está en el catálogo, falso en caso contrario.' },
-          name: { type: Type.STRING, description: 'El nombre del servicio.' },
-          description: { type: Type.STRING, description: 'Una descripción vendedora del servicio, incluyendo la justificación del upsell si aplica.' },
-          price: { type: Type.NUMBER, description: 'El costo de producción del servicio. Si es nuevo, estima un precio justo.' }
-        },
-        required: ['id', 'is_new', 'name', 'description', 'price']
-      }
-    },
-    closing: { type: Type.STRING, description: 'Un párrafo de cierre que explique los siguientes pasos.' },
-    client_questions: {
-      type: Type.ARRAY,
-      description: 'Preguntas estratégicas para que el revendedor le haga a su cliente para descubrir más oportunidades.',
-      items: { type: Type.STRING }
-    },
-    sales_pitch: { type: Type.STRING, description: 'Un argumento de venta de 1-2 párrafos enfocado en los beneficios y el valor para el cliente final.' }
-  },
-  required: ['introduction', 'services', 'closing', 'client_questions', 'sales_pitch']
-};
+// --- PROMPT ENGINEERING HELPERS (for Legacy SDK) ---
 
+function getSystemInstructionForMode(mode, selectedServicesContext = []) {
+    const contextText = (selectedServicesContext && selectedServicesContext.length > 0)
+        ? `CONTEXT: The reseller has already selected: ${selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
+        : '';
+
+    switch (mode) {
+        case 'analyze':
+            return `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
+        case 'objection':
+            return `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+        case 'builder':
+        default:
+            const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
+            const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
+            return `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using the catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}\n\n--- AVAILABLE CATALOG ---\n${serviceList}\n${planList}\n\nYour response MUST be a single valid JSON object with the following structure: { "introduction": "...", "services": [{ "id": "...", "is_new": false, "name": "...", "description": "...", "price": ... }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }. Do not add any text before or after the JSON object.`;
+    }
+}
+
+// --- INTELLIGENCE HELPERS ---
+
+/**
+ * Extracts a JSON string from text that might be wrapped in markdown code fences.
+ * @param {string} text - The raw text from the model.
+ * @returns {string | null} The clean JSON string or null if not found.
+ */
+function extractJson(text) {
+    const match = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[2]) {
+        return match[2].trim();
+    }
+    const trimmedText = text.trim();
+    if (trimmedText.startsWith('{') && trimmedText.endsWith('}')) {
+        return trimmedText;
+    }
+    return null;
+}
+
+/**
+ * Creates a standardized JSON error response for the builder mode.
+ * @param {string} introduction - The main error message for the user.
+ * @param {string} closing - A helpful next step or suggestion.
+ * @returns {string} A stringified JSON object.
+ */
+function createErrorJsonResponse(introduction, closing) {
+    return JSON.stringify({
+        introduction,
+        services: [],
+        closing,
+        client_questions: [],
+        sales_pitch: ""
+    });
+}
+
+// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
@@ -55,69 +81,57 @@ exports.handler = async (event) => {
     }
 
     if (!pricingData) {
-         return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Error interno: la configuración de precios no está disponible.' }) };
+        return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
     }
 
     let body;
     try {
         body = JSON.parse(event.body);
     } catch (e) {
-        return { statusCode: 400, body: "Cuerpo JSON inválido" };
+        return { statusCode: 400, body: "Invalid JSON-formatted request body." };
     }
 
     const { userMessage, history: historyFromClient, mode, selectedServicesContext, apiKey } = body;
-
-    if (!userMessage || !historyFromClient || !apiKey) {
-        return { statusCode: 400, body: JSON.stringify({ error: true, message: "Faltan parámetros requeridos (userMessage, history, apiKey)." }) };
+    if (!userMessage || !historyFromClient || !mode || !apiKey) {
+        return { statusCode: 400, body: JSON.stringify({ error: true, message: "Incomplete request. Missing required parameters (userMessage, history, mode, apiKey)." }) };
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
-
-        // Sanitizar historial para la API
-        const contents = historyFromClient.slice(0, -1); // Eliminar el último mensaje de usuario, que pasamos por separado
-        if (contents.length > 0 && contents[0].role !== 'user') {
-            const firstUserIndex = contents.findIndex(msg => msg.role === 'user');
-            if (firstUserIndex > -1) contents.splice(0, firstUserIndex);
-        }
-        contents.push({ role: 'user', parts: [{ text: userMessage }] });
-
-        let systemInstruction;
-        let config = {};
-
-        const contextText = (selectedServicesContext && selectedServicesContext.length > 0) 
-            ? `CONTEXTO: El revendedor ya ha seleccionado: ${selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Evita sugerir estos ítems de nuevo y basa tus recomendaciones en complementar esta selección.` 
-            : '';
-
-        switch(mode) {
-            case 'analyze':
-                systemInstruction = `Eres un analista de negocios experto. Tu única tarea es leer la conversación que te proporciona el revendedor y extraer una lista concisa y clara de 3 a 5 requisitos o necesidades clave del cliente final. Formatea tu respuesta como una lista de viñetas, usando '-' para cada punto. No saludes, no te despidas, solo devuelve la lista.`;
-                break;
-            case 'objection':
-                systemInstruction = `Eres Zen Coach, un experto coach de ventas. Tu misión es ayudar al revendedor a superar las objeciones de sus clientes. Proporciona una respuesta estructurada, profesional y empática, enfocada en el VALOR y los BENEFICIOS, no en características técnicas. Traduce objeciones de "costo" a conversaciones sobre "inversión" y "retorno".`;
-                break;
-            default: // 'builder'
-                const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Nombre: ${s.name}`).join('\n');
-                const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Nombre: ${p.name}`).join('\n');
-                
-                systemInstruction = `Actúas como una API. Analiza la petición del usuario para un proyecto web y construye la solución perfecta usando el catálogo. Debes identificar proactivamente oportunidades de 'upsell' o 'cross-sell'. ${contextText}\n\n--- CATÁLOGO DISPONIBLE ---\n${serviceList}\n${planList}`;
-                config = {
-                    responseMimeType: "application/json",
-                    responseSchema: builderResponseSchema
-                };
-                break;
-        }
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: contents,
-            config: {
-                systemInstruction,
-                ...config
-            }
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-pro", 
+            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext),
+        });
+        
+        const chat = model.startChat({
+             history: historyFromClient.slice(0, -1),
         });
 
-        const responseText = response.text;
+        const result = await chat.sendMessage(userMessage);
+        const response = await result.response;
+        let responseText = response.text();
+        
+        // --- ROBUST JSON HANDLING FOR BUILDER MODE ---
+        if (mode === 'builder') {
+            const extractedJson = extractJson(responseText);
+            if (extractedJson) {
+                try {
+                    JSON.parse(extractedJson);
+                    responseText = extractedJson; // It's valid JSON, use the clean version.
+                } catch (e) {
+                    responseText = createErrorJsonResponse(
+                        "Lo siento, tuve un problema al generar la recomendación. El formato era incorrecto.",
+                        "Por favor, intenta reformular tu solicitud de una manera más clara."
+                    );
+                }
+            } else {
+                responseText = createErrorJsonResponse(
+                    "El asistente no pudo identificar los servicios para tu solicitud.",
+                    `Aquí está la respuesta que recibí: "${responseText}". Intenta ser más específico sobre las necesidades de tu cliente.`
+                );
+            }
+        }
+
         const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
 
         return {
@@ -126,11 +140,25 @@ exports.handler = async (event) => {
         };
 
     } catch (err) {
-        console.error("Error en handler de Netlify:", err);
-        const errorMessage = `Lo siento, ocurrió un error: ${err.message}. Si el error persiste, verifica que tu API Key sea correcta y tenga fondos.`;
+        console.error("Error in Netlify function handler:", err);
+        const errorMessage = `Lo siento, un error ocurrió al comunicarme con el asistente: ${err.message}. Si el error persiste, verifica que tu API Key sea correcta y tenga fondos.`;
+        // For builder mode, send a structured error
+        if (mode === 'builder') {
+            const errorJson = createErrorJsonResponse(
+                "Hubo un error de conexión con la IA.",
+                `Detalles del error: ${err.message}. Asegúrate de que tu API Key sea válida.`
+            );
+            const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorJson }] }];
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ response: errorJson, history: errorHistory })
+            };
+        }
+        
+        // For other modes, send plain text error
         const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorMessage }] }];
         return {
-            statusCode: 200, // Devolvemos 200 para que el frontend pueda manejar el error de forma amigable
+            statusCode: 200, 
             body: JSON.stringify({ response: errorMessage, history: errorHistory })
         };
     }
