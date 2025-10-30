@@ -8,18 +8,38 @@ import { setSessionApiKey } from './main.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 import { updatePointSystemUI } from './points.js';
 
+// --- HELPERS DE ANIMACIÓN DE MODALES ---
+const openModal = (modalElement) => {
+    if (!modalElement) return;
+    modalElement.classList.remove('hidden');
+    // Forzar un reflow del navegador para que la transición se active
+    // eslint-disable-next-line
+    modalElement.offsetHeight; 
+    setTimeout(() => {
+        modalElement.classList.remove('opacity-0');
+    }, 10); // Un pequeño delay asegura que la transición se aplique
+};
+
+const closeModal = (modalElement) => {
+    if (!modalElement) return;
+    modalElement.classList.add('opacity-0');
+    setTimeout(() => {
+        modalElement.classList.add('hidden');
+    }, 300); // Coincide con la duración de la transición en CSS
+};
+
 
 export function showNotification(type, title, message) {
     dom.notificationTitle.textContent = title;
-    dom.notificationMessage.innerHTML = message; // Cambiado a innerHTML
+    dom.notificationMessage.innerHTML = message;
     const header = dom.notificationModal.querySelector('.modal-header');
     header.className = 'modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center';
     const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-cyan-600' };
     header.classList.add(colors[type] || 'bg-cyan-600');
-    dom.notificationModal.classList.remove('hidden');
+    openModal(dom.notificationModal);
 }
 
-export function closeNotificationModal() { dom.notificationModal.classList.add('hidden'); }
+export function closeNotificationModal() { closeModal(dom.notificationModal); }
 
 export function showCustomServiceModal() {
     if (document.querySelector('input[name="selectionGroup"]:checked, input[name="monthlyPlanSelection"]:checked')) {
@@ -27,15 +47,14 @@ export function showCustomServiceModal() {
     }
     dom.customServiceNameInput.value = '';
     dom.customServicePriceInput.value = '';
-    dom.customServiceModal.classList.remove('hidden');
+    openModal(dom.customServiceModal);
 }
 
-export function closeCustomServiceModal() { dom.customServiceModal.classList.add('hidden'); }
+export function closeCustomServiceModal() { closeModal(dom.customServiceModal); }
 
 export function showPdfOptionsModal() {
     const { tasks } = getState();
     if (tasks.length === 0) {
-        // Habilitar botones de PDF si hay al menos una tarea
         document.querySelectorAll('#pdfOptionsModal button[onclick^="generatePdf"]').forEach(btn => btn.disabled = true);
         return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
     }
@@ -49,10 +68,10 @@ export function showPdfOptionsModal() {
             dom.pdfResellerInfo.value = resellerInfo;
         }
     }
-    dom.pdfOptionsModal.classList.remove('hidden');
+    openModal(dom.pdfOptionsModal);
 }
 
-export function closePdfOptionsModal() { dom.pdfOptionsModal.classList.add('hidden'); }
+export function closePdfOptionsModal() { closeModal(dom.pdfOptionsModal); }
 
 export function addCustomServiceToSelection() {
     const name = dom.customServiceNameInput.value;
@@ -77,10 +96,10 @@ export function removeCustomService(id) {
 export function showBrandingModal() {
     const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
     document.getElementById('brandColorInput').value = brandInfo.color || '#22D3EE';
-    document.getElementById('brandingModal').classList.remove('hidden');
+    openModal(document.getElementById('brandingModal'));
 }
 
-export function closeBrandingModal() { document.getElementById('brandingModal').classList.add('hidden'); }
+export function closeBrandingModal() { closeModal(document.getElementById('brandingModal')); }
 
 export function showTieredBuilderModal(taskToEdit = null) {
     const { allServices } = getState();
@@ -127,7 +146,7 @@ export function showTieredBuilderModal(taskToEdit = null) {
     setTieredBuilderActive(true);
     updateTieredTotals();
     container.addEventListener('change', updateTieredTotals);
-    document.getElementById('tieredBuilderModal').classList.remove('hidden');
+    openModal(document.getElementById('tieredBuilderModal'));
 }
 
 function updateTieredTotals() {
@@ -143,7 +162,7 @@ function updateTieredTotals() {
 
 export function closeTieredBuilderModal() {
     setTieredBuilderActive(false);
-    document.getElementById('tieredBuilderModal').classList.add('hidden');
+    closeModal(document.getElementById('tieredBuilderModal'));
     document.getElementById('tiered-builder-columns').removeEventListener('change', updateTieredTotals);
 }
 
@@ -186,11 +205,11 @@ export function addTieredProposal() {
 export function showExtraPointsModal() {
     document.getElementById('extraPointsAmount').value = '';
     document.getElementById('extraPointsCostFeedback').textContent = '';
-    document.getElementById('extraPointsModal').classList.remove('hidden');
+    openModal(document.getElementById('extraPointsModal'));
 }
 
 export function closeExtraPointsModal() {
-    document.getElementById('extraPointsModal').classList.add('hidden');
+    closeModal(document.getElementById('extraPointsModal'));
 }
 
 export function addExtraPoints() {
@@ -222,12 +241,12 @@ document.getElementById('extraPointsAmount')?.addEventListener('input', (e) => {
 
 // --- API KEY MODAL ---
 export function showApiKeyModal() {
-    dom.apiKeyModal.classList.remove('hidden');
+    openModal(dom.apiKeyModal);
     dom.apiKeyInput.focus();
 }
 
 export function closeApiKeyModal() {
-    dom.apiKeyModal.classList.add('hidden');
+    closeModal(dom.apiKeyModal);
 }
 
 export async function handleSaveApiKey(button) {
@@ -274,12 +293,12 @@ export function showExchangeRateModal() {
     } else {
         input.value = '';
     }
-    document.getElementById('exchangeRateModal').classList.remove('hidden');
+    openModal(document.getElementById('exchangeRateModal'));
     input.focus();
 }
 
 export function closeExchangeRateModal() {
-    document.getElementById('exchangeRateModal').classList.add('hidden');
+    closeModal(document.getElementById('exchangeRateModal'));
 }
 
 export function handleSaveExchangeRate() {

@@ -34,11 +34,6 @@
         .card-bg { 
             background-color: #1E293B; /* Slate-800: Fondo de tarjeta */
         }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 55000; /* AUMENTADO: Para estar por encima del tour */
-        }
         .item-disabled {
             opacity: 0.3; 
             pointer-events: none;
@@ -238,6 +233,36 @@
             padding: 2px 6px; font-size: 0.7rem; border-radius: 4px;
             cursor: pointer; margin-left: 8px;
         }
+
+        /* --- OPTIMIZACIONES DE FLUIDEZ --- */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 55000;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-overlay > div { /* Contenedor directo del modal */
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        /* Estados para la animación de modales */
+        .modal-overlay.opacity-0 {
+            opacity: 0;
+        }
+        .modal-overlay.opacity-0 > div {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        /* Transición para el dashboard */
+        #tasksDashboard {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Retroalimentación táctil para botones */
+        .btn-press-feedback {
+            transition: transform 0.1s ease-out;
+        }
+        .btn-press-feedback:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen">
@@ -287,8 +312,8 @@
     <!-- MAIN APP CONTAINER (Initially Hidden) -->
     <div id="main-app" class="hidden p-4 sm:p-6 md:p-10">
         <!-- MODALES -->
-        <div id="notificationModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+        <div id="notificationModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center">
                     <h3 id="notificationTitle" class="text-lg"></h3>
                     <button onclick="closeNotificationModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -301,8 +326,8 @@
                 </div>
             </div>
         </div>
-        <div id="customServiceModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+        <div id="customServiceModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-purple-600 flex justify-between items-center">
                     <h3 class="text-lg">Añadir Ítem Personalizado</h3>
                     <button onclick="closeCustomServiceModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -322,8 +347,8 @@
                 </div>
             </div>
         </div>
-         <div id="extraPointsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+         <div id="extraPointsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-yellow-600 flex justify-between items-center">
                     <h3 class="text-lg text-slate-900">Comprar Puntos Extra</h3>
                     <button onclick="closeExtraPointsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -341,8 +366,8 @@
                 </div>
             </div>
         </div>
-        <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+        <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
                     <h3 class="text-lg">Generar Documentos de Propuesta</h3>
                     <button onclick="closePdfOptionsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -365,14 +390,14 @@
                         <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
                     </div>
                     <div class="pt-2 space-y-3">
-                        <button onclick="generatePdf(true, this)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2" disabled>
+                        <button onclick="generatePdf(true, this)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
                             <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             <span class="btn-text">Generar Propuesta para Cliente</span>
                         </button>
-                        <button onclick="generatePdf(false, this)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition flex justify-center items-center gap-2" disabled>
+                        <button onclick="generatePdf(false, this)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
                             <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -383,8 +408,8 @@
                 </div>
             </div>
         </div>
-        <div id="brandingModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+        <div id="brandingModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-teal-600 flex justify-between items-center">
                     <h3 class="text-lg">Configuración de Marca</h3>
                     <button onclick="closeBrandingModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -405,8 +430,8 @@
                 </div>
             </div>
         </div>
-        <div id="tieredBuilderModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform transition-all max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+        <div id="tieredBuilderModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
                     <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
                     <button onclick="closeTieredBuilderModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -437,8 +462,8 @@
         </div>
 
         <!-- MODAL API KEY -->
-        <div id="apiKeyModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+        <div id="apiKeyModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-red-600 flex justify-between items-center">
                     <h3 id="apiKeyModalTitle" class="text-lg">Configuración de Asistente IA</h3>
                 </div>
@@ -470,8 +495,8 @@
         </div>
 
         <!-- MODAL TIPO DE CAMBIO MANUAL -->
-        <div id="exchangeRateModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
-            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+        <div id="exchangeRateModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
                     <h3 class="text-lg">Configurar Tipo de Cambio Manual</h3>
                     <button onclick="closeExchangeRateModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
@@ -505,28 +530,28 @@
                 </div>
                 <p class="text-slate-400 mt-2">Crea, gestiona y exporta propuestas de alto impacto.</p>
                  <div class="mt-4 flex flex-wrap justify-center gap-3">
-                    <button onclick="showBrandingModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                    <button onclick="showBrandingModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         ⚙️ Configuración de Marca
                     </button>
-                    <button onclick="showApiKeyModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                    <button onclick="showApiKeyModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔑 Cambiar API Key
                     </button>
-                    <button onclick="window.restartTour()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                    <button onclick="window.restartTour()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
                     </button>
                      <div class="flex items-center gap-1">
-                        <button id="tieredBuilderBtn" onclick="showTieredBuilderModal()" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md">
+                        <button id="tieredBuilderBtn" onclick="showTieredBuilderModal()" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                             📊 Propuesta por Niveles
                         </button>
-                        <button onclick="showTieredBuilderHelp()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition" aria-label="Ayuda sobre Propuesta por Niveles">
+                        <button onclick="showTieredBuilderHelp()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
                             ?
                         </button>
                      </div>
                       <div class="flex items-center gap-2">
-                        <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press-feedback">
                             USD
                         </button>
-                        <button id="configure-rate-btn" onclick="showExchangeRateModal()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition" aria-label="Configurar tipo de cambio manual">
+                        <button id="configure-rate-btn" onclick="showExchangeRateModal()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Configurar tipo de cambio manual">
                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
                               <path d="M10 3.75a2 2 0 100 4 2 2 0 000-4zM4.375 3.75a2 2 0 100 4 2 2 0 000-4zM15.625 3.75a2 2 0 100 4 2 2 0 000-4zM10 12.25a2 2 0 100 4 2 2 0 000-4zM4.375 12.25a2 2 0 100 4 2 2 0 000-4zM15.625 12.25a2 2 0 100 4 2 2 0 000-4z" />
                            </svg>
@@ -580,7 +605,7 @@
 
                         <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
                             <input type="text" id="chat-input" class="w-full styled-input" placeholder="Ej: 'Necesito una web para un fotógrafo...' ">
-                            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300">
+                            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300 btn-press-feedback">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                                     <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
                                 </svg>
@@ -597,10 +622,10 @@
                         </div>
                         
                         <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                            <button id="clearSelectionsBtn" class="hidden flex-grow bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg">
+                            <button id="clearSelectionsBtn" class="hidden flex-grow bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg btn-press-feedback">
                                 Limpiar Selección y Activar Modo Personalizado
                             </button>
-                            <button onclick="showCustomServiceModal()" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg">
+                            <button onclick="showCustomServiceModal()" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg btn-press-feedback">
                                 + Añadir Ítem Personalizado
                             </button>
                         </div>
@@ -611,7 +636,7 @@
                         <div id="monthlyServicesContainer" class="hidden space-y-6">
                             <div id="pointsDisplay" class="points-display flex justify-between items-center">
                                 <div>Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span></div>
-                                <button id="buyExtraPointsBtn" onclick="showExtraPointsModal()" class="hidden text-sm bg-yellow-600 text-slate-900 font-bold py-1 px-3 rounded-lg hover:bg-yellow-500 transition shadow-md">+ Comprar Puntos</button>
+                                <button id="buyExtraPointsBtn" onclick="showExtraPointsModal()" class="hidden text-sm bg-yellow-600 text-slate-900 font-bold py-1 px-3 rounded-lg hover:bg-yellow-500 transition shadow-md btn-press-feedback">+ Comprar Puntos</button>
                             </div>
                             <div id="servicesTabs" class="space-y-4">
                                 <!-- Categorías se insertarán dinámicamente aquí -->
@@ -636,7 +661,7 @@
                             <p>Costo Producción: <span id="totalDeveloperPrice">$0.00 USD</span></p>
                             <p class="accent-color">Precio a Cliente: <span id="totalClientPrice">$0.00 USD</span></p>
                         </div>
-                        <button id="addTask" class="w-full accent-bg font-bold py-3 mt-4 rounded-lg transition shadow-xl">Guardar Propuesta</button>
+                        <button id="addTask" class="w-full accent-bg font-bold py-3 mt-4 rounded-lg transition shadow-xl btn-press-feedback">Guardar Propuesta</button>
                         <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
                         <div id="selectedItems" class="text-sm space-y-2 p-3 bg-slate-900 rounded-lg h-40 overflow-y-auto border border-slate-700">
                             <p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>
@@ -652,8 +677,8 @@
                             <p class="text-yellow-400">GANANCIA TOTAL: <span id="totalProfit">$0.00 USD</span></p>
                         </div>
                         <div class="mt-4 flex gap-2">
-                            <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button">Generar Documentos</button>
-                            <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button">Limpiar Todo</button>
+                            <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
+                            <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button btn-press-feedback">Limpiar Todo</button>
                         </div>
                         <div class="mt-4 text-sm text-slate-500 text-center border-t border-slate-700 pt-4">
                             <a href="pricing.html" class="accent-color hover:underline">Gestionar Catálogo de Servicios</a>

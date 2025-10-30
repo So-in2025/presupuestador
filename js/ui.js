@@ -87,65 +87,72 @@ export function initializeMonthlyPlansSelection() {
 }
 
 export function renderTasksDashboard() {
-    const { tasks, monthlyPlans } = getState();
-    dom.tasksDashboardDiv.innerHTML = tasks.length === 0
-        ? '<p class="text-slate-400">No hay propuestas guardadas.</p>'
-        : tasks.map((task, index) => {
-            let serviceList = '';
-            let priceText = '';
-            let icon = '';
+    const dashboard = dom.tasksDashboardDiv;
+    dashboard.style.opacity = '0';
 
-            if (task.isTiered) {
-                icon = '📊';
-                const prices = task.tiers.map(t => formatPrice(t.totalDev)).join(' / ');
-                serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
-                priceText = `<p class="text-xs text-red-300">Costos Dev: ${prices}</p>`;
-            } else if (task.package) {
-                icon = '📦';
-                serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
-            } else if (task.plan) {
-                icon = '📅';
-                const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
-                const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
-                serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
-            } else {
-                icon = '🧩';
-                serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
-                priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
-            }
+    setTimeout(() => {
+        const { tasks, monthlyPlans } = getState();
+        dashboard.innerHTML = tasks.length === 0
+            ? '<p class="text-slate-400">No hay propuestas guardadas.</p>'
+            : tasks.map((task, index) => {
+                let serviceList = '';
+                let priceText = '';
+                let icon = '';
 
-            return `
-                <div class="p-3 border border-slate-700 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
-                    <div class="flex justify-between items-start mb-1">
-                        <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
-                        <div class="flex gap-2">
-                            <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button">Editar</button>
-                            <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button">Eliminar</button>
+                if (task.isTiered) {
+                    icon = '📊';
+                    const prices = task.tiers.map(t => formatPrice(t.totalDev)).join(' / ');
+                    serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
+                    priceText = `<p class="text-xs text-red-300">Costos Dev: ${prices}</p>`;
+                } else if (task.package) {
+                    icon = '📦';
+                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
+                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
+                } else if (task.plan) {
+                    icon = '📅';
+                    const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
+                    const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
+                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
+                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
+                } else {
+                    icon = '🧩';
+                    serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
+                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
+                }
+
+                return `
+                    <div class="p-3 border border-slate-700 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
+                            <div class="flex gap-2">
+                                <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button">Editar</button>
+                                <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button">Eliminar</button>
+                            </div>
                         </div>
-                    </div>
-                    ${serviceList}
-                    <p class="text-xs text-slate-400 mt-1">Margen: ${(task.margin * 100).toFixed(0)}%</p>
-                    ${priceText}
-                </div>`;
-        }).join('');
+                        ${serviceList}
+                        <p class="text-xs text-slate-400 mt-1">Margen: ${(task.margin * 100).toFixed(0)}%</p>
+                        ${priceText}
+                    </div>`;
+            }).join('');
 
-    dom.exportPdfBtn.disabled = tasks.length === 0;
-    dom.clearAllTasksBtn.disabled = tasks.length === 0;
+        dom.exportPdfBtn.disabled = tasks.length === 0;
+        dom.clearAllTasksBtn.disabled = tasks.length === 0;
 
-    let grandTotalDev = tasks.reduce((sum, t) => {
-        if (t.isTiered) return sum; // Ignorar tiered para el total general por ahora
-        return sum + t.totalDev;
-    }, 0);
-    let grandTotalClient = tasks.reduce((sum, t) => {
-        if (t.isTiered) return sum;
-        return sum + t.totalClient;
-    }, 0);
+        let grandTotalDev = tasks.reduce((sum, t) => {
+            if (t.isTiered) return sum; // Ignorar tiered para el total general por ahora
+            return sum + t.totalDev;
+        }, 0);
+        let grandTotalClient = tasks.reduce((sum, t) => {
+            if (t.isTiered) return sum;
+            return sum + t.totalClient;
+        }, 0);
 
-    dom.grandTotalDevSpan.innerHTML = formatPrice(grandTotalDev);
-    dom.grandTotalClientSpan.innerHTML = formatPrice(grandTotalClient);
-    dom.totalProfitSpan.innerHTML = formatPrice(grandTotalClient - grandTotalDev);
+        dom.grandTotalDevSpan.innerHTML = formatPrice(grandTotalDev);
+        dom.grandTotalClientSpan.innerHTML = formatPrice(grandTotalClient);
+        dom.totalProfitSpan.innerHTML = formatPrice(grandTotalClient - grandTotalDev);
+        
+        dashboard.style.opacity = '1';
+    }, 300); // Coincide con la duración de la transición
 }
 
 export function rerenderAllPrices() {
