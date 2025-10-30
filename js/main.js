@@ -7,7 +7,6 @@ import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, upda
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
 import { initializeBranding, rerenderAllPrices } from './ui.js';
-import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 
 // --- GESTIÓN DE API KEY Y MONEDA---
 let sessionApiKey = null;
