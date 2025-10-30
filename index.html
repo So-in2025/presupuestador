@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,82 +12,131 @@
             font-family: 'Inter', sans-serif; background: #0F172A; color: #E2E8F0;
             display: flex; align-items: center; justify-content: center;
             min-height: 100vh;
-            opacity: 1;
-            transition: opacity 0.5s ease-out;
         }
-        body.fade-out {
-            opacity: 0;
-        }
-        .splash-container {
-            text-align: center;
-            opacity: 0;
-            animation: fadeInContainer 1s ease-out forwards;
-        }
+        .splash-container { text-align: center; }
         .lotus-icon {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 1.5rem;
-            stroke: #22D3EE;
-            stroke-width: 2;
-            fill: transparent;
-            stroke-dasharray: 1500;
-            stroke-dashoffset: 1500;
-            animation: draw 2s ease-in-out forwards;
+            width: 100px; height: 100px; margin: 0 auto 1.5rem;
+            stroke: #22D3EE; stroke-width: 2; fill: transparent;
         }
         .splash-title {
             font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem);
             line-height: 1.1; text-transform: uppercase; letter-spacing: 4px;
             text-shadow: 0 0 15px rgba(34, 211, 238, 0.6);
         }
-        .splash-title span {
-            opacity: 0;
-            animation: fadeInLetter 0.5s forwards;
-            animation-delay: calc(1s + 0.1s * var(--i));
-        }
         .splash-byline {
             font-size: clamp(0.9rem, 2vw, 1.0rem); color: #94A3B8;
             letter-spacing: 2px; margin-top: 0.5rem;
-            opacity: 0;
-            animation: fadeInGeneric 1s 2s ease-out forwards;
         }
+        .action-button {
+            display: inline-block;
+            background: #22D3EE; color: #0F172A; font-weight: bold;
+            padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            margin-top: 2rem; text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .action-button:hover { background: #06B6D4; transform: translateY(-2px); }
+        .secondary-button {
+            background: transparent; border: 1px solid #334155;
+            color: #94A3B8; margin-left: 1rem;
+        }
+        .secondary-button:hover { background: #1E293B; border-color: #64748B; }
 
-        @keyframes fadeInContainer {
-            to { opacity: 1; }
+        .details-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.7s ease-in-out;
+            text-align: left;
+            max-width: 600px;
+            margin: 2rem auto 0;
+            color: #CBD5E1;
         }
-        @keyframes draw {
-            to { stroke-dashoffset: 0; }
+         .details-section.open {
+            max-height: 1000px; /* Adjust as needed */
         }
-        @keyframes fadeInLetter {
-            to { opacity: 1; }
-        }
-        @keyframes fadeInGeneric {
-            to { opacity: 1; }
+        .tts-btn {
+            background: #1E293B; border: 1px solid #334155; color: #94A3B8;
+            padding: 2px 6px; font-size: 0.7rem; border-radius: 4px;
+            cursor: pointer; margin-left: 8px;
         }
     </style>
 </head>
 <body>
 
-    <div class="splash-container">
+    <div class="splash-container p-4">
         <svg class="lotus-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M50 90C50 90 50 80 60 75C70 70 75 75 75 75M50 90C50 90 50 80 40 75C30 70 25 75 25 75M50 90C50 90 55 80 65 85C75 90 70 95 70 95M50 90C50 90 45 80 35 85C25 90 30 95 30 95M50 90V10M50 10C50 10 60 20 60 30C60 40 50 50 50 50M50 10C50 10 40 20 40 30C40 40 50 50 50 50M50 10C50 10 65 15 75 30C85 45 70 55 70 55M50 10C50 10 35 15 25 30C15 45 30 55 30 55" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <h1 class="splash-title">
-            <span style="--i:1;">P</span><span style="--i:2;">r</span><span style="--i:3;">o</span><span style="--i:4;">y</span><span style="--i:5;">e</span><span style="--i:6;">c</span><span style="--i:7;">t</span><span style="--i:8;">o</span>
-            <span style="--i:9; margin-left: 2rem;">Z</span><span style="--i:10;">e</span><span style="--i:11;">n</span>
-        </h1>
+        <h1 class="splash-title">Proyecto Zen</h1>
         <p class="splash-byline">by SO->IN</p>
+
+        <div>
+            <a href="presupuestador.html" class="action-button">Comenzar</a>
+            <button onclick="toggleDetails()" class="action-button secondary-button">Saber más</button>
+        </div>
+
+        <div id="detailsSection" class="details-section">
+            <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50">
+                <h3 class="font-bold text-lg text-cyan-400 mb-2">3 Pilares Fundamentales</h3>
+                <p class="mb-2 text-sm"><b>1. Co-Piloto IA Estratégico:</b>
+                    <button class="tts-btn" data-text="Co-Piloto IA Estratégico: Más que un asistente, es un estratega que analiza, recomienda y busca oportunidades de venta, entendiendo el contexto de tu trabajo.">▶️</button>
+                    Más que un asistente, es un estratega que analiza, recomienda y busca oportunidades de venta.
+                </p>
+                <p class="mb-2 text-sm"><b>2. Privacidad y Control Total:</b>
+                     <button class="tts-btn" data-text="Privacidad y Control Total: Tu negocio, tus datos. La plataforma opera 100% en tu navegador, sin nubes ni suscripciones. Total autonomía.">▶️</button>
+                    Tu negocio, tus datos. La plataforma opera 100% en tu navegador, sin nubes ni suscripciones.
+                </p>
+                <p class="mb-4 text-sm"><b>3. Flujo de Trabajo Eficiente:</b>
+                     <button class="tts-btn" data-text="Flujo de Trabajo Eficiente: Desde el análisis del cliente hasta el PDF final, cada paso está diseñado para ahorrarte tiempo y maximizar tu rentabilidad.">▶️</button>
+                    Desde el análisis hasta el PDF final, cada paso está diseñado para ahorrarte tiempo.
+                </p>
+                
+                <h3 class="font-bold text-lg text-cyan-400 mb-2 mt-4 border-t border-slate-700 pt-4">5 Pasos hacia la Propuesta Perfecta</h3>
+                 <p class="text-sm mb-1"><b>1. Análisis:</b> <button class="tts-btn" data-text="Análisis: La IA extrae los requisitos clave de las conversaciones con tus clientes.">▶️</button> La IA extrae requisitos de las conversaciones.</p>
+                 <p class="text-sm mb-1"><b>2. Construcción:</b> <button class="tts-btn" data-text="Construcción: La IA sugiere una solución estratégica y busca oportunidades de venta.">▶️</button> La IA sugiere una solución y busca oportunidades.</p>
+                 <p class="text-sm mb-1"><b>3. Rentabilidad:</b> <button class="tts-btn" data-text="Rentabilidad: Ajustas tu margen de ganancia en tiempo real.">▶️</button> Ajustas tu margen de ganancia en tiempo real.</p>
+                 <p class="text-sm mb-1"><b>4. Gestión:</b> <button class="tts-btn" data-text="Gestión: Guardas y gestionas todas tus propuestas en un dashboard centralizado.">▶️</button> Guardas y gestionas todo en un dashboard.</p>
+                 <p class="text-sm"><b>5. Documentación:</b> <button class="tts-btn" data-text="Documentación: Generas PDFs profesionales para tu cliente y tu equipo de desarrollo con un solo clic.">▶️</button> Generas PDFs profesionales con un solo clic.</p>
+            </div>
+        </div>
     </div>
     
     <script>
-        setTimeout(() => {
-            document.body.classList.add('fade-out');
-            
-            // Wait for the fade-out animation to finish before redirecting
-            setTimeout(() => {
-                window.location.href = "presupuestador.html";
-            }, 500);
+        function toggleDetails() {
+            const detailsSection = document.getElementById('detailsSection');
+            detailsSection.classList.toggle('open');
+        }
 
-        }, 3000); // Total splash screen duration
+        // Simple TTS handler accessible globally
+        function handleTTSSplashClick(button) {
+            const text = button.dataset.text;
+            const isPlaying = button.textContent === '⏹️';
+            
+            // Stop any currently playing utterance
+            window.speechSynthesis.cancel();
+            document.querySelectorAll('.tts-btn').forEach(b => b.textContent = '▶️');
+            
+            if (isPlaying) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            
+            utterance.onstart = () => {
+                button.textContent = '⏹️';
+            };
+            utterance.onend = () => {
+                button.textContent = '▶️';
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        };
+        
+        // Attach event listener to all TTS buttons on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.tts-btn').forEach(button => {
+                button.onclick = () => handleTTSSplashClick(button);
+            });
+        });
+
     </script>
 </body>
 </html>

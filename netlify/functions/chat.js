@@ -2,7 +2,7 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (versión original funcional)
- * Lógica de Intención: v11 (INFALIBLE + API Key de Usuario)
+ * Lógica de Intención: v12 (Restauración de la "Magia" del Asistente)
  */
 
 const fs = require('fs');
@@ -17,7 +17,6 @@ exports.handler = async (event) => {
 
     let pricingData;
     try {
-        // CORRECCIÓN: Leer la copia local de pricing.json
         const pricingPath = path.resolve(__dirname, 'pricing.json');
         pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
     } catch (err) {
@@ -44,22 +43,17 @@ exports.handler = async (event) => {
     }
 
     try {
-        // --- INICIALIZACIÓN DE GEMINI CON LA CLAVE DEL USUARIO ---
         const genAI = new GoogleGenerativeAI(apiKey);
         const GEMINI_MODEL = "gemini-2.5-flash";
 
         const lastUserMessage = userMessage;
         
-        // SANITIZE HISTORY: The conversation history for the API must start with a 'user' role.
-        let sanitizedHistory = historyFromClient.slice(0, -1); // Remove the last user message which will be sent separately.
+        let sanitizedHistory = historyFromClient.slice(0, -1);
         const firstUserIndex = sanitizedHistory.findIndex(msg => msg.role === 'user');
 
         if (firstUserIndex > -1) {
-            // If a 'user' message is found, slice the array to start from there.
             sanitizedHistory = sanitizedHistory.slice(firstUserIndex);
         } else {
-            // If no 'user' message is found (e.g., only the initial welcome message),
-            // start with an empty history.
             sanitizedHistory = [];
         }
         const chatHistoryForSDK = sanitizedHistory;
@@ -70,7 +64,7 @@ exports.handler = async (event) => {
             contextText = `CONTEXTO IMPORTANTE: El revendedor ya ha seleccionado los siguientes servicios para la propuesta actual: ${serviceNames}. Tus recomendaciones deben complementar, mejorar o expandir esta selección, evitando sugerir los mismos ítems de nuevo. Basa todas tus respuestas en este contexto.`;
         }
 
-        let intent = mode; // Usamos el modo directamente
+        let intent = mode;
         let systemPrompt;
 
         if (intent === 'analyze') {
@@ -95,7 +89,7 @@ exports.handler = async (event) => {
             `;
         } else { // modo 'builder' por defecto
             const classificationModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-            const classificationPrompt = `Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta es para pedir una sugerencia de servicios para un proyecto, o 'TEXTO' para cualquier otra cosa. Responde solo con la palabra en mayúsculas.`;
+            const classificationPrompt = `Eres un clasificador de peticiones. Analiza el mensaje del revendedor. Tu única respuesta debe ser 'RECOMENDACION' si la pregunta pide una sugerencia de servicios para un proyecto (ej: 'necesito una web para un restaurante', 'qué me sugieres para un fotógrafo'), o 'TEXTO' para cualquier otra cosa (saludos, preguntas generales, etc.). Responde solo con la palabra en mayúsculas.`;
             const result = await classificationModel.generateContent(classificationPrompt + "\n\nMensaje: " + lastUserMessage);
             const intentResponseText = result.response.text();
             let subIntent = intentResponseText.toUpperCase().trim().replace(/['"]+/g, '');
@@ -109,17 +103,18 @@ exports.handler = async (event) => {
                 const allServicesString = `--- CATÁLOGO COMPLETO ---\nSERVICIOS ESTÁNDAR:\n${serviceList}\nPLANES MENSUALES:\n${planList}`;
 
                 systemPrompt = `
-                    Eres Zen Assistant, un estratega de productos y coach de ventas de élite. Tu tarea es analizar las necesidades del cliente y construir la solución perfecta.
+                    Actúa como una API. Tu única respuesta DEBE ser un objeto JSON válido y nada más. No incluyas \`\`\`json ni ninguna otra palabra fuera del JSON.
+                    Tu tarea es analizar la petición del usuario y construir la solución perfecta basándote en el catálogo y el contexto.
                     ${allServicesString}
                     ${contextText}
                     INSTRUCCIONES CLAVE:
                     1. Analiza la petición. Para cada servicio que recomiendes, crea un objeto en el array 'services'.
                     2. Para servicios existentes: Usa su 'id' y 'name' reales, y pon 'is_new: false'.
                     3. Si un servicio necesario no existe: ¡Créalo! Pon 'is_new: true', inventa un 'id' único (ej: 'custom-crm-integration'), un 'name' claro, una 'description' vendedora y un 'price' de producción justo.
-                    4. En 'client_questions', crea preguntas para descubrir más oportunidades.
-                    5. En 'sales_pitch', escribe un párrafo de venta enfocado en los beneficios.
-                    6. ESTRATEGIA DE VENTA PROACTIVA: Además de cumplir con la solicitud, identifica y sugiere proactivamente al menos una oportunidad de 'upsell' (una versión mejorada de un servicio solicitado) o 'cross-sell' (un servicio complementario que añade valor). Justifica esta sugerencia en la descripción del servicio, explicando su beneficio directo para el cliente final.
-                    IMPORTANTE: Tu respuesta DEBE ser un objeto JSON válido con esta estructura, y NADA MÁS. No incluyas \`\`\`json.
+                    4. En 'client_questions', DEBES crear preguntas estratégicas para descubrir más oportunidades.
+                    5. En 'sales_pitch', DEBES escribir un párrafo de venta persuasivo enfocado en los beneficios.
+                    6. ESTRATEGIA DE VENTA PROACTIVA: Además de cumplir con la solicitud, DEBES identificar y sugerir proactivamente al menos una oportunidad de 'upsell' o 'cross-sell'. Justifica esta sugerencia en la descripción del servicio.
+                    IMPORTANTE: Tu respuesta DEBE ser un objeto JSON válido que siga esta estructura exacta:
                     {
                       "introduction": "string",
                       "services": [{ "id": "string", "is_new": boolean, "name": "string", "description": "string", "price": number }],
@@ -153,7 +148,6 @@ exports.handler = async (event) => {
 
     } catch (err) {
         console.error("FATAL en handler de Netlify:", err.message, err.stack);
-        // Devuelve un error más específico si la clave es inválida
         if (err.message && err.message.includes('API key not valid')) {
              const errorMessage = `La API Key proporcionada no es válida. Por favor, revísala e inténtalo de nuevo.`;
              const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorMessage }] }];

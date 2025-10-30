@@ -1,12 +1,11 @@
-
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v11 (INFALIBLE + API Key de Usuario)
+ * v13 (Chats separados y tour corregido)
  */
 
 import { getState, setLocalServices } from './state.js';
-import { saveLocalServices, loadChatHistory, saveChatHistory } from './data.js';
+import { saveLocalServices, loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification, showApiKeyModal } from './modals.js';
 import { appendLocalServiceToUI } from './ui.js';
 import { getSessionApiKey } from './main.js';
@@ -80,28 +79,56 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    let chatHistory = [];
+    let allChatHistories = { builder: [], objection: [], analyze: [] };
+    let chatHistory = []; // Referencia al historial activo
     let isSending = false;
-    let currentAiMode = 'builder'; // 'builder', 'objection', o 'analyze'
+    let currentAiMode = 'builder';
+
+    function switchMode(newMode, isInitialLoad = false) {
+        if (!isInitialLoad) {
+            allChatHistories[currentAiMode] = chatHistory;
+        }
+        currentAiMode = newMode;
+        chatHistory = allChatHistories[currentAiMode] || [];
+        
+        modeSelector.querySelector('.active')?.classList.remove('active');
+        modeSelector.querySelector(`[data-mode="${newMode}"]`).classList.add('active');
+        updateChatUIForMode();
+        renderChatMessages();
+    }
+
+    function renderChatMessages() {
+        chatMessagesContainer.innerHTML = '';
+        shouldAutoplay = false;
+
+        if (chatHistory.length === 0) {
+            const welcomeMessage = getWelcomeMessageForMode(currentAiMode);
+            addMessageToChat(welcomeMessage, 'model');
+            // No añadir el mensaje de bienvenida al historial persistente
+            // Se generará cada vez que se cargue un historial vacío.
+        } else {
+            chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
+        }
+    }
+
+    function getWelcomeMessageForMode(mode) {
+        switch(mode) {
+            case 'builder': return '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
+            case 'objection': return 'Bienvenido al modo de objeciones. Escribe la objeción de tu cliente y te ayudaré a formular una respuesta.';
+            case 'analyze': return 'Bienvenido al modo de análisis. Pega aquí la conversación con tu cliente para que extraiga los puntos clave.';
+            default: return '¡Hola! Soy Zen Assistant.';
+        }
+    }
 
     modeSelector.addEventListener('click', (e) => {
         const button = e.target.closest('.chat-mode-btn');
         if (button && !button.classList.contains('active')) {
-            modeSelector.querySelector('.active').classList.remove('active');
-            button.classList.add('active');
-            currentAiMode = button.dataset.mode;
-            updateChatUIForMode();
+            switchMode(button.dataset.mode);
         }
     });
 
     function updateChatUIForMode() {
-        if (currentAiMode === 'builder') {
-            chatInput.placeholder = "Ej: 'Necesito una web para un fotógrafo...'";
-        } else if (currentAiMode === 'objection') {
-            chatInput.placeholder = "Escribe la objeción de tu cliente aquí...";
-        } else { // analyze
-            chatInput.placeholder = "Pega aquí la conversación con tu cliente (email, chat...)"
-        }
+        chatInput.placeholder = getWelcomeMessageForMode(currentAiMode).replace('¡Hola! Soy Zen Assistant. ', '').replace('Bienvenido al modo de objeciones. ', '').replace('Bienvenido al modo de análisis. ', '');
     }
     
     function populateVoiceList() {
@@ -251,8 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             const pitchId = `pitch-${Date.now()}`;
                             finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
                         }
+                    } else {
+                         if (currentAiMode === 'builder') throw new Error("Not a valid JSON response for builder mode.");
                     }
-                } catch (e) { /* No es JSON, es texto plano (objeción, etc) */ }
+                } catch (e) { 
+                    if (currentAiMode === 'builder') {
+                        finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
+                        textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
+                    }
+                }
             }
 
             const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
@@ -299,6 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const { selectedServices } = getState();
         const simpleSelectedServices = selectedServices.map(({ id, name, type }) => ({ id, name, type }));
         
+        chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
+        
         const payload = { 
             userMessage: userMessage, 
             history: chatHistory,
@@ -307,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
             apiKey: apiKey 
         };
 
-        chatHistory.push({ role: 'user', parts: [{ text: userMessage }] }); 
         chatInput.value = '';
         chatInput.focus();
         toggleTypingIndicator(true);
@@ -325,78 +360,60 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
+            
+            toggleTypingIndicator(false);
+            
             chatHistory = data.history; 
             const aiResponseText = data.response; 
+            
             addMessageToChat(aiResponseText, 'model');
 
         } catch (error) {
             console.error("Error detallado al enviar mensaje:", error);
+            toggleTypingIndicator(false);
             addMessageToChat(`Lo siento, hubo un error de conexión con el asistente. Error: ${error.message}`, 'model');
         } finally {
             isSending = false;
             sendChatBtn.disabled = false;
-            toggleTypingIndicator(false);
-            saveChatHistory(chatHistory);
+            allChatHistories[currentAiMode] = chatHistory;
+            saveChatHistories(allChatHistories);
         }
     }
 
     function toggleTypingIndicator(show) {
         let indicator = document.getElementById('typing-indicator');
-        if (show) {
-            if (!indicator) {
-                indicator = document.createElement('div');
-                indicator.id = 'typing-indicator';
-                indicator.className = 'chat-message flex items-start my-2';
-                indicator.innerHTML = `<div class="chat-bubble bg-slate-700 rounded-bl-none p-3 flex items-center space-x-1">
-                    <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce"></span>
-                    <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
-                    <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></span>
-                </div>`;
-                chatMessagesContainer.appendChild(indicator);
-            }
-        } else {
-            if (indicator) indicator.remove();
+        if (show && !indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'typing-indicator';
+            indicator.className = 'chat-message flex items-start my-2';
+            indicator.innerHTML = `<div class="chat-bubble bg-slate-700 rounded-bl-none p-3 flex items-center space-x-1">
+                <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce"></span>
+                <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
+                <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></span>
+            </div>`;
+            chatMessagesContainer.appendChild(indicator);
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        } else if (!show && indicator) {
+            indicator.remove();
         }
     }
-
+    
+    // Función de inicialización a prueba de fallos para solucionar el problema del tour
     function initChat() {
-        chatMessagesContainer.innerHTML = '';
-    
         try {
-            const loadedHistory = loadChatHistory();
-            if (!Array.isArray(loadedHistory)) {
-                throw new Error("El historial guardado no es un array.");
-            }
-            
-            // Si el historial está vacío, iniciamos con el mensaje de bienvenida.
-            if (loadedHistory.length === 0) {
-                throw new Error("Historial no encontrado o vacío.");
-            }
-
-            // Validamos cada mensaje. Si alguno es corrupto, descartamos todo el historial.
-            loadedHistory.forEach(msg => {
-                if (!msg || typeof msg.role !== 'string' || !Array.isArray(msg.parts) || msg.parts.length === 0 || !msg.parts[0] || typeof msg.parts[0].text !== 'string') {
-                    throw new Error(`Mensaje corrupto encontrado: ${JSON.stringify(msg)}`);
-                }
-            });
-            
-            chatHistory = loadedHistory;
-            shouldAutoplay = false; 
-            chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
-    
-        } catch (error) {
-            console.warn("Fallo al cargar el historial, se reiniciará el chat:", error.message);
-            
-            localStorage.removeItem('zenChatHistory');
-            chatHistory = []; // Asegurarse de que el historial en memoria esté vacío
-            shouldAutoplay = true; 
-            
-            const welcomeMessage = '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
-            addMessageToChat(welcomeMessage, 'model');
-            chatHistory.push({ role: 'model', parts: [{ text: welcomeMessage }] });
-            saveChatHistory(chatHistory);
+            const loadedHistories = loadChatHistories();
+            // Asegurarse de que todos los modos existen
+            allChatHistories.builder = loadedHistories.builder || [];
+            allChatHistories.objection = loadedHistories.objection || [];
+            allChatHistories.analyze = loadedHistories.analyze || [];
+            switchMode('builder', true);
+        } catch(e) {
+            console.error("Error catastrófico al inicializar el chat, reiniciando estado.", e);
+            localStorage.removeItem('zenChatHistories');
+            allChatHistories = { builder: [], objection: [], analyze: [] };
+            switchMode('builder', true);
         }
-    
+
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
@@ -425,5 +442,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initChat();
-    updateChatUIForMode();
 });

@@ -1,4 +1,3 @@
-
 // js/data.js
 
 import { setAllServices, setMonthlyPlans, setTasks, setLocalServices, getState } from './state.js';
@@ -57,20 +56,30 @@ export function saveLocalServices() {
     localStorage.setItem('zenLocalServices', JSON.stringify(localServices));
 }
 
-export function loadChatHistory() {
+export function loadChatHistories() {
     try {
-        const storedHistory = localStorage.getItem('zenChatHistory');
-        return storedHistory ? JSON.parse(storedHistory) : [];
+        const stored = localStorage.getItem('zenChatHistories');
+        const histories = stored ? JSON.parse(stored) : null;
+        if (histories && typeof histories === 'object' && !Array.isArray(histories)) {
+             // Asegurarse de que todos los modos existen, incluso si no están en localStorage
+            const completeHistories = {
+                builder: histories.builder || [],
+                objection: histories.objection || [],
+                analyze: histories.analyze || []
+            };
+            return completeHistories;
+        }
     } catch (e) {
-        console.error("Error al cargar historial del chat:", e);
-        return [];
+        console.error("Error al cargar historiales del chat:", e);
     }
+    // Devuelve una estructura limpia si no hay nada o hay un error
+    return { builder: [], objection: [], analyze: [] };
 }
 
-export function saveChatHistory(history) {
+export function saveChatHistories(histories) {
     try {
-        localStorage.setItem('zenChatHistory', JSON.stringify(history));
+        localStorage.setItem('zenChatHistories', JSON.stringify(histories));
     } catch (e) {
-        console.error("Error al guardar historial del chat:", e);
+        console.error("Error al guardar historiales del chat:", e);
     }
 }

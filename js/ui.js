@@ -1,4 +1,3 @@
-
 // js/ui.js
 
 import * as dom from './dom.js';
@@ -207,7 +206,8 @@ export function initializeTour() {
         { el: '#solution-config-container', text: 'Aquí puedes seleccionar los servicios recomendados por la IA o elegirlos manualmente. Puedes escoger paquetes, planes mensuales o ítems individuales.' },
         { el: '#summaryCard', text: 'Define tu margen de ganancia. El sistema calculará automáticamente el precio final para tu cliente.' },
         { el: '#addTask', text: 'Cuando termines, guarda la propuesta aquí. Aparecerá en el panel de "Propuestas Guardadas".' },
-        { el: '#saved-proposals-container', text: 'Desde aquí podrás editar, eliminar y generar los PDFs de todas tus propuestas. ¡Eso es todo! Ahora estás listo para empezar.' },
+        { el: '#saved-proposals-container', text: 'Desde aquí podrás editar, eliminar y generar los PDFs de todas tus propuestas.' },
+        { el: '#tieredBuilderBtn', text: 'Consejo Pro: Usa el constructor por niveles para presentar 3 opciones a tu cliente (Básico, Recomendado, Completo). ¡Es una técnica de venta muy poderosa!' }
     ];
     let currentStep = 0;
 
