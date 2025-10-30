@@ -159,9 +159,15 @@
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
         .animate-bounce { animation: bounce 1.4s infinite ease-in-out both; }
         
+        /* --- HIERARCHY & INTERACTION FIX --- */
+        /* Splash > Tour > Modals > Content */
+        #splash-screen { z-index: 100000; }
+        #tour-tooltip { z-index: 99999; }
+        .tour-highlight { z-index: 99998; }
+        .modal-overlay { z-index: 90000; }
+
         /* --- ESTILOS TOUR GUIADO --- */
-        #tour-tooltip { z-index: 50002; }
-        #tour-tooltip #tour-text { /* Mejora de legibilidad */
+        #tour-tooltip #tour-text {
             font-size: 1rem;
             line-height: 1.6;
         }
@@ -169,7 +175,6 @@
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 0 0 4px var(--accent-color);
             border-radius: 8px;
             position: relative;
-            z-index: 50001;
             transition: box-shadow 0.3s ease-in-out;
         }
         /* Spinner */
@@ -183,7 +188,7 @@
 
         /* --- SPLASH SCREEN STYLES --- */
         #splash-screen {
-            position: fixed; inset: 0; z-index: 60000;
+            position: fixed; inset: 0;
             display: flex; align-items: center; justify-content: center;
             background: #0F172A;
             transition: opacity 0.5s ease-out;
@@ -238,7 +243,6 @@
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(8px);
-            z-index: 55000;
             transition: opacity 0.3s ease-in-out;
         }
         .modal-overlay > div { /* Contenedor directo del modal */
