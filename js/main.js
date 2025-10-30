@@ -5,9 +5,33 @@ import * as state from './state.js';
 import { loadPricingData, loadLocalData, saveTasks } from './data.js';
 import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
-import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
-import { initializeBranding, rerenderAllPrices } from './ui.js';
+import { 
+    removeCustomService, 
+    showNotification, 
+    showApiKeyModal,
+    closeNotificationModal,
+    showCustomServiceModal,
+    closeCustomServiceModal,
+    addCustomServiceToSelection,
+    showPdfOptionsModal,
+    closePdfOptionsModal,
+    showBrandingModal,
+    closeBrandingModal,
+    showTieredBuilderModal,
+    closeTieredBuilderModal,
+    addTieredProposal,
+    handleSaveApiKey,
+    showTieredBuilderHelp,
+    showExtraPointsModal,
+    closeExtraPointsModal,
+    addExtraPoints,
+    showExchangeRateModal,
+    closeExchangeRateModal,
+    handleSaveExchangeRate
+} from './modals.js';
+import { initializeBranding, rerenderAllPrices, saveBranding, restartTour } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
+import { generatePdf } from './pdf.js';
 
 // --- LÓGICA DEL SPLASH SCREEN ---
 function initializeSplashScreen() {
@@ -31,7 +55,7 @@ function initializeSplashScreen() {
     });
 
     document.querySelectorAll('#splash-screen .tts-btn').forEach(button => {
-        button.onclick = () => {
+        button.addEventListener('click', () => {
             const text = button.dataset.text;
             const isPlaying = button.textContent === '⏹️';
             
@@ -47,21 +71,124 @@ function initializeSplashScreen() {
             utterance.onend = () => { button.textContent = '▶️'; };
             
             window.speechSynthesis.speak(utterance);
-        };
+        });
+    });
+}
+
+// --- CENTRALIZED EVENT LISTENERS ---
+function initializeEventListeners() {
+    // Modal Buttons
+    document.getElementById('close-notification-modal-btn-x')?.addEventListener('click', closeNotificationModal);
+    document.getElementById('close-notification-modal-btn-accept')?.addEventListener('click', closeNotificationModal);
+    document.getElementById('close-custom-service-modal-btn')?.addEventListener('click', closeCustomServiceModal);
+    document.getElementById('add-custom-service-btn')?.addEventListener('click', addCustomServiceToSelection);
+    document.getElementById('close-extra-points-modal-btn')?.addEventListener('click', closeExtraPointsModal);
+    document.getElementById('add-extra-points-btn')?.addEventListener('click', addExtraPoints);
+    document.getElementById('close-pdf-options-modal-btn')?.addEventListener('click', closePdfOptionsModal);
+    document.getElementById('generate-client-pdf-btn')?.addEventListener('click', (e) => generatePdf(true, e.currentTarget));
+    document.getElementById('generate-internal-pdf-btn')?.addEventListener('click', (e) => generatePdf(false, e.currentTarget));
+    document.getElementById('close-branding-modal-btn')?.addEventListener('click', closeBrandingModal);
+    document.getElementById('save-branding-btn')?.addEventListener('click', saveBranding);
+    document.getElementById('close-tiered-builder-modal-btn')?.addEventListener('click', closeTieredBuilderModal);
+    document.getElementById('cancel-tiered-builder-btn')?.addEventListener('click', closeTieredBuilderModal);
+    document.getElementById('add-tiered-proposal-btn')?.addEventListener('click', addTieredProposal);
+    document.getElementById('save-api-key-btn')?.addEventListener('click', handleSaveApiKey);
+    document.getElementById('close-exchange-rate-modal-btn')?.addEventListener('click', closeExchangeRateModal);
+    document.getElementById('save-exchange-rate-btn')?.addEventListener('click', handleSaveExchangeRate);
+    
+    // Header Buttons
+    document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
+    document.getElementById('change-api-key-btn')?.addEventListener('click', showApiKeyModal);
+    document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
+    document.getElementById('tieredBuilderBtn')?.addEventListener('click', showTieredBuilderModal);
+    document.getElementById('show-tiered-builder-help-btn')?.addEventListener('click', showTieredBuilderHelp);
+    document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
+    document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);
+    document.getElementById('buyExtraPointsBtn')?.addEventListener('click', showExtraPointsModal);
+    dom.exportPdfBtn?.addEventListener('click', showPdfOptionsModal);
+
+    // Main App Listeners
+    dom.serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));
+    dom.clearSelectionsBtn.addEventListener('click', clearAllSelections);
+    dom.addTaskButton.addEventListener('click', () => handleAddTask());
+    dom.marginPercentageInput.addEventListener('input', updateSelectedItems);
+    
+    dom.clearAllTasksBtn.addEventListener('click', () => {
+        const { tasks } = state.getState();
+        if (tasks.length > 0 && confirm("¿Estás seguro de que deseas borrar TODAS las propuestas?")) {
+            state.setTasks([]);
+            saveTasks();
+            resetForm();
+            showNotification('info', 'Tareas Borradas', 'Todas las propuestas han sido eliminadas.');
+        }
+    });
+
+    document.getElementById('currency-toggle-btn').addEventListener('click', () => {
+        const current = state.getState().currentCurrency;
+        const newCurrency = current === 'USD' ? 'ARS' : 'USD';
+        state.setCurrentCurrency(newCurrency);
+        document.getElementById('currency-toggle-btn').textContent = newCurrency;
+        rerenderAllPrices();
+    });
+
+    // Event Delegation
+    dom.appContainer.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target.matches('input[name="selectionGroup"], input[data-type="standard"]')) {
+            if (document.querySelector('input[name="monthlyPlanSelection"]:checked')) {
+                clearAllSelections();
+            }
+            if (target.name === 'selectionGroup') {
+                document.querySelectorAll('input[data-type="standard"]').forEach(cb => cb.checked = false);
+            } else {
+                if (document.querySelector('input[name="selectionGroup"]:checked')) {
+                    document.querySelector('input[name="selectionGroup"]:checked').checked = false;
+                }
+            }
+            updateSelectedItems();
+        } else if (target.matches('input[name="monthlyPlanSelection"]')) {
+            if (document.querySelector('input[name="selectionGroup"]:checked')) {
+                document.querySelector('input[name="selectionGroup"]:checked').checked = false;
+            }
+            document.querySelectorAll('input[data-type="standard"]:checked').forEach(cb => cb.checked = false);
+            handlePlanSelection(target.value);
+            updateSelectedItems();
+        } else if (target.matches('input[name^="plan-service-"]')) {
+            handleServiceSelection(target, target.checked);
+        }
+    });
+
+    dom.appContainer.addEventListener('click', (e) => {
+        const card = e.target.closest('.item-card');
+        if (card && !e.target.matches('input')) {
+            const input = card.querySelector('input');
+            if (input && !input.disabled) {
+                input.click();
+            }
+        }
+
+        const actionButton = e.target.closest('[data-action]');
+        if (actionButton) {
+            const { action, index, id } = actionButton.dataset;
+            if (action === 'edit') editTask(parseInt(index));
+            if (action === 'delete') deleteTask(parseInt(index));
+            if (action === 'remove-custom') removeCustomService(id);
+        }
     });
 }
 
 
-// --- EVENT LISTENERS PRINCIPALES ---
+// --- APP INITIALIZATION ---
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeSplashScreen();
     initializeBranding();
     loadLocalData();
-    loadPricingData();
+    loadPricingData(); // This now also calls initializeUI
     resetForm();
-    initializeChatAssistant(); // Inicializa el chat como parte del flujo principal
-    // API Key check is now deferred
+    initializeChatAssistant();
+    initializeEventListeners(); // The new central hub for all interactions
+    // API Key check is now deferred until after splash screen
 });
 
 function checkApiKey() {
@@ -74,72 +201,3 @@ function checkApiKey() {
         }
     }
 }
-
-dom.serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));
-dom.clearSelectionsBtn.addEventListener('click', clearAllSelections);
-dom.addTaskButton.addEventListener('click', () => handleAddTask());
-dom.marginPercentageInput.addEventListener('input', updateSelectedItems);
-
-dom.clearAllTasksBtn.addEventListener('click', () => {
-    const { tasks } = state.getState();
-    if (tasks.length > 0 && confirm("¿Estás seguro de que deseas borrar TODAS las propuestas?")) {
-        state.setTasks([]);
-        saveTasks();
-        resetForm();
-        showNotification('info', 'Tareas Borradas', 'Todas las propuestas han sido eliminadas.');
-    }
-});
-
-document.getElementById('currency-toggle-btn').addEventListener('click', () => {
-    const current = state.getState().currentCurrency;
-    const newCurrency = current === 'USD' ? 'ARS' : 'USD';
-    state.setCurrentCurrency(newCurrency);
-    document.getElementById('currency-toggle-btn').textContent = newCurrency;
-    rerenderAllPrices();
-});
-
-
-// Delegación de eventos para selecciones y acciones
-dom.appContainer.addEventListener('change', (e) => {
-    const target = e.target;
-    if (target.matches('input[name="selectionGroup"], input[data-type="standard"]')) {
-        if (document.querySelector('input[name="monthlyPlanSelection"]:checked')) {
-            clearAllSelections();
-        }
-        if (target.name === 'selectionGroup') {
-            document.querySelectorAll('input[data-type="standard"]').forEach(cb => cb.checked = false);
-        } else {
-            if (document.querySelector('input[name="selectionGroup"]:checked')) {
-                document.querySelector('input[name="selectionGroup"]:checked').checked = false;
-            }
-        }
-        updateSelectedItems();
-    } else if (target.matches('input[name="monthlyPlanSelection"]')) {
-        if (document.querySelector('input[name="selectionGroup"]:checked')) {
-            document.querySelector('input[name="selectionGroup"]:checked').checked = false;
-        }
-        document.querySelectorAll('input[data-type="standard"]:checked').forEach(cb => cb.checked = false);
-        handlePlanSelection(target.value);
-        updateSelectedItems();
-    } else if (target.matches('input[name^="plan-service-"]')) {
-        handleServiceSelection(target, target.checked);
-    }
-});
-
-dom.appContainer.addEventListener('click', (e) => {
-    const card = e.target.closest('.item-card');
-    if (card && !e.target.matches('input')) {
-        const input = card.querySelector('input');
-        if (input && !input.disabled) {
-            input.click();
-        }
-    }
-
-    const actionButton = e.target.closest('[data-action]');
-    if (actionButton) {
-        const { action, index, id } = actionButton.dataset;
-        if (action === 'edit') editTask(parseInt(index));
-        if (action === 'delete') deleteTask(parseInt(index));
-        if (action === 'remove-custom') removeCustomService(id);
-    }
-});

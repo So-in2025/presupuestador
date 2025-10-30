@@ -1,7 +1,7 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate, setSessionApiKey } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToRerender, setUsdToArsRate, setSessionApiKey } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
@@ -53,10 +53,10 @@ export function closeCustomServiceModal() { closeModal(dom.customServiceModal); 
 export function showPdfOptionsModal() {
     const { tasks } = getState();
     if (tasks.length === 0) {
-        document.querySelectorAll('#pdfOptionsModal button[onclick^="generatePdf"]').forEach(btn => btn.disabled = true);
+        document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = true);
         return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
     }
-    document.querySelectorAll('#pdfOptionsModal button[onclick^="generatePdf"]').forEach(btn => btn.disabled = false);
+    document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = false);
 
     
     const brandInfo = localStorage.getItem('zenBrandInfo');
@@ -318,25 +318,3 @@ export function showTieredBuilderHelp() {
     `;
     showNotification('info', helpTitle, helpMessage);
 }
-
-// Asociar funciones al scope global para que los `onclick` funcionen.
-window.closeNotificationModal = closeNotificationModal;
-window.closeCustomServiceModal = closeCustomServiceModal;
-window.addCustomServiceToSelection = addCustomServiceToSelection;
-window.closePdfOptionsModal = closePdfOptionsModal;
-window.showCustomServiceModal = showCustomServiceModal;
-window.showPdfOptionsModal = showPdfOptionsModal;
-window.showBrandingModal = showBrandingModal;
-window.closeBrandingModal = closeBrandingModal;
-window.showTieredBuilderModal = showTieredBuilderModal;
-window.closeTieredBuilderModal = closeTieredBuilderModal;
-window.addTieredProposal = addTieredProposal;
-window.showApiKeyModal = showApiKeyModal;
-window.handleSaveApiKey = handleSaveApiKey;
-window.showTieredBuilderHelp = showTieredBuilderHelp;
-window.showExtraPointsModal = showExtraPointsModal;
-window.closeExtraPointsModal = closeExtraPointsModal;
-window.addExtraPoints = addExtraPoints;
-window.showExchangeRateModal = showExchangeRateModal;
-window.closeExchangeRateModal = closeExchangeRateModal;
- window.handleSaveExchangeRate = handleSaveExchangeRate;

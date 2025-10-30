@@ -320,12 +320,12 @@
             <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center">
                     <h3 id="notificationTitle" class="text-lg"></h3>
-                    <button onclick="closeNotificationModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-notification-modal-btn-x" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5">
                     <p id="notificationMessage" class="text-sm text-slate-300"></p>
                     <div class="mt-4 text-right">
-                        <button onclick="closeNotificationModal()" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition duration-300">Aceptar</button>
+                        <button id="close-notification-modal-btn-accept" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition duration-300">Aceptar</button>
                     </div>
                 </div>
             </div>
@@ -334,7 +334,7 @@
             <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-purple-600 flex justify-between items-center">
                     <h3 class="text-lg">Añadir Ítem Personalizado</h3>
-                    <button onclick="closeCustomServiceModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-custom-service-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 space-y-4">
                     <div>
@@ -346,7 +346,7 @@
                         <input type="number" id="customServicePrice" class="w-full styled-input" placeholder="0.00" min="0">
                     </div>
                     <div class="text-right pt-2">
-                        <button onclick="addCustomServiceToSelection()" class="bg-purple-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition">Añadir Ítem</button>
+                        <button id="add-custom-service-btn" class="bg-purple-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition">Añadir Ítem</button>
                     </div>
                 </div>
             </div>
@@ -355,7 +355,7 @@
             <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-yellow-600 flex justify-between items-center">
                     <h3 class="text-lg text-slate-900">Comprar Puntos Extra</h3>
-                    <button onclick="closeExtraPointsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-extra-points-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 space-y-4">
                     <p class="text-sm text-slate-300">Añade puntos de desarrollo adicionales a tu plan mensual para incluir más servicios.</p>
@@ -365,7 +365,7 @@
                     </div>
                     <p id="extraPointsCostFeedback" class="text-sm text-center font-bold text-yellow-300 h-5"></p>
                     <div class="text-right pt-2">
-                        <button onclick="addExtraPoints()" class="bg-yellow-600 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition">Añadir Puntos</button>
+                        <button id="add-extra-points-btn" class="bg-yellow-600 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition">Añadir Puntos</button>
                     </div>
                 </div>
             </div>
@@ -374,7 +374,7 @@
             <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
                     <h3 class="text-lg">Generar Documentos de Propuesta</h3>
-                    <button onclick="closePdfOptionsModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-pdf-options-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
                     <div>
@@ -394,14 +394,14 @@
                         <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
                     </div>
                     <div class="pt-2 space-y-3">
-                        <button onclick="generatePdf(true, this)" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
+                        <button id="generate-client-pdf-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
                             <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             <span class="btn-text">Generar Propuesta para Cliente</span>
                         </button>
-                        <button onclick="generatePdf(false, this)" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
+                        <button id="generate-internal-pdf-btn" class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
                             <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -416,7 +416,7 @@
             <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-teal-600 flex justify-between items-center">
                     <h3 class="text-lg">Configuración de Marca</h3>
-                    <button onclick="closeBrandingModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-branding-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 space-y-4">
                     <div>
@@ -429,7 +429,7 @@
                         <input type="color" id="brandColorInput" class="w-full h-10 p-1 bg-slate-700 border border-slate-600 rounded-lg cursor-pointer">
                     </div>
                     <div class="text-right pt-2">
-                        <button onclick="saveBranding()" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-teal-700 transition">Guardar Cambios</button>
+                        <button id="save-branding-btn" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-teal-700 transition">Guardar Cambios</button>
                     </div>
                 </div>
             </div>
@@ -438,7 +438,7 @@
             <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
                     <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
-                    <button onclick="closeTieredBuilderModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-tiered-builder-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 flex-grow overflow-y-auto">
                     <p class="text-sm text-slate-400 mb-4 italic">Usa el nivel Básico para lo esencial, el Recomendado para la solución ideal, y el Completo para añadir todos los extras de alto valor.</p>
@@ -447,8 +447,8 @@
                     </div>
                 </div>
                 <div class="p-4 bg-slate-900/50 rounded-b-xl flex-shrink-0 flex justify-end items-center gap-4">
-                     <button onclick="closeTieredBuilderModal()" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition">Cancelar</button>
-                    <button onclick="addTieredProposal()" class="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700 transition">Guardar Propuesta por Niveles</button>
+                     <button id="cancel-tiered-builder-btn" class="bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition">Cancelar</button>
+                    <button id="add-tiered-proposal-btn" class="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700 transition">Guardar Propuesta por Niveles</button>
                 </div>
             </div>
         </div>
@@ -486,7 +486,7 @@
                         </a>
                     </p>
                     <div class="text-right pt-2">
-                        <button onclick="handleSaveApiKey(this)" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition flex justify-center items-center gap-2">
+                        <button id="save-api-key-btn" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition flex justify-center items-center gap-2">
                              <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -503,7 +503,7 @@
             <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
                 <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
                     <h3 class="text-lg">Configurar Tipo de Cambio Manual</h3>
-                    <button onclick="closeExchangeRateModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                    <button id="close-exchange-rate-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
                 </div>
                 <div class="p-5 space-y-4">
                     <p class="text-sm text-slate-300">
@@ -514,7 +514,7 @@
                         <input type="number" id="exchangeRateInput" class="w-full styled-input" placeholder="Ej: 1150.50" min="0">
                     </div>
                     <div class="text-right pt-2">
-                        <button onclick="handleSaveExchangeRate()" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                        <button id="save-exchange-rate-btn" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition">
                             Guardar Cotización
                         </button>
                     </div>
@@ -534,20 +534,20 @@
                 </div>
                 <p class="text-slate-400 mt-2">Crea, gestiona y exporta propuestas de alto impacto.</p>
                  <div class="mt-4 flex flex-wrap justify-center gap-3">
-                    <button onclick="showBrandingModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                    <button id="show-branding-modal-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         ⚙️ Configuración de Marca
                     </button>
-                    <button onclick="showApiKeyModal()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                    <button id="change-api-key-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔑 Cambiar API Key
                     </button>
-                    <button onclick="window.restartTour()" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                    <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
                     </button>
                      <div class="flex items-center gap-1">
-                        <button id="tieredBuilderBtn" onclick="showTieredBuilderModal()" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                        <button id="tieredBuilderBtn" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                             📊 Propuesta por Niveles
                         </button>
-                        <button onclick="showTieredBuilderHelp()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
+                        <button id="show-tiered-builder-help-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
                             ?
                         </button>
                      </div>
@@ -555,7 +555,7 @@
                         <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press-feedback">
                             USD
                         </button>
-                        <button id="configure-rate-btn" onclick="showExchangeRateModal()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Configurar tipo de cambio manual">
+                        <button id="configure-rate-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Configurar tipo de cambio manual">
                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
                               <path d="M10 3.75a2 2 0 100 4 2 2 0 000-4zM4.375 3.75a2 2 0 100 4 2 2 0 000-4zM15.625 3.75a2 2 0 100 4 2 2 0 000-4zM10 12.25a2 2 0 100 4 2 2 0 000-4zM4.375 12.25a2 2 0 100 4 2 2 0 000-4zM15.625 12.25a2 2 0 100 4 2 2 0 000-4z" />
                            </svg>
@@ -629,7 +629,7 @@
                             <button id="clearSelectionsBtn" class="hidden flex-grow bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg btn-press-feedback">
                                 Limpiar Selección y Activar Modo Personalizado
                             </button>
-                            <button onclick="showCustomServiceModal()" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg btn-press-feedback">
+                            <button id="add-custom-service-modal-btn" class="flex-grow bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition shadow-lg btn-press-feedback">
                                 + Añadir Ítem Personalizado
                             </button>
                         </div>
@@ -640,7 +640,7 @@
                         <div id="monthlyServicesContainer" class="hidden space-y-6">
                             <div id="pointsDisplay" class="points-display flex justify-between items-center">
                                 <div>Puntos de Desarrollo: <span id="planPointsCounter">0 / 0</span></div>
-                                <button id="buyExtraPointsBtn" onclick="showExtraPointsModal()" class="hidden text-sm bg-yellow-600 text-slate-900 font-bold py-1 px-3 rounded-lg hover:bg-yellow-500 transition shadow-md btn-press-feedback">+ Comprar Puntos</button>
+                                <button id="buyExtraPointsBtn" class="hidden text-sm bg-yellow-600 text-slate-900 font-bold py-1 px-3 rounded-lg hover:bg-yellow-500 transition shadow-md btn-press-feedback">+ Comprar Puntos</button>
                             </div>
                             <div id="servicesTabs" class="space-y-4">
                                 <!-- Categorías se insertarán dinámicamente aquí -->
@@ -681,7 +681,7 @@
                             <p class="text-yellow-400">GANANCIA TOTAL: <span id="totalProfit">$0.00 USD</span></p>
                         </div>
                         <div class="mt-4 flex gap-2">
-                            <button id="exportPdfBtn" onclick="showPdfOptionsModal()" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
+                            <button id="exportPdfBtn" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
                             <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button btn-press-feedback">Limpiar Todo</button>
                         </div>
                         <div class="mt-4 text-sm text-slate-500 text-center border-t border-slate-700 pt-4">
@@ -695,8 +695,6 @@
     </div>
 
     <script type="module" src="js/main.js"></script>
-    <script type="module" src="js/modals.js"></script>
-    <script type="module" src="js/pdf.js"></script>
 
 </body>
 </html>

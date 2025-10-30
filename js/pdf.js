@@ -400,5 +400,3 @@ export async function generatePdf(isForClient, button) {
         button.disabled = false;
     }
 }
-
-window.generatePdf = generatePdf;

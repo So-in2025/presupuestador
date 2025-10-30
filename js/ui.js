@@ -184,34 +184,34 @@ function applyBranding(logo, color) {
     }
 }
 
+export function saveBranding() {
+    const color = document.getElementById('brandColorInput').value;
+    const logoInput = document.getElementById('brandLogoInput');
+    const logoFile = logoInput.files[0];
+    
+    const currentInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
+    const newInfo = { ...currentInfo, color: color };
+
+    if (logoFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            newInfo.logo = e.target.result;
+            localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
+            applyBranding(newInfo.logo, newInfo.color);
+            document.getElementById('close-branding-modal-btn').click(); // Use the button to close consistently
+        };
+        reader.readAsDataURL(logoFile);
+    } else {
+        localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
+        applyBranding(newInfo.logo, newInfo.color);
+        document.getElementById('close-branding-modal-btn').click(); // Use the button to close consistently
+    }
+}
+
 export function initializeBranding() {
     const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
     applyBranding(brandInfo.logo, brandInfo.color);
 
-    window.saveBranding = () => {
-        const color = document.getElementById('brandColorInput').value;
-        const logoInput = document.getElementById('brandLogoInput');
-        const logoFile = logoInput.files[0];
-        
-        const currentInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
-        const newInfo = { ...currentInfo, color: color };
-
-        if (logoFile) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                newInfo.logo = e.target.result;
-                localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
-                applyBranding(newInfo.logo, newInfo.color);
-                window.closeBrandingModal();
-            };
-            reader.readAsDataURL(logoFile);
-        } else {
-            localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
-            applyBranding(newInfo.logo, newInfo.color);
-            window.closeBrandingModal();
-        }
-    };
-    
     document.getElementById('removeBrandLogo').addEventListener('click', () => {
         const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
         delete brandInfo.logo;
@@ -363,8 +363,6 @@ export function restartTour() {
     localStorage.removeItem('zenTourProgress');
     initializeTour();
 }
-// Hacer `restartTour` accesible globalmente
-window.restartTour = restartTour;
 
 export function initializeUI() {
     initializeServiceCheckboxes();
