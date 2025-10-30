@@ -8,7 +8,7 @@ import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
 import { initializeBranding } from './ui.js';
 
-// --- GESTIÓN DE API KEY (NUEVO) ---
+// --- GESTIÓN DE API KEY ---
 let sessionApiKey = null;
 export const getSessionApiKey = () => sessionApiKey;
 export const setSessionApiKey = (key) => { 
@@ -31,14 +31,58 @@ function checkApiKey() {
     }
 }
 
+// --- LÓGICA DEL SPLASH SCREEN ---
+function initializeSplashScreen() {
+    const startBtn = document.getElementById('start-app-btn');
+    const detailsBtn = document.getElementById('toggle-details-btn');
+    const detailsSection = document.getElementById('detailsSection');
+    const splashScreen = document.getElementById('splash-screen');
+
+    startBtn.addEventListener('click', () => {
+        splashScreen.style.opacity = '0';
+        setTimeout(() => {
+            splashScreen.classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            // Check for API key ONLY after the app starts
+            checkApiKey();
+        }, 500); // Match transition duration
+    });
+
+    detailsBtn.addEventListener('click', () => {
+        detailsSection.classList.toggle('open');
+    });
+
+    document.querySelectorAll('#splash-screen .tts-btn').forEach(button => {
+        button.onclick = () => {
+            const text = button.dataset.text;
+            const isPlaying = button.textContent === '⏹️';
+            
+            window.speechSynthesis.cancel();
+            document.querySelectorAll('#splash-screen .tts-btn').forEach(b => b.textContent = '▶️');
+            
+            if (isPlaying) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            
+            utterance.onstart = () => { button.textContent = '⏹️'; };
+            utterance.onend = () => { button.textContent = '▶️'; };
+            
+            window.speechSynthesis.speak(utterance);
+        };
+    });
+}
+
+
 // --- EVENT LISTENERS PRINCIPALES ---
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeSplashScreen();
     initializeBranding();
     loadLocalData();
-    loadPricingData(); // Se quita el .then() que iniciaba el tour
+    loadPricingData();
     resetForm();
-    checkApiKey(); // Comprobar la API Key al inicio
+    // API Key check is now deferred
 });
 
 dom.serviceTypeSelect.addEventListener('change', (e) => toggleSelectionMode(e.target.value));
