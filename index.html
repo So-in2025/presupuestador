@@ -165,11 +165,15 @@
         .animate-bounce { animation: bounce 1.4s infinite ease-in-out both; }
         
         /* --- ESTILOS TOUR GUIADO --- */
+        #tour-tooltip #tour-text { /* Mejora de legibilidad */
+            font-size: 1rem;
+            line-height: 1.6;
+        }
         .tour-highlight {
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.7), 0 0 0 4px var(--accent-color);
             border-radius: 8px;
             position: relative;
-            z-index: 10001; /* Must be higher than modal overlay */
+            z-index: 10001;
             transition: box-shadow 0.3s ease-in-out;
         }
         /* Spinner */
@@ -400,7 +404,7 @@
             </div>
         </div>
         
-        <div id="tour-tooltip" class="hidden absolute bg-slate-800 border-2 border-cyan-400 p-4 rounded-lg shadow-2xl z-[10001] max-w-sm">
+        <div id="tour-tooltip" class="hidden absolute bg-slate-800 border-2 border-cyan-400 p-4 rounded-lg shadow-2xl z-[10002] max-w-sm">
             <p id="tour-text" class="text-slate-200"></p>
             <div class="flex justify-between items-center mt-4">
                 <span id="tour-step-counter" class="text-xs text-slate-400"></span>
