@@ -1,29 +1,15 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v13 (Chats separados y tour corregido)
+ * v14 (Single Entry Point Refactor)
  */
 
-import { getState, setLocalServices, getSessionApiKey } from './state.js';
+import { getState, setLocalServices } from './state.js';
 import { saveLocalServices, loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification, showApiKeyModal } from './modals.js';
 import { appendLocalServiceToUI } from './ui.js';
 
 // --- INICIO: BLOQUE TTS MODIFICADO ---
-window.handleTTSButtonClick = (buttonElement) => {
-    const text = buttonElement.dataset.text;
-    const isCurrentlyPlayingThis = ttsManager.isPlaying && buttonElement.classList.contains('playing');
-    ttsManager.stop();
-    shouldAutoplay = false;
-    if (!isCurrentlyPlayingThis) {
-        ttsManager.speak(text, buttonElement);
-    }
-};
-
-let voices = [];
-let selectedVoiceURI = localStorage.getItem('zenAssistantVoiceURI');
-let shouldAutoplay = true;
-
 const ttsManager = {
     isPlaying: false,
     stop: function() {
@@ -64,9 +50,24 @@ const ttsManager = {
         window.speechSynthesis.speak(utterance);
     }
 };
+
+window.handleTTSButtonClick = (buttonElement) => {
+    const text = buttonElement.dataset.text;
+    const isCurrentlyPlayingThis = ttsManager.isPlaying && buttonElement.classList.contains('playing');
+    ttsManager.stop();
+    shouldAutoplay = false;
+    if (!isCurrentlyPlayingThis) {
+        ttsManager.speak(text, buttonElement);
+    }
+};
+
+let voices = [];
+let selectedVoiceURI = localStorage.getItem('zenAssistantVoiceURI');
+let shouldAutoplay = true;
+
 // --- FIN: BLOQUE TTS MODIFICADO ---
 
-document.addEventListener('DOMContentLoaded', () => {
+export function initializeChatAssistant() {
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const sendChatBtn = document.getElementById('chat-send-btn');
@@ -129,12 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- OPTIMIZACIÓN DE RENDERIZADO DE CHAT ---
 
-    /**
-     * Crea un nodo DOM completo para un mensaje de chat, listo para ser insertado.
-     * @param {string} message - El contenido del mensaje.
-     * @param {string} role - 'user' o 'model'.
-     * @returns {HTMLElement} El elemento contenedor del mensaje.
-     */
     function createMessageNode(message, role) {
         const sender = role === 'user' ? 'user' : 'ai';
         const wrapper = document.createElement('div');
@@ -222,9 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    /**
-     * Renderiza eficientemente todo el historial del chat, ideal para cambiar de modo.
-     */
     function renderChatMessages() {
         chatMessagesContainer.innerHTML = '';
         shouldAutoplay = false; // Deshabilitar autoplay al cargar historial
@@ -244,11 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
-    /**
-     * Añade un nuevo mensaje al final del chat de forma eficiente.
-     * @param {string} message - El contenido del mensaje.
-     * @param {string} role - 'user' o 'model'.
-     */
     function addMessageToChat(message, role) {
         const messageNode = createMessageNode(message, role);
         
@@ -380,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const userMessage = chatInput.value.trim();
         if (!userMessage || isSending) return;
 
-        const apiKey = getSessionApiKey();
+        const apiKey = getState().sessionApiKey;
         if (!apiKey) {
             showApiKeyModal();
             showNotification('error', 'API Key Requerida', 'Por favor, introduce tu API Key de Google AI para usar el asistente.');
@@ -459,11 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Función de inicialización a prueba de fallos para solucionar el problema del tour
     function initChat() {
         try {
             const loadedHistories = loadChatHistories();
-            // Asegurarse de que todos los modos existen
             allChatHistories.builder = loadedHistories.builder || [];
             allChatHistories.objection = loadedHistories.objection || [];
             allChatHistories.analyze = loadedHistories.analyze || [];
@@ -514,5 +499,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Llama a la inicialización principal
     initChat();
-});
+}

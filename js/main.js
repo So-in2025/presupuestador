@@ -7,6 +7,7 @@ import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, upda
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
 import { initializeBranding, rerenderAllPrices } from './ui.js';
+import { initializeChatAssistant } from './chat-frontend.js';
 
 // --- LÓGICA DEL SPLASH SCREEN ---
 function initializeSplashScreen() {
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadLocalData();
     loadPricingData();
     resetForm();
+    initializeChatAssistant(); // Inicializa el chat como parte del flujo principal
     // API Key check is now deferred
 });
 
