@@ -5,7 +5,6 @@ import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setEx
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
 import { setSessionApiKey } from './main.js';
-import { GoogleGenerativeAI } from 'https://cdn.jsdelivr.net/npm/@google/generative-ai@0.24.1/+esm';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
@@ -249,40 +248,20 @@ export function closeApiKeyModal() {
     closeModal(dom.apiKeyModal);
 }
 
-export async function handleSaveApiKey(button) {
+export function handleSaveApiKey() {
     const key = dom.apiKeyInput.value.trim();
     if (!key) {
-        showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key válida.');
+        showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key.');
         return;
     }
 
-    const spinner = button.querySelector('.spinner');
-    const btnText = button.querySelector('.btn-text');
+    // Extirpado: No hay validación en el frontend. Es una acción local infalible.
+    setSessionApiKey(key);
+    closeApiKeyModal();
+    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
     
-    spinner.classList.remove('hidden');
-    btnText.textContent = 'Validando...';
-    button.disabled = true;
-
-    try {
-        // Validation test using the legacy SDK syntax
-        const genAI = new GoogleGenerativeAI(key);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-        await model.generateContent("test");
-
-        setSessionApiKey(key);
-        closeApiKeyModal();
-        showNotification('success', 'API Key Válida', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
-        
-        initializeTour();
-
-    } catch (error) {
-        console.error("API Key validation error:", error);
-        showNotification('error', 'Clave Inválida', 'La API Key proporcionada no es válida o no tiene acceso a la API de Gemini. Por favor, verifica tu clave en Google AI Studio.');
-    } finally {
-        spinner.classList.add('hidden');
-        btnText.textContent = 'Guardar y Activar';
-        button.disabled = false;
-    }
+    // Inicia el tour inmediatamente después de guardar la clave.
+    initializeTour();
 }
 
 // --- TIPO DE CAMBIO MANUAL MODAL ---
