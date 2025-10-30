@@ -125,7 +125,7 @@ exports.handler = async (event) => {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-pro",
+            model: "gemini-2.5-pro",
             systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext),
         });
 
