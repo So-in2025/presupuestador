@@ -79,6 +79,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const chatContainer = document.getElementById('ai-assistant-container');
+    const themeToggle = document.getElementById('chat-theme-toggle');
+
+    function applyChatTheme(theme) {
+        if (theme === 'light') {
+            chatContainer.classList.add('chat-light-mode');
+            themeToggle.checked = true;
+        } else { // dark
+            chatContainer.classList.remove('chat-light-mode');
+            themeToggle.checked = false;
+        }
+    }
+    
+    function toggleChatTheme() {
+        const isLightMode = themeToggle.checked;
+        const newTheme = isLightMode ? 'light' : 'dark';
+        localStorage.setItem('zenChatTheme', newTheme);
+        applyChatTheme(newTheme);
+    }
+
+    themeToggle.addEventListener('change', toggleChatTheme);
+
+    const savedTheme = localStorage.getItem('zenChatTheme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme) {
+        applyChatTheme(savedTheme);
+    } else {
+        applyChatTheme(systemPrefersDark ? 'dark' : 'light');
+    }
+
     let allChatHistories = { builder: [], objection: [], analyze: [] };
     let chatHistory = []; // Referencia al historial activo
     let isSending = false;
@@ -296,10 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (sender === 'user') {
             wrapper.classList.add('items-end');
-            bubble.classList.add('bg-cyan-500', 'text-slate-900', 'rounded-br-none');
+            bubble.classList.add('chat-bubble-user', 'rounded-br-none');
         } else {
             wrapper.classList.add('items-start');
-            bubble.classList.add('bg-slate-700', 'text-slate-50', 'rounded-bl-none');
+            bubble.classList.add('chat-bubble-ai', 'rounded-bl-none');
             if (shouldAutoplay) {
                 setTimeout(() => {
                     const lastButton = bubble.querySelector('.tts-btn');
@@ -386,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
             indicator = document.createElement('div');
             indicator.id = 'typing-indicator';
             indicator.className = 'chat-message flex items-start my-2';
-            indicator.innerHTML = `<div class="chat-bubble bg-slate-700 rounded-bl-none p-3 flex items-center space-x-1">
+            indicator.innerHTML = `<div class="chat-bubble chat-bubble-ai rounded-bl-none p-3 flex items-center space-x-1">
                 <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce"></span>
                 <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
                 <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></span>
