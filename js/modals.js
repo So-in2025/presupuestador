@@ -1,10 +1,9 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate, setSessionApiKey } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
-import { setSessionApiKey } from './main.js';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
@@ -255,12 +254,17 @@ export function handleSaveApiKey() {
         return;
     }
 
-    // Extirpado: No hay validación en el frontend. Es una acción local infalible.
     setSessionApiKey(key);
+    
+    const indicator = document.getElementById('ai-status-indicator');
+    if(indicator) {
+        indicator.classList.remove('bg-red-500');
+        indicator.classList.add('bg-green-400', 'animate-pulse');
+    }
+
     closeApiKeyModal();
     showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
     
-    // Inicia el tour inmediatamente después de guardar la clave.
     initializeTour();
 }
 

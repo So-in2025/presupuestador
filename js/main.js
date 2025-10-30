@@ -8,18 +8,6 @@ import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { removeCustomService, showNotification, showApiKeyModal } from './modals.js';
 import { initializeBranding, rerenderAllPrices } from './ui.js';
 
-// --- GESTIÓN DE API KEY Y MONEDA---
-let sessionApiKey = null;
-export const getSessionApiKey = () => sessionApiKey;
-export const setSessionApiKey = (key) => { 
-    sessionApiKey = key; 
-    const indicator = document.getElementById('ai-status-indicator');
-    if(indicator) {
-        indicator.classList.remove('bg-red-500');
-        indicator.classList.add('bg-green-400', 'animate-pulse');
-    }
-};
-
 // --- LÓGICA DEL SPLASH SCREEN ---
 function initializeSplashScreen() {
     const startBtn = document.getElementById('start-app-btn');
@@ -75,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function checkApiKey() {
-    if (!sessionApiKey) {
+    if (!state.getSessionApiKey()) {
         showApiKeyModal();
         const indicator = document.getElementById('ai-status-indicator');
         if(indicator) {

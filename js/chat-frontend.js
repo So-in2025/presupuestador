@@ -4,11 +4,10 @@
  * v13 (Chats separados y tour corregido)
  */
 
-import { getState, setLocalServices } from './state.js';
+import { getState, setLocalServices, getSessionApiKey } from './state.js';
 import { saveLocalServices, loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification, showApiKeyModal } from './modals.js';
 import { appendLocalServiceToUI } from './ui.js';
-import { getSessionApiKey } from './main.js';
 
 // --- INICIO: BLOQUE TTS MODIFICADO ---
 window.handleTTSButtonClick = (buttonElement) => {

@@ -19,6 +19,7 @@ let state = {
     pointPrice: 0, // NUEVO: Costo por punto extra
     extraPointsPurchased: 0, // NUEVO: Cantidad de puntos extra comprados
     extraPointsCost: 0, // NUEVO: Costo total de los puntos extra
+    sessionApiKey: null, // API key ahora se gestiona aquí
 };
 
 // --- HELPERS ---
@@ -51,3 +52,5 @@ export const setUsdToArsRate = (rate) => { state.usdToArsRate = rate; };
 export const setPointPrice = (price) => { state.pointPrice = price; };
 export const setExtraPointsPurchased = (points) => { state.extraPointsPurchased = points; };
 export const setExtraPointsCost = (cost) => { state.extraPointsCost = cost; };
+export const setSessionApiKey = (key) => { state.sessionApiKey = key; };
+export const getSessionApiKey = () => state.sessionApiKey;
