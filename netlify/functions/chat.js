@@ -2,7 +2,7 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Legacy SDK v0.24.1)
- * Lógica de Intención: v17 - Robust JSON Handling
+ * Lógica de Intención: v18 - Refactored for Clarity
  */
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +18,22 @@ try {
     console.error("CRITICAL ERROR: Could not load pricing.json. Function will not work.", err);
 }
 
-// --- PROMPT ENGINEERING HELPERS (for Legacy SDK) ---
+// --- PROMPT TEMPLATES ---
+
+const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
+
+const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+
+const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
+`Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using the catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
+
+--- AVAILABLE CATALOG ---
+${serviceList}
+${planList}
+
+Your response MUST be a single valid JSON object with the following structure: { "introduction": "...", "services": [{ "id": "...", "is_new": false, "name": "...", "description": "...", "price": ... }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }. Do not add any text before or after the JSON object.`;
+
+// --- PROMPT ENGINEERING HELPERS ---
 
 function getSystemInstructionForMode(mode, selectedServicesContext = []) {
     const contextText = (selectedServicesContext && selectedServicesContext.length > 0)
@@ -27,24 +42,19 @@ function getSystemInstructionForMode(mode, selectedServicesContext = []) {
 
     switch (mode) {
         case 'analyze':
-            return `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
+            return ANALYZE_INSTRUCTION;
         case 'objection':
-            return `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+            return OBJECTION_INSTRUCTION;
         case 'builder':
         default:
             const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
             const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
-            return `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using the catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}\n\n--- AVAILABLE CATALOG ---\n${serviceList}\n${planList}\n\nYour response MUST be a single valid JSON object with the following structure: { "introduction": "...", "services": [{ "id": "...", "is_new": false, "name": "...", "description": "...", "price": ... }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }. Do not add any text before or after the JSON object.`;
+            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText);
     }
 }
 
 // --- INTELLIGENCE HELPERS ---
 
-/**
- * Extracts a JSON string from text that might be wrapped in markdown code fences.
- * @param {string} text - The raw text from the model.
- * @returns {string | null} The clean JSON string or null if not found.
- */
 function extractJson(text) {
     const match = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
     if (match && match[2]) {
@@ -57,12 +67,6 @@ function extractJson(text) {
     return null;
 }
 
-/**
- * Creates a standardized JSON error response for the builder mode.
- * @param {string} introduction - The main error message for the user.
- * @param {string} closing - A helpful next step or suggestion.
- * @returns {string} A stringified JSON object.
- */
 function createErrorJsonResponse(introduction, closing) {
     return JSON.stringify({
         introduction,
@@ -111,13 +115,12 @@ exports.handler = async (event) => {
         const response = await result.response;
         let responseText = response.text();
         
-        // --- ROBUST JSON HANDLING FOR BUILDER MODE ---
         if (mode === 'builder') {
             const extractedJson = extractJson(responseText);
             if (extractedJson) {
                 try {
                     JSON.parse(extractedJson);
-                    responseText = extractedJson; // It's valid JSON, use the clean version.
+                    responseText = extractedJson; 
                 } catch (e) {
                     responseText = createErrorJsonResponse(
                         "Lo siento, tuve un problema al generar la recomendación. El formato era incorrecto.",
@@ -142,7 +145,7 @@ exports.handler = async (event) => {
     } catch (err) {
         console.error("Error in Netlify function handler:", err);
         const errorMessage = `Lo siento, un error ocurrió al comunicarme con el asistente: ${err.message}. Si el error persiste, verifica que tu API Key sea correcta y tenga fondos.`;
-        // For builder mode, send a structured error
+        
         if (mode === 'builder') {
             const errorJson = createErrorJsonResponse(
                 "Hubo un error de conexión con la IA.",
@@ -155,7 +158,6 @@ exports.handler = async (event) => {
             };
         }
         
-        // For other modes, send plain text error
         const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorMessage }] }];
         return {
             statusCode: 200, 
