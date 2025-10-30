@@ -128,18 +128,141 @@ document.addEventListener('DOMContentLoaded', () => {
         renderChatMessages();
     }
 
+    // --- OPTIMIZACIÓN DE RENDERIZADO DE CHAT ---
+
+    /**
+     * Crea un nodo DOM completo para un mensaje de chat, listo para ser insertado.
+     * @param {string} message - El contenido del mensaje.
+     * @param {string} role - 'user' o 'model'.
+     * @returns {HTMLElement} El elemento contenedor del mensaje.
+     */
+    function createMessageNode(message, role) {
+        const sender = role === 'user' ? 'user' : 'ai';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chat-message flex flex-col my-2';
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%] relative';
+        
+        let finalHTML = message.replace(/\n/g, '<br>');
+        let textToSpeak = message;
+
+        if (sender === 'ai') {
+            if (currentAiMode === 'analyze') {
+                finalHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
+                textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
+            } else {
+                 try {
+                    const jsonResponse = JSON.parse(message);
+                    if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
+                        jsonResponse.services.forEach(serviceObject => {
+                            if (serviceObject.is_new) {
+                                saveAndRenderNewLocalService(serviceObject);
+                            }
+                        });
+
+                        let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
+                        if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
+                        if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
+                        textToSpeak = cleanText;
+                        
+                        let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
+                        let serviceButtonsHTML = '';
+                        
+                        jsonResponse.services.forEach(serviceObject => {
+                            const serviceInfo = findServiceById(serviceObject.id);
+                            if (serviceInfo) {
+                                 serviceButtonsHTML += createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name);
+                            } else {
+                                console.warn(`Servicio recomendado no encontrado: ID=${serviceObject.id}`);
+                                 serviceButtonsHTML += `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg mt-2 mr-2 cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                            }
+                        });
+                        
+                        if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
+                        finalHTML = messageText;
+                        
+                        if (serviceButtonsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p><div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div></div>`;
+
+                        if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
+                            let questionButtonsHTML = jsonResponse.client_questions.map(question => {
+                                const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                return `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
+                            }).join('');
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
+                        }
+                        
+                        if (jsonResponse.sales_pitch) {
+                            const pitchId = `pitch-${Date.now()}`;
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
+                        }
+                    } else {
+                         if (currentAiMode === 'builder') throw new Error("Not a valid JSON response for builder mode.");
+                    }
+                } catch (e) { 
+                    if (currentAiMode === 'builder') {
+                        finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
+                        textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
+                    }
+                }
+            }
+
+            const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+            const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
+            finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
+        }
+
+        if (sender === 'user') {
+            wrapper.classList.add('items-end');
+            bubble.classList.add('chat-bubble-user', 'rounded-br-none');
+        } else {
+            wrapper.classList.add('items-start');
+            bubble.classList.add('chat-bubble-ai', 'rounded-bl-none');
+        }
+        bubble.innerHTML = finalHTML;
+        wrapper.appendChild(bubble);
+        return wrapper;
+    }
+
+    /**
+     * Renderiza eficientemente todo el historial del chat, ideal para cambiar de modo.
+     */
     function renderChatMessages() {
         chatMessagesContainer.innerHTML = '';
-        shouldAutoplay = false;
+        shouldAutoplay = false; // Deshabilitar autoplay al cargar historial
+
+        const fragment = document.createDocumentFragment();
 
         if (chatHistory.length === 0) {
             const welcomeMessage = getWelcomeMessageForMode(currentAiMode);
-            addMessageToChat(welcomeMessage, 'model');
-            // No añadir el mensaje de bienvenida al historial persistente
-            // Se generará cada vez que se cargue un historial vacío.
+            fragment.appendChild(createMessageNode(welcomeMessage, 'model'));
         } else {
-            chatHistory.forEach(msg => addMessageToChat(msg.parts[0].text, msg.role));
+            chatHistory.forEach(msg => {
+                fragment.appendChild(createMessageNode(msg.parts[0].text, msg.role));
+            });
         }
+        
+        chatMessagesContainer.appendChild(fragment);
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    /**
+     * Añade un nuevo mensaje al final del chat de forma eficiente.
+     * @param {string} message - El contenido del mensaje.
+     * @param {string} role - 'user' o 'model'.
+     */
+    function addMessageToChat(message, role) {
+        const messageNode = createMessageNode(message, role);
+        
+        // Lógica de autoplay solo para mensajes nuevos de la IA
+        if (role === 'model' && shouldAutoplay) {
+            setTimeout(() => {
+                const button = messageNode.querySelector('.tts-btn');
+                if (button) ttsManager.speak(button.dataset.text, button);
+            }, 300);
+        }
+
+        chatMessagesContainer.appendChild(messageNode);
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
     function getWelcomeMessageForMode(mode) {
@@ -250,100 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createServiceButtonHTML(serviceId, serviceType, serviceName) {
         return `<button data-action="add-service" data-service-id="${serviceId}" data-service-type="${serviceType}" class="add-service-btn bg-slate-900 text-cyan-300 font-bold py-2 px-4 rounded-lg hover:bg-cyan-800 hover:text-white transition duration-200 mt-2 mr-2">Añadir ${serviceName}</button>`;
-    }
-
-    function addMessageToChat(message, role) {
-        const sender = role === 'user' ? 'user' : 'ai';
-        const wrapper = document.createElement('div');
-        wrapper.className = 'chat-message flex flex-col my-2';
-        const bubble = document.createElement('div');
-        bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%] relative';
-        
-        let finalHTML = message.replace(/\n/g, '<br>');
-        let textToSpeak = message;
-
-        if (sender === 'ai') {
-            if (currentAiMode === 'analyze') {
-                finalHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
-                textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
-            } else {
-                 try {
-                    const jsonResponse = JSON.parse(message);
-                    if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
-                        jsonResponse.services.forEach(serviceObject => {
-                            if (serviceObject.is_new) {
-                                saveAndRenderNewLocalService(serviceObject);
-                            }
-                        });
-
-                        let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
-                        if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
-                        if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
-                        textToSpeak = cleanText;
-                        
-                        let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                        let serviceButtonsHTML = '';
-                        
-                        jsonResponse.services.forEach(serviceObject => {
-                            const serviceInfo = findServiceById(serviceObject.id);
-                            if (serviceInfo) {
-                                 serviceButtonsHTML += createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name);
-                            } else {
-                                console.warn(`Servicio recomendado no encontrado: ID=${serviceObject.id}`);
-                                 serviceButtonsHTML += `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg mt-2 mr-2 cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
-                            }
-                        });
-                        
-                        if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
-                        finalHTML = messageText;
-                        
-                        if (serviceButtonsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p><div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div></div>`;
-
-                        if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
-                            let questionButtonsHTML = jsonResponse.client_questions.map(question => {
-                                const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                return `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
-                            }).join('');
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
-                        }
-                        
-                        if (jsonResponse.sales_pitch) {
-                            const pitchId = `pitch-${Date.now()}`;
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
-                        }
-                    } else {
-                         if (currentAiMode === 'builder') throw new Error("Not a valid JSON response for builder mode.");
-                    }
-                } catch (e) { 
-                    if (currentAiMode === 'builder') {
-                        finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
-                        textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
-                    }
-                }
-            }
-
-            const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-            const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
-            finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
-        }
-
-        if (sender === 'user') {
-            wrapper.classList.add('items-end');
-            bubble.classList.add('chat-bubble-user', 'rounded-br-none');
-        } else {
-            wrapper.classList.add('items-start');
-            bubble.classList.add('chat-bubble-ai', 'rounded-bl-none');
-            if (shouldAutoplay) {
-                setTimeout(() => {
-                    const lastButton = bubble.querySelector('.tts-btn');
-                    if (lastButton) ttsManager.speak(lastButton.dataset.text, lastButton);
-                }, 300);
-            }
-        }
-        bubble.innerHTML = finalHTML;
-        wrapper.appendChild(bubble);
-        chatMessagesContainer.appendChild(wrapper);
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
 
     async function sendMessage() {
