@@ -107,7 +107,7 @@ export function renderTasksDashboard() {
             } else if (task.plan) {
                 icon = '📅';
                 const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
-                const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '' : '';
+                const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
                 serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
                 priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
             } else {

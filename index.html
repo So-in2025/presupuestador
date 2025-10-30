@@ -37,7 +37,7 @@
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(8px);
-            z-index: 50000;
+            z-index: 55000; /* AUMENTADO: Para estar por encima del tour */
         }
         .item-disabled {
             opacity: 0.3; 
@@ -188,7 +188,7 @@
 
         /* --- SPLASH SCREEN STYLES --- */
         #splash-screen {
-            position: fixed; inset: 0; z-index: 10000;
+            position: fixed; inset: 0; z-index: 60000;
             display: flex; align-items: center; justify-content: center;
             background: #0F172A;
             transition: opacity 0.5s ease-out;
@@ -469,6 +469,31 @@
             </div>
         </div>
 
+        <!-- MODAL TIPO DE CAMBIO MANUAL -->
+        <div id="exchangeRateModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+            <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all" role="dialog" aria-modal="true">
+                <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
+                    <h3 class="text-lg">Configurar Tipo de Cambio Manual</h3>
+                    <button onclick="closeExchangeRateModal()" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-sm text-slate-300">
+                        Introduce el valor de 1 USD en ARS que deseas utilizar para todos los cálculos. Este valor se guardará en tu navegador.
+                    </p>
+                    <div>
+                        <label for="exchangeRateInput" class="block text-sm font-medium text-slate-300 mb-1">1 USD = ARS:</label>
+                        <input type="number" id="exchangeRateInput" class="w-full styled-input" placeholder="Ej: 1150.50" min="0">
+                    </div>
+                    <div class="text-right pt-2">
+                        <button onclick="handleSaveExchangeRate()" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                            Guardar Cotización
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         <!-- TÍTULO PRINCIPAL Y CONTROLES -->
         <div class="max-w-7xl mx-auto">
             <header class="text-center mb-8">
@@ -501,10 +526,10 @@
                         <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                             USD
                         </button>
-                        <button id="refresh-rate-btn" disabled class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Actualizar tipo de cambio">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201-4.42 5.5 5.5 0 011.66-1.991l2.543 2.544a.75.75 0 001.06-1.06L9.31 4.439a.75.75 0 00-1.06 0L5.698 7.03a.75.75 0 001.06 1.06l2.36-2.36a4 4 0 006.182 3.182.75.75 0 00.81-1.488zM4.688 8.576a5.5 5.5 0 019.201 4.42 5.5 5.5 0 01-1.66 1.991l-2.543-2.544a.75.75 0 00-1.06 1.06l2.558 2.559a.75.75 0 001.06 0l2.552-2.551a.75.75 0 00-1.06-1.06l-2.36 2.36a4 4 0 00-6.182-3.182.75.75 0 00-.81 1.488z" clip-rule="evenodd" />
-                            </svg>
+                        <button id="configure-rate-btn" onclick="showExchangeRateModal()" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition" aria-label="Configurar tipo de cambio manual">
+                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                              <path d="M10 3.75a2 2 0 100 4 2 2 0 000-4zM4.375 3.75a2 2 0 100 4 2 2 0 000-4zM15.625 3.75a2 2 0 100 4 2 2 0 000-4zM10 12.25a2 2 0 100 4 2 2 0 000-4zM4.375 12.25a2 2 0 100 4 2 2 0 000-4zM15.625 12.25a2 2 0 100 4 2 2 0 000-4z" />
+                           </svg>
                         </button>
                     </div>
                 </div>

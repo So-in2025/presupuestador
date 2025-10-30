@@ -1,10 +1,10 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
-import { createServiceItemHTML, initializeTour } from './ui.js';
-import { setSessionApiKey, fetchExchangeRate } from './main.js';
+import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
+import { setSessionApiKey } from './main.js';
 import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
 import { updatePointSystemUI } from './points.js';
 
@@ -220,7 +220,7 @@ document.getElementById('extraPointsAmount')?.addEventListener('input', (e) => {
 });
 
 
-// --- NUEVO: API KEY MODAL ---
+// --- API KEY MODAL ---
 export function showApiKeyModal() {
     dom.apiKeyModal.classList.remove('hidden');
     dom.apiKeyInput.focus();
@@ -253,9 +253,6 @@ export async function handleSaveApiKey(button) {
         closeApiKeyModal();
         showNotification('success', 'API Key Válida', 'Tu clave ha sido configurada para esta sesión. El asistente IA está activo.');
         
-        await fetchExchangeRate(); // Obtener tipo de cambio
-        
-        // CORRECCIÓN: Iniciar el tour DESPUÉS de que la app esté lista.
         initializeTour();
 
     } catch (error) {
@@ -267,6 +264,43 @@ export async function handleSaveApiKey(button) {
         button.disabled = false;
     }
 }
+
+// --- TIPO DE CAMBIO MANUAL MODAL ---
+export function showExchangeRateModal() {
+    const { usdToArsRate } = getState();
+    const input = document.getElementById('exchangeRateInput');
+    if (usdToArsRate) {
+        input.value = usdToArsRate;
+    } else {
+        input.value = '';
+    }
+    document.getElementById('exchangeRateModal').classList.remove('hidden');
+    input.focus();
+}
+
+export function closeExchangeRateModal() {
+    document.getElementById('exchangeRateModal').classList.add('hidden');
+}
+
+export function handleSaveExchangeRate() {
+    const input = document.getElementById('exchangeRateInput');
+    const rate = parseFloat(input.value);
+
+    if (isNaN(rate) || rate <= 0) {
+        showNotification('error', 'Valor Inválido', 'Por favor, introduce un número positivo para el tipo de cambio.');
+        return;
+    }
+
+    setUsdToArsRate(rate);
+    localStorage.setItem('zenUsdToArsRate', rate.toString());
+    
+    document.getElementById('currency-toggle-btn').disabled = false;
+    
+    rerenderAllPrices();
+    closeExchangeRateModal();
+    showNotification('success', 'Tipo de Cambio Guardado', `La cotización 1 USD = ${rate} ARS ha sido guardada.`);
+}
+
 
 export function showTieredBuilderHelp() {
     const helpTitle = "Estrategia de Venta por Niveles";
@@ -300,3 +334,6 @@ window.showTieredBuilderHelp = showTieredBuilderHelp;
 window.showExtraPointsModal = showExtraPointsModal;
 window.closeExtraPointsModal = closeExtraPointsModal;
 window.addExtraPoints = addExtraPoints;
+window.showExchangeRateModal = showExchangeRateModal;
+window.closeExchangeRateModal = closeExchangeRateModal;
+window.handleSaveExchangeRate = handleSaveExchangeRate;

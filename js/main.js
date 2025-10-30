@@ -21,49 +21,6 @@ export const setSessionApiKey = (key) => {
     }
 };
 
-export async function fetchExchangeRate() {
-    const apiKey = getSessionApiKey();
-    if (!apiKey) return;
-
-    const toggleBtn = document.getElementById('currency-toggle-btn');
-    const refreshBtn = document.getElementById('refresh-rate-btn');
-    const refreshIcon = refreshBtn.querySelector('svg');
-
-    toggleBtn.disabled = true;
-    refreshBtn.disabled = true;
-    refreshIcon.classList.add('spinner');
-
-    try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = "Provide the current exchange rate for 1 USD to ARS (Argentine Peso Blue). Respond ONLY with the numerical value, using a period as the decimal separator.";
-        
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text().trim().replace(/,/g, '');
-        const rate = parseFloat(text);
-
-        if (isNaN(rate) || rate <= 0) {
-            throw new Error("La IA no devolvió un número válido.");
-        }
-        
-        state.setUsdToArsRate(rate);
-        showNotification('info', 'Tipo de Cambio Actualizado', `1 USD = ${rate.toFixed(2)} ARS. Los precios ahora se pueden mostrar en pesos.`);
-        toggleBtn.disabled = false;
-        refreshBtn.disabled = false;
-
-    } catch (error) {
-        console.error("Error al obtener tipo de cambio:", error);
-        showNotification('error', 'Error de Cotización', 'No se pudo obtener el tipo de cambio desde la IA. La aplicación seguirá en USD.');
-        state.setUsdToArsRate(null);
-        state.setCurrentCurrency('USD');
-        toggleBtn.textContent = 'USD';
-    } finally {
-        refreshIcon.classList.remove('spinner');
-    }
-}
-
-
 // --- LÓGICA DEL SPLASH SCREEN ---
 function initializeSplashScreen() {
     const startBtn = document.getElementById('start-app-btn');
@@ -151,8 +108,6 @@ document.getElementById('currency-toggle-btn').addEventListener('click', () => {
     document.getElementById('currency-toggle-btn').textContent = newCurrency;
     rerenderAllPrices();
 });
-
-document.getElementById('refresh-rate-btn').addEventListener('click', fetchExchangeRate);
 
 
 // Delegación de eventos para selecciones y acciones

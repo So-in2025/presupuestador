@@ -1,6 +1,6 @@
 // js/data.js
 
-import { setAllServices, setMonthlyPlans, setTasks, setLocalServices, getState, setPointPrice } from './state.js';
+import { setAllServices, setMonthlyPlans, setTasks, setLocalServices, getState, setPointPrice, setUsdToArsRate } from './state.js';
 import { initializeUI, renderTasksDashboard } from './ui.js';
 import * as dom from './dom.js';
 
@@ -42,6 +42,24 @@ export function loadLocalData() {
         console.error("Error al cargar servicios locales:", e);
         setLocalServices([]);
     }
+    
+    // Tipo de cambio manual
+    try {
+        const storedRate = localStorage.getItem('zenUsdToArsRate');
+        const toggleBtn = document.getElementById('currency-toggle-btn');
+        if (storedRate) {
+            const rate = parseFloat(storedRate);
+            if (!isNaN(rate) && rate > 0) {
+                setUsdToArsRate(rate);
+                if (toggleBtn) toggleBtn.disabled = false;
+            }
+        } else {
+            if (toggleBtn) toggleBtn.disabled = true;
+        }
+    } catch(e) {
+        console.error("Error al cargar tipo de cambio local:", e);
+    }
+
 
     renderTasksDashboard();
 }
