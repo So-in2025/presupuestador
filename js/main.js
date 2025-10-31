@@ -40,6 +40,7 @@ function initializeSplashScreen() {
 
     startBtn.addEventListener('click', () => {
         splashScreen.style.opacity = '0';
+        splashScreen.style.pointerEvents = 'none'; // FIX: Desactiva los clics inmediatamente
         setTimeout(() => {
             splashScreen.classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
