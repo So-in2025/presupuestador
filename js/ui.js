@@ -228,28 +228,28 @@ export function initializeBranding() {
 
 // --- TOUR GUIADO (RECONSTRUIDO Y ROBUSTO) ---
 const tourSteps = [
-    { el: '#ai-assistant-container', text: '¡Bienvenido! Este es tu Asistente IA. Describe las necesidades de tu cliente aquí para recibir una recomendación de servicios.' },
-    { el: '#proposal-details-container', text: 'Luego, completa los datos del cliente y del proyecto en esta sección.' },
-    { el: '#solution-config-container', text: 'Aquí puedes seleccionar los servicios recomendados por la IA o elegirlos manualmente. Puedes escoger paquetes, planes mensuales o ítems individuales.' },
-    { el: '#summaryCard', text: 'Define tu margen de ganancia. El sistema calculará automáticamente el precio final para tu cliente.' },
-    { el: '#addTask', text: 'Cuando termines, guarda la propuesta aquí. Aparecerá en el panel de "Propuestas Guardadas".' },
-    { el: '#saved-proposals-container', text: 'Desde aquí podrás editar, eliminar y generar los PDFs de todas tus propuestas.' },
+    { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
+    { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
+    { el: '#solution-config-container', text: 'Aquí puedes seleccionar los servicios recomendados por la IA o elegirlos manualmente. Tienes total flexibilidad.' },
+    { el: '#summaryCard', text: 'Ajusta tu margen de ganancia. El sistema calculará el precio final para tu cliente en tiempo real, dándote control total sobre tu rentabilidad.' },
+    { el: '#addTask', text: 'Cuando termines, guarda la propuesta. Se añadirá a tu panel de "Propuestas Guardadas".' },
+    { el: '#saved-proposals-container', text: 'Desde este panel podrás gestionar todo tu pipeline de ventas: edita, elimina y genera los documentos PDF de todas tus propuestas.' },
     { el: '#tieredBuilderBtn', text: 'Consejo Pro: Usa el constructor por niveles para presentar 3 opciones a tu cliente (Básico, Recomendado, Completo). ¡Es una técnica de venta muy poderosa!' }
 ];
+
 let currentStep = 0;
 let isTourActive = false;
 
 const tooltip = document.getElementById('tour-tooltip');
+const tourOverlay = document.getElementById('tour-overlay');
 const tourText = document.getElementById('tour-text');
 const stepCounter = document.getElementById('tour-step-counter');
 const prevBtn = document.getElementById('tour-prev');
 const nextBtn = document.getElementById('tour-next');
 const endBtn = document.getElementById('tour-end');
 
-function positionTooltip() {
-    if (!isTourActive) return;
-    const targetElement = document.querySelector('.tour-highlight');
-    if (!targetElement) return;
+function positionTooltip(targetElement) {
+    if (!isTourActive || !targetElement) return;
 
     requestAnimationFrame(() => {
         const targetRect = targetElement.getBoundingClientRect();
@@ -259,15 +259,20 @@ function positionTooltip() {
         
         let top, left;
 
+        // Posicionar verticalmente (preferir abajo)
         if (spaceBelow > tooltipRect.height + 20) {
-            top = targetRect.bottom + 10 + window.scrollY;
+            top = targetRect.bottom + 10;
         } else if (spaceAbove > tooltipRect.height + 20) {
-            top = targetRect.top - tooltipRect.height - 10 + window.scrollY;
+            top = targetRect.top - tooltipRect.height - 10;
         } else {
-            top = (window.innerHeight - tooltipRect.height) / 2 + window.scrollY;
+            // Centrar si no hay espacio
+            top = (window.innerHeight - tooltipRect.height) / 2;
         }
 
+        // Posicionar horizontalmente
         left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+        
+        // Ajustar si se sale de la pantalla
         if (left < 10) left = 10;
         if (left + tooltipRect.width > window.innerWidth - 10) {
             left = window.innerWidth - tooltipRect.width - 10;
@@ -278,8 +283,9 @@ function positionTooltip() {
     });
 }
 
+
 function showStep(index) {
-    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
 
     if (index >= tourSteps.length) {
         endTour();
@@ -287,24 +293,26 @@ function showStep(index) {
     }
 
     currentStep = index;
-    localStorage.setItem('zenTourProgress', currentStep.toString());
     const step = tourSteps[index];
     const targetElement = document.querySelector(step.el);
 
+    // --- ROBUSTEZ: Manejo de elemento no visible ---
     if (!targetElement || !(targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length)) {
         console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
         endTour();
         return;
     }
 
-    targetElement.classList.add('tour-highlight');
-    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targetElement.classList.add('tour-highlight-active');
+    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
+    // Esperar a que el scroll termine para posicionar
     setTimeout(() => {
         tourText.textContent = step.text;
         stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
         tooltip.classList.remove('hidden');
-        positionTooltip();
+        tourOverlay.classList.remove('hidden');
+        positionTooltip(targetElement);
     }, 350);
 
     prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
@@ -312,47 +320,20 @@ function showStep(index) {
 }
 
 function endTour() {
+    if (!isTourActive) return;
     isTourActive = false;
-    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
     tooltip.classList.add('hidden');
+    tourOverlay.classList.add('hidden');
     localStorage.setItem('zenTourCompleted', 'true');
-    localStorage.removeItem('zenTourProgress');
-    window.removeEventListener('resize', positionTooltip);
+    window.removeEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
 }
 
-function startTourWhenReady() {
-    let progress = parseInt(localStorage.getItem('zenTourProgress') || '0', 10);
-    currentStep = isNaN(progress) || progress < 0 ? 0 : progress;
-
-    let attempts = 0;
-    const maxAttempts = 50;
-    const checkInterval = setInterval(() => {
-        const stepConfig = tourSteps[currentStep];
-        if (!stepConfig) {
-            clearInterval(checkInterval);
-            endTour();
-            return;
-        }
-        const initialStepElement = document.querySelector(stepConfig.el);
-        if (initialStepElement && initialStepElement.offsetParent !== null) {
-            clearInterval(checkInterval);
-            isTourActive = true;
-            showStep(currentStep);
-            window.addEventListener('resize', positionTooltip);
-        } else {
-            attempts++;
-            if (attempts > maxAttempts) {
-                clearInterval(checkInterval);
-                localStorage.removeItem('zenTourProgress');
-            }
-        }
-    }, 100);
-}
 
 export function initializeTour() {
-    if (localStorage.getItem('zenTourCompleted')) return;
-    
-    // Asignar listeners solo una vez
+    if (localStorage.getItem('zenTourCompleted') === 'true') return;
+
+    // Asignar listeners solo una vez para evitar duplicados
     if (!window.tourListenersAttached) {
         nextBtn.addEventListener('click', () => showStep(currentStep + 1));
         prevBtn.addEventListener('click', () => showStep(currentStep - 1));
@@ -360,14 +341,30 @@ export function initializeTour() {
         window.tourListenersAttached = true;
     }
 
-    startTourWhenReady();
+    let attempts = 0;
+    const maxAttempts = 50;
+    const checkInterval = setInterval(() => {
+        const initialStepElement = document.querySelector(tourSteps[0].el);
+        if (initialStepElement && initialStepElement.offsetParent !== null) {
+            clearInterval(checkInterval);
+            isTourActive = true;
+            showStep(0);
+            window.addEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
+        } else {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(checkInterval);
+                console.warn("Tour could not start because the initial element was not found.");
+            }
+        }
+    }, 100);
 }
 
+
 export function restartTour() {
-    endTour(); // Limpia cualquier estado activo del tour
+    endTour();
     localStorage.removeItem('zenTourCompleted');
-    localStorage.removeItem('zenTourProgress');
-    initializeTour();
+    setTimeout(() => initializeTour(), 100);
 }
 
 export function initializeUI() {
