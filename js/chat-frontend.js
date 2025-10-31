@@ -1,7 +1,7 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v14 (Single Entry Point Refactor)
+ * v15 (Event Delegation Refactor)
  */
 
 import { getState, setLocalServices } from './state.js';
@@ -51,7 +51,7 @@ const ttsManager = {
     }
 };
 
-window.handleTTSButtonClick = (buttonElement) => {
+const handleTTSButtonClick = (buttonElement) => {
     const text = buttonElement.dataset.text;
     const isCurrentlyPlayingThis = ttsManager.isPlaying && buttonElement.classList.contains('playing');
     ttsManager.stop();
@@ -180,14 +180,14 @@ export function initializeChatAssistant() {
                         if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
                             let questionButtonsHTML = jsonResponse.client_questions.map(question => {
                                 const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                return `<button onclick='document.getElementById("chat-input").value = "Mi cliente respondió a \\'${escapedQuestion}\\', y dijo que..."; document.getElementById("chat-input").focus();' class="suggested-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
+                                return `<button data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
                             }).join('');
                             finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
                         }
                         
                         if (jsonResponse.sales_pitch) {
                             const pitchId = `pitch-${Date.now()}`;
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button onclick="navigator.clipboard.writeText(document.getElementById('${pitchId}').innerText); this.innerText='¡Copiado!';" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button data-action="copy-pitch" data-target-id="${pitchId}" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
                         }
                     } else {
                          if (currentAiMode === 'builder') throw new Error("Not a valid JSON response for builder mode.");
@@ -201,7 +201,7 @@ export function initializeChatAssistant() {
             }
 
             const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-            const ttsButtonHTML = `<button onclick='window.handleTTSButtonClick(this)' data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
+            const ttsButtonHTML = `<button data-action="tts" data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
             finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
         }
 
@@ -242,7 +242,7 @@ export function initializeChatAssistant() {
         // Lógica de autoplay solo para mensajes nuevos de la IA
         if (role === 'model' && shouldAutoplay) {
             setTimeout(() => {
-                const button = messageNode.querySelector('.tts-btn');
+                const button = messageNode.querySelector('.tts-btn[data-action="tts"]');
                 if (button) ttsManager.speak(button.dataset.text, button);
             }, 300);
         }
@@ -466,34 +466,48 @@ export function initializeChatAssistant() {
         });
     
         chatMessagesContainer.addEventListener('click', (event) => {
-            const target = event.target.closest('[data-action="add-service"]');
-            if (target && !target.disabled) {
-                const { serviceId, serviceType } = target.dataset;
-                let elementId;
-                switch (serviceType) {
-                    case 'package':
-                        elementId = `package-${serviceId}`;
-                        break;
-                    case 'plan':
-                         elementId = `plan-${serviceId}`;
-                         break;
-                    default:
-                         elementId = `standard-${serviceId}`;
+            const button = event.target.closest('button[data-action]');
+            if (!button || button.disabled) return;
+
+            const { action } = button.dataset;
+
+            switch (action) {
+                case 'add-service': {
+                    const { serviceId, serviceType } = button.dataset;
+                    let elementId = (serviceType === 'package') ? `package-${serviceId}` : (serviceType === 'plan') ? `plan-${serviceId}` : `standard-${serviceId}`;
+                    const serviceElement = document.getElementById(elementId);
+                    
+                    if (serviceElement) {
+                        serviceElement.click();
+                        summaryCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        button.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800');
+                        button.classList.add('bg-green-700', 'text-white', 'cursor-default');
+                        button.textContent = `Añadido ✔️`;
+                        button.disabled = true;
+                    } else {
+                        console.error(`Elemento del DOM no encontrado: #${elementId}`);
+                        button.textContent = `Error: No encontrado`;
+                        button.disabled = true;
+                    }
+                    break;
                 }
-                
-                const serviceElement = document.getElementById(elementId);
-                
-                if (serviceElement) {
-                    serviceElement.click();
-                    if(summaryCard) summaryCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    target.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800');
-                    target.classList.add('bg-green-700', 'text-white', 'cursor-default');
-                    target.textContent = `Añadido ✔️`;
-                    target.disabled = true;
-                } else {
-                    console.error(`Elemento del DOM no encontrado: #${elementId}`);
-                    target.textContent = `Error: No encontrado`;
-                    target.disabled = true;
+                case 'tts':
+                    handleTTSButtonClick(button);
+                    break;
+                case 'copy-pitch': {
+                    const targetId = button.dataset.targetId;
+                    const pitchElement = document.getElementById(targetId);
+                    if (pitchElement) {
+                        navigator.clipboard.writeText(pitchElement.innerText);
+                        button.textContent = '¡Copiado!';
+                    }
+                    break;
+                }
+                case 'suggest-question': {
+                    const question = button.dataset.question;
+                    chatInput.value = `Mi cliente respondió a '${question}', y dijo que...`;
+                    chatInput.focus();
+                    break;
                 }
             }
         });

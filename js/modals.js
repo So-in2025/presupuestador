@@ -1,9 +1,9 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToRerender, setUsdToArsRate, setSessionApiKey } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate, setSessionApiKey } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
-import { createServiceItemHTML, initializeTour, rerenderAllPrices } from './ui.js';
+import { initializeTour, rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
