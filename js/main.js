@@ -25,7 +25,9 @@ import {
     addExtraPoints,
     showExchangeRateModal,
     closeExchangeRateModal,
-    handleSaveExchangeRate
+    handleSaveExchangeRate,
+    showContentStudioModal,
+    closeContentStudioModal
 } from './modals.js';
 import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initializeTour } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
@@ -222,12 +224,15 @@ function initializeEventListeners() {
     document.getElementById('save-inline-api-key-btn')?.addEventListener('click', handleSaveInlineApiKey);
     document.getElementById('close-exchange-rate-modal-btn')?.addEventListener('click', closeExchangeRateModal);
     document.getElementById('save-exchange-rate-btn')?.addEventListener('click', handleSaveExchangeRate);
-    
+    document.getElementById('close-content-studio-modal-btn')?.addEventListener('click', closeContentStudioModal);
+
     // Header Buttons
     document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
     document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
-    document.getElementById('tieredBuilderBtn')?.addEventListener('click', showTieredBuilderModal);
+    document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
+    // FIX: Changed event listener to call the function correctly without passing the event object.
+    document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
     document.getElementById('show-tiered-builder-help-btn')?.addEventListener('click', showTieredBuilderHelp);
     document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
     document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);

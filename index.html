@@ -275,6 +275,23 @@
         .btn-press-feedback:active {
             transform: scale(0.95);
         }
+        
+        /* --- ESTILOS ESTUDIO DE CONTENIDO --- */
+        .studio-tab {
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .studio-tab.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+        .studio-tab-content {
+            display: none;
+        }
+        .studio-tab-content.active {
+            display: block;
+        }
+
     </style>
 </head>
 <body class="text-slate-50 min-h-screen">
@@ -360,6 +377,9 @@
                     </button>
                     <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
+                    </button>
+                    <button id="show-content-studio-btn" class="text-sm bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                        ✨ Estudio de Contenido
                     </button>
                      <div class="flex items-center gap-1">
                         <button id="tieredBuilderBtn" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
@@ -681,6 +701,86 @@
         </div>
     </div>
     
+    <!-- ESTUDIO DE CONTENIDO MODAL -->
+    <div id="contentStudioModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+        <div class="card-bg w-full max-w-4xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-fuchsia-600 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg">✨ Estudio de Contenido para Redes</h3>
+                <button id="close-content-studio-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 flex-grow overflow-y-auto">
+                <div class="flex border-b border-slate-700 mb-4">
+                    <button data-tab="text-generator" class="studio-tab py-2 px-4 font-semibold active">Generador de Textos</button>
+                    <button data-tab="image-generator" class="studio-tab py-2 px-4 font-semibold">Generador de Imágenes</button>
+                </div>
+                <!-- Pestaña Generador de Textos -->
+                <div id="text-generator-content" class="studio-tab-content active">
+                    <p class="text-sm text-slate-400 mb-4">Crea textos persuasivos para tus redes sociales en segundos. Elige tus opciones y deja que la IA haga la magia.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <select id="text-objective" class="styled-input styled-select">
+                            <option value="promocionar">Promocionar un nuevo sitio web</option>
+                            <option value="ofrecer_auditoria">Ofrecer una auditoría web gratuita</option>
+                            <option value="educar_seo">Educar sobre la importancia del SEO</option>
+                            <option value="anunciar_oferta">Anunciar una oferta especial</option>
+                        </select>
+                        <select id="text-platform" class="styled-input styled-select">
+                            <option value="instagram">Instagram</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="facebook">Facebook</option>
+                        </select>
+                        <select id="text-tone" class="styled-input styled-select">
+                            <option value="profesional">Profesional</option>
+                            <option value="urgente">Urgente y Directo</option>
+                            <option value="inspirador">Inspirador</option>
+                            <option value="cercano">Cercano y Amigable</option>
+                        </select>
+                    </div>
+                    <button id="generate-text-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Texto</button>
+                    <div id="text-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[150px] relative hidden">
+                         <div id="text-spinner" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 rounded-lg hidden">
+                            <svg class="spinner h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        </div>
+                        <p id="generated-text" class="text-slate-200 whitespace-pre-wrap"></p>
+                        <button id="copy-generated-text-btn" class="absolute top-2 right-2 text-xs bg-slate-800 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition hidden">Copiar</button>
+                    </div>
+                </div>
+                <!-- Pestaña Generador de Imágenes -->
+                <div id="image-generator-content" class="studio-tab-content">
+                     <p class="text-sm text-slate-400 mb-4">Crea imágenes publicitarias únicas y profesionales. La IA está entrenada para generar contenido relevante para servicios de desarrollo web.</p>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <select id="image-style" class="styled-input styled-select">
+                            <option value="minimalista">Estilo Minimalista</option>
+                            <option value="futurista">Estilo Futurista y Neón</option>
+                            <option value="fotorealista">Estilo Fotorealista</option>
+                            <option value="abstracto">Estilo Abstracto y Corporativo</option>
+                        </select>
+                        <select id="image-concept" class="styled-input styled-select">
+                            <option value="codigo_pantalla">Código en Pantalla</option>
+                            <option value="graficos_crecimiento">Gráficos de Crecimiento</option>
+                            <option value="mockup_website">Mockup de Website</option>
+                            <option value="colaboracion_equipo">Colaboración de Equipo</option>
+                        </select>
+                        <select id="image-colors" class="styled-input styled-select">
+                            <option value="tonos_azules">Tonos Azules y Blancos</option>
+                            <option value="blanco_negro">Blanco y Negro</option>
+                            <option value="colores_vibrantes">Colores Vibrantes</option>
+                            <option value="tonos_calidos">Tonos Cálidos (Naranja/Dorado)</option>
+                        </select>
+                    </div>
+                    <button id="generate-image-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Imagen</button>
+                     <div id="image-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[300px] flex items-center justify-center relative hidden">
+                        <div id="image-spinner" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 rounded-lg hidden">
+                            <svg class="spinner h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <p class="text-cyan-300 mt-2 font-semibold">Generando imagen... (Esto puede tardar un minuto)</p>
+                        </div>
+                        <img id="generated-image" src="" alt="Imagen generada por IA" class="max-w-full max-h-[400px] rounded-md hidden">
+                        <a id="download-image-btn" href="#" download="proyecto-zen-imagen.png" class="absolute bottom-4 right-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hidden">Descargar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tour GUIADO PROFESIONAL -->
     <div id="tour-overlay" class="hidden fixed inset-0 bg-black/70 transition-opacity duration-300"></div>
     <div id="tour-tooltip" class="hidden absolute bg-slate-800 border-2 border-cyan-400 p-4 rounded-lg shadow-2xl max-w-sm">

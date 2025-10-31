@@ -2,56 +2,74 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Correct SDK for this environment)
- * Lógica de Intención: v23 - Infallible JSON Mode with Priority
+ * Lógica de Intención: v25 - Strategic Prompting & Model Correction
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const MODEL_NAME = 'gemini-2.5-flash'; // Optimized for speed, cost, and free tier
+const MODEL_NAME = 'gemini-2.5-flash';
+const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image'; // CORRECT MODEL for image generation
 
 // --- PROMPT TEMPLATES ---
-
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
+// REFORZADO: Prompt del Constructor con instrucciones de prioridad estrictas
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
-`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request and build the perfect solution using ONLY items from the provided catalog. Critically evaluate the user's request to assign a balanced mix of priorities. 'essential' is for the core need, 'recommended' is for the ideal solution, and 'optional' is for valuable extras. Avoid putting all services in one category unless the request is extremely simple. ${contextText}
-
---- PRIORITY LEVELS ---
-- "essential": Absolutely necessary to meet the client's core request.
-- "recommended": High-value additions that significantly improve the solution. The ideal upsell.
-- "optional": "Nice-to-have" extras or potential future upgrades.
+`Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
 --- AVAILABLE CATALOG ---
 ${serviceList}
 ${planList}
 
---- REQUIRED JSON STRUCTURE ---
-Your response MUST conform to this exact structure: { "introduction": "...", "services": [{ "id": "...", "priority": "essential", "is_new": false, "name": "...", "description": "...", "price": 123.45 }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }.`;
+Your response MUST be a single, valid JSON object with the following structure: 
+{ 
+  "introduction": "...", 
+  "services": [{ "id": "...", "name": "...", "priority": "..." }], 
+  "closing": "...", 
+  "client_questions": ["..."], 
+  "sales_pitch": "..." 
+}
+
+**CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
+1.  For each service object, you MUST include a "priority" key.
+2.  The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
+3.  **Classification Strategy:**
+    -   **"essential":** Use for services that DIRECTLY fulfill the client's core request. This is the absolute minimum viable solution.
+    -   **"recommended":** Use for high-value services that create the IDEAL solution. These are the key upsells that solve the client's problem better.
+    -   **"optional":** Use for 'nice-to-have' extras, future improvements, or complementary services that are not critical right now.
+4.  Do NOT add any text, markdown, or comments before or after the JSON object. Your entire response must be the raw JSON.`;
+
+
+// NUEVO: PROMPTS PARA ESTUDIO DE CONTENIDO ---
+const CONTENT_CREATOR_INSTRUCTION = `You are a professional social media manager specializing in the tech industry. Generate a social media post based on the user's selections. The post should be engaging, professional, and include relevant hashtags. Adapt the length and tone for the specified platform.`;
+const IMAGE_CREATOR_PROMPT_TEMPLATE = (style, concept, colors) => `Generate a high-quality, professional, and aesthetically pleasing image suitable for a social media campaign for a web development agency. The image must be visually striking and directly related to the provided concept.
+- Style: ${style}
+- Core Concept: ${concept}
+- Color Palette: ${colors}
+Do not include any text, logos, or watermarks in the image. The image should be clean and symbolic.`;
 
 
 // --- PROMPT ENGINEERING HELPERS ---
-
-function getSystemInstructionForMode(mode, selectedServicesContext = []) {
-    const contextText = (selectedServicesContext && selectedServicesContext.length > 0)
-        ? `CONTEXT: The reseller has already selected: ${selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
-        : '';
-
+function getSystemInstructionForMode(mode, context = {}) {
     switch (mode) {
         case 'analyze': return ANALYZE_INSTRUCTION;
         case 'objection': return OBJECTION_INSTRUCTION;
+        case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
         case 'builder':
         default:
             const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
             const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
+            const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
+                ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
+                : '';
             return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText);
     }
 }
 
 // --- INTELLIGENCE HELPERS ---
-
 function createErrorJsonResponse(introduction, closing) {
     return JSON.stringify({
         introduction, services: [], closing,
@@ -61,81 +79,90 @@ function createErrorJsonResponse(introduction, closing) {
 }
 
 // --- NETLIFY SERVERLESS FUNCTION HANDLER ---
-
 exports.handler = async (event) => {
-    if (event.httpMethod !== "POST") {
-        return { statusCode: 405, body: "Method Not Allowed" };
-    }
-
-    if (!pricingData) {
-        return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
-    }
+    if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
+    if (!pricingData) return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
 
     let body;
     try { body = JSON.parse(event.body); } 
     catch (e) { return { statusCode: 400, body: "Invalid JSON-formatted request body." }; }
 
-    const { userMessage, history: historyFromClient, mode, selectedServicesContext, apiKey } = body;
-    if (!userMessage || !historyFromClient || !mode || !apiKey) {
-        return { statusCode: 400, body: JSON.stringify({ error: true, message: "Incomplete request. Missing required parameters." }) };
+    const { userMessage, history: historyFromClient, mode, context, apiKey } = body;
+    if (!userMessage || !mode || !apiKey) {
+        return { statusCode: 400, body: JSON.stringify({ error: true, message: "Incomplete request." }) };
     }
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
         
-        // --- Infallible JSON Mode Configuration ---
-        const generationConfig = mode === 'builder'
-            ? { responseMimeType: "application/json" }
-            : undefined;
+        // --- IMAGE GENERATION LOGIC ---
+        if (mode === 'image-creator') {
+            const { style, concept, colors } = context;
+            const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, concept, colors);
+            
+            const model = genAI.getGenerativeModel({ model: IMAGE_MODEL_NAME }); // Using correct model
+            
+            // For image generation with gemini-flash-image, we need a specific request format
+            const result = await model.generateContent({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: "image/png" // Request an image directly
+                }
+            });
+            
+            const response = result.response;
+            const imagePart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
 
+            if (!imagePart || !imagePart.inlineData.data) {
+                throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
+            }
+            
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ base64Image: imagePart.inlineData.data })
+            };
+        }
+
+        // --- TEXT GENERATION LOGIC (ALL OTHER MODES) ---
+        const generationConfig = mode === 'builder' ? { responseMimeType: "application/json" } : undefined;
         const model = genAI.getGenerativeModel({ 
             model: MODEL_NAME,
-            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext),
+            systemInstruction: getSystemInstructionForMode(mode, context),
             generationConfig: generationConfig
         });
         
-        const chat = model.startChat({
-            history: historyFromClient.slice(0, -1),
-        });
-        
+        const chat = model.startChat({ history: (historyFromClient || []).slice(0, -1) });
         const result = await chat.sendMessage(userMessage);
         const response = result.response;
         const responseText = response.text();
 
-        // The response is now guaranteed to be valid JSON in builder mode, or text otherwise.
-        const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
+        const finalHistory = [...(historyFromClient || []), { role: 'model', parts: [{ text: responseText }] }];
         return {
             statusCode: 200,
-            body: JSON.stringify({ response: responseText, history: updatedHistory })
+            body: JSON.stringify({ response: responseText, history: finalHistory })
         };
 
     } catch (err) {
         console.error("Error in Netlify function handler:", err);
-        
-        // --- Enhanced Error Handling ---
         let userFriendlyMessage = "un error inesperado ocurrió al comunicarme con el asistente.";
         const errorMessage = err.message || err.toString();
 
-        if (errorMessage.includes('API key not valid')) {
-            userFriendlyMessage = "Error de Autenticación: La API Key proporcionada no es válida. Por favor, verifica que la has copiado correctamente.";
-        } else if (errorMessage.includes('billing account')) {
-            userFriendlyMessage = "Error de Facturación: La API Key es válida, pero no está asociada a un proyecto con una cuenta de facturación activa. Revisa tu configuración en Google Cloud.";
-        } else if (err.status === 429 || errorMessage.includes('quota')) {
-            userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes para tu API Key. Por favor, espera un momento o revisa los límites de tu cuenta.";
-        } else if (err.status >= 500) {
-            userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Por favor, inténtalo de nuevo más tarde.";
-        }
-        
-        const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
+        if (errorMessage.includes('API key not valid')) userFriendlyMessage = "Error de Autenticación: La API Key proporcionada no es válida.";
+        else if (errorMessage.includes('billing account')) userFriendlyMessage = "Error de Facturación: La API Key es válida, pero no está asociada a un proyecto con facturación activa.";
+        else if (err.status === 429 || errorMessage.includes('quota')) userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes. Por favor, espera un momento.";
+        else if (err.status >= 500) userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Inténtalo de nuevo más tarde.";
+        else if (mode === 'image-creator' && errorMessage) userFriendlyMessage = errorMessage;
 
-        const errorJson = (mode === 'builder')
+        const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
+        const errorBody = (mode === 'builder')
             ? createErrorJsonResponse("Hubo un error de conexión con la IA.", `Detalles: ${userFriendlyMessage}`)
             : finalMessage;
 
-        const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorJson }] }];
         return {
-            statusCode: 200, // Return 200 for graceful frontend handling
-            body: JSON.stringify({ response: errorJson, history: errorHistory })
+            statusCode: 500, // Send a server error status for frontend to catch properly
+            body: JSON.stringify({ error: true, message: userFriendlyMessage, response: errorBody, history: historyFromClient })
         };
     }
 };

@@ -287,3 +287,169 @@ export function showTieredBuilderHelp() {
     `;
     showNotification('info', helpTitle, helpMessage);
 }
+
+
+// --- NUEVO: ESTUDIO DE CONTENIDO ---
+let isGenerating = false;
+
+export function showContentStudioModal() {
+    const modal = document.getElementById('contentStudioModal');
+    if (!modal) return;
+    openModal(modal);
+
+    // Adjuntar listeners una sola vez para evitar duplicados
+    if (!modal.dataset.listenersAttached) {
+        const tabs = modal.querySelectorAll('.studio-tab');
+        const contents = modal.querySelectorAll('.studio-tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                contents.forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tab.dataset.tab}-content`).classList.add('active');
+            });
+        });
+        
+        document.getElementById('generate-text-btn').addEventListener('click', handleGenerateText);
+        document.getElementById('generate-image-btn').addEventListener('click', handleGenerateImage);
+        document.getElementById('copy-generated-text-btn').addEventListener('click', handleCopyText);
+
+        modal.dataset.listenersAttached = 'true';
+    }
+}
+
+export function closeContentStudioModal() {
+    closeModal(document.getElementById('contentStudioModal'));
+}
+
+async function handleGenerateText() {
+    if (isGenerating) return;
+    isGenerating = true;
+
+    const resultContainer = document.getElementById('text-result-container');
+    const spinner = document.getElementById('text-spinner');
+    const copyBtn = document.getElementById('copy-generated-text-btn');
+    const generatedTextP = document.getElementById('generated-text');
+    
+    resultContainer.classList.remove('hidden');
+    spinner.classList.remove('hidden');
+    generatedTextP.textContent = '';
+    copyBtn.classList.add('hidden');
+
+    const apiKey = getState().sessionApiKey;
+    if (!apiKey) {
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key antes de usar el estudio de contenido.');
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        return;
+    }
+    
+    const objective = document.getElementById('text-objective').value;
+    const platform = document.getElementById('text-platform').value;
+    const tone = document.getElementById('text-tone').value;
+
+    const userMessage = `Objective: ${objective}, Platform: ${platform}, Tone: ${tone}`;
+
+    try {
+        const response = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userMessage,
+                mode: 'content-creator',
+                context: {},
+                apiKey
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error del servidor al generar texto.');
+        }
+
+        const data = await response.json();
+        generatedTextP.textContent = data.response;
+        copyBtn.textContent = 'Copiar';
+        copyBtn.classList.remove('hidden');
+
+    } catch (error) {
+        generatedTextP.textContent = `Error: ${error.message}`;
+        console.error("Error al generar texto:", error);
+    } finally {
+        isGenerating = false;
+        spinner.classList.add('hidden');
+    }
+}
+
+async function handleGenerateImage() {
+    if (isGenerating) return;
+    isGenerating = true;
+    
+    const resultContainer = document.getElementById('image-result-container');
+    const spinner = document.getElementById('image-spinner');
+    const generatedImage = document.getElementById('generated-image');
+    const downloadBtn = document.getElementById('download-image-btn');
+
+    resultContainer.classList.remove('hidden');
+    spinner.classList.remove('hidden');
+    generatedImage.classList.add('hidden');
+    downloadBtn.classList.add('hidden');
+
+    const apiKey = getState().sessionApiKey;
+    if (!apiKey) {
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key antes de usar el estudio de contenido.');
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        return;
+    }
+
+    const style = document.getElementById('image-style').value;
+    const concept = document.getElementById('image-concept').value;
+    const colors = document.getElementById('image-colors').value;
+
+    try {
+        const response = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userMessage: 'Generate an image based on the context.', // Placeholder message
+                mode: 'image-creator',
+                context: { style, concept, colors },
+                apiKey
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error del servidor al generar la imagen.');
+        }
+
+        const data = await response.json();
+        const imageUrl = `data:image/png;base64,${data.base64Image}`;
+        generatedImage.src = imageUrl;
+        downloadBtn.href = imageUrl;
+        generatedImage.classList.remove('hidden');
+        downloadBtn.classList.remove('hidden');
+        
+    } catch (error) {
+        const errorP = document.createElement('p');
+        errorP.className = 'text-red-400';
+        errorP.textContent = `Error: ${error.message}`;
+        resultContainer.innerHTML = '';
+        resultContainer.appendChild(errorP);
+        console.error("Error al generar imagen:", error);
+    } finally {
+        isGenerating = false;
+        spinner.classList.add('hidden');
+    }
+}
+
+
+function handleCopyText() {
+    const text = document.getElementById('generated-text').textContent;
+    const button = document.getElementById('copy-generated-text-btn');
+    navigator.clipboard.writeText(text).then(() => {
+        button.textContent = '¡Copiado!';
+    });
+}
