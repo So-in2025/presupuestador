@@ -1,12 +1,12 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * SDK: @google/genai (Modern SDK)
+ * SDK: @google/generative-ai (Modern SDK)
  * Lógica de Intención: v20 - Modern SDK with Enhanced Error Handling
  */
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI } = require('@google/generative-ai');
 
 // --- CONSTANTS & CONFIGURATION ---
 const MAX_RETRIES = 3;

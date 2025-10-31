@@ -231,6 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadLocalData();
     loadPricingData(); // This now also calls initializeUI
     resetForm();
-    initializeChatAssistant();
+    initializeChatAssistant(updateApiKeyUI);
     initializeEventListeners(); // The new central hub for all interactions
 });
