@@ -2,7 +2,7 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Correct SDK for this environment)
- * Lógica de Intención: v22 - Strategic Priority
+ * Lógica de Intención: v23 - Infallible JSON Mode with Priority
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pricingData = require('./pricing.json');

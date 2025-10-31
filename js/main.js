@@ -37,42 +37,80 @@ function initializeSplashScreen() {
     const detailsBtn = document.getElementById('toggle-details-btn');
     const detailsSection = document.getElementById('detailsSection');
     const splashScreen = document.getElementById('splash-screen');
+    const readAloudBtn = document.getElementById('read-aloud-btn');
 
     startBtn.addEventListener('click', () => {
+        window.speechSynthesis.cancel();
         splashScreen.style.opacity = '0';
-        splashScreen.style.pointerEvents = 'none'; // FIX: Desactiva los clics inmediatamente
+        splashScreen.style.pointerEvents = 'none';
+        splashScreen.style.zIndex = '-1';
+        
         setTimeout(() => {
             splashScreen.classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
-            // Check for API key ONLY after the app starts
             updateApiKeyUI();
-        }, 500); // Match transition duration
+        }, 500);
     });
 
     detailsBtn.addEventListener('click', () => {
         detailsSection.classList.toggle('open');
     });
 
-    document.querySelectorAll('#splash-screen .tts-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            const text = button.dataset.text;
-            const isPlaying = button.textContent === '⏹️';
-            
-            window.speechSynthesis.cancel();
-            document.querySelectorAll('#splash-screen .tts-btn').forEach(b => b.textContent = '▶️');
-            
-            if (isPlaying) return;
+    // --- LÓGICA DE LECTURA INTELIGENTE ---
+    let ttsQueue = [];
+    let currentUtterance = null;
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'es-ES';
-            
-            utterance.onstart = () => { button.textContent = '⏹️'; };
-            utterance.onend = () => { button.textContent = '▶️'; };
-            
-            window.speechSynthesis.speak(utterance);
-        });
+    const highlightElement = (element) => {
+        document.querySelectorAll('[data-tts-content]').forEach(el => el.classList.remove('tts-highlight'));
+        if (element) {
+            element.classList.add('tts-highlight');
+        }
+    };
+
+    const playNextInQueue = () => {
+        if (ttsQueue.length > 0) {
+            const { element, text } = ttsQueue.shift();
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'es-ES';
+            currentUtterance.rate = 1.0;
+
+            currentUtterance.onstart = () => {
+                highlightElement(element);
+            };
+
+            currentUtterance.onend = () => {
+                playNextInQueue();
+            };
+
+            window.speechSynthesis.speak(currentUtterance);
+        } else {
+            readAloudBtn.textContent = 'Leer en voz alta';
+            highlightElement(null);
+            currentUtterance = null;
+        }
+    };
+
+    readAloudBtn.addEventListener('click', () => {
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            ttsQueue = [];
+            readAloudBtn.textContent = 'Leer en voz alta';
+            highlightElement(null);
+        } else {
+            const contentElements = document.querySelectorAll('#detailsSection [data-tts-content]');
+            contentElements.forEach(element => {
+                ttsQueue.push({ element: element, text: element.dataset.ttsContent });
+            });
+            readAloudBtn.textContent = 'Detener lectura';
+            playNextInQueue();
+        }
+    });
+
+     window.addEventListener('beforeunload', () => {
+        window.speechSynthesis.cancel();
     });
 }
+
 
 // --- GESTIÓN DE API KEY UI ---
 function updateApiKeyUI(forceShow = false) {

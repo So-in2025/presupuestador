@@ -1,5 +1,3 @@
-
-
 // js/dom.js
 
 export const appContainer = document.getElementById('appContainer');

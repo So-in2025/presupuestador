@@ -167,9 +167,9 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                         });
 
                         const priorityConfig = {
-                            essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white' },
-                            recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white' },
-                            optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white' }
+                            essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white border border-cyan-700' },
+                            recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white border border-purple-700' },
+                            optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white border border-slate-600' }
                         };
 
                         let actionsHTML = '';

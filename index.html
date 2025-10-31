@@ -233,11 +233,13 @@
          .details-section.open {
             max-height: 1000px; /* Adjust as needed */
         }
-        .tts-btn {
-            background: #1E293B; border: 1px solid #334155; color: #94A3B8;
-            padding: 2px 6px; font-size: 0.7rem; border-radius: 4px;
-            cursor: pointer; margin-left: 8px;
+        .tts-highlight {
+            background-color: rgba(34, 211, 238, 0.15);
+            border-left: 3px solid var(--accent-color);
+            padding-left: 8px;
+            transition: all 0.2s ease-in-out;
         }
+
 
         /* --- OPTIMIZACIONES DE FLUIDEZ --- */
         .modal-overlay {
@@ -286,27 +288,45 @@
             </div>
 
             <div id="detailsSection" class="details-section">
-                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50">
-                    <h3 class="font-bold text-lg text-cyan-400 mb-2">3 Pilares Fundamentales</h3>
-                    <p class="mb-2 text-sm"><b>1. Co-Piloto IA Estratégico:</b>
-                        <button class="tts-btn" data-text="Co-Piloto IA Estratégico: Más que un asistente, es un estratega que analiza, recomienda y busca oportunidades de venta, entendiendo el contexto de tu trabajo.">▶️</button>
-                        Más que un asistente, es un estratega que analiza, recomienda y busca oportunidades de venta.
-                    </p>
-                    <p class="mb-2 text-sm"><b>2. Privacidad y Control Total:</b>
-                         <button class="tts-btn" data-text="Privacidad y Control Total: Tu negocio, tus datos. La plataforma opera 100% en tu navegador, sin nubes ni suscripciones. Total autonomía.">▶️</button>
-                        Tu negocio, tus datos. La plataforma opera 100% en tu navegador, sin nubes ni suscripciones.
-                    </p>
-                    <p class="mb-4 text-sm"><b>3. Flujo de Trabajo Eficiente:</b>
-                         <button class="tts-btn" data-text="Flujo de Trabajo Eficiente: Desde el análisis del cliente hasta el PDF final, cada paso está diseñado para ahorrarte tiempo y maximizar tu rentabilidad.">▶️</button>
-                        Desde el análisis hasta el PDF final, cada paso está diseñado para ahorrarte tiempo.
-                    </p>
+                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50 space-y-4">
+                    <div class="text-center">
+                        <button id="read-aloud-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-6 rounded-lg transition shadow-md btn-press-feedback">
+                            Leer en voz alta
+                        </button>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-cyan-400 mb-2">3 Pilares Fundamentales</h3>
+                        <p class="mb-2 text-sm" data-tts-content="Pilar 1: Co-Piloto IA Estratégico. Más que un simple asistente, es un estratega de ventas. Analiza las necesidades de tu cliente, recomienda la combinación de servicios más efectiva de tu propio catálogo y busca proactivamente oportunidades de venta (upsell), todo mientras entiende el contexto de tu trabajo.">
+                            <b>1. Co-Piloto IA Estratégico:</b> Más que un asistente, es un estratega que analiza, recomienda y busca oportunidades de venta, entendiendo el contexto de tu trabajo.
+                        </p>
+                        <p class="mb-2 text-sm" data-tts-content="Pilar 2: Privacidad y Control Total. Tu negocio, tus datos. La plataforma opera 100% en tu navegador. No hay nubes, servidores de terceros ni suscripciones. Tu API Key, tus propuestas y tu catálogo de precios se guardan localmente, dándote total autonomía y seguridad.">
+                            <b>2. Privacidad y Control Total:</b> Tu negocio, tus datos. La plataforma opera 100% en tu navegador, sin nubes ni suscripciones. Total autonomía.
+                        </p>
+                        <p class="mb-4 text-sm" data-tts-content="Pilar 3: Flujo de Trabajo Eficiente. Cada clic está pensado para maximizar tu productividad. Desde el análisis inicial de la necesidad del cliente hasta la generación del PDF final, cada paso está diseñado para ahorrarte horas de trabajo administrativo y permitirte concentrarte en lo que de verdad importa: vender y ejecutar.">
+                            <b>3. Flujo de Trabajo Eficiente:</b> Desde el análisis hasta el PDF final, cada paso está diseñado para ahorrarte tiempo y maximizar tu rentabilidad.
+                        </p>
+                    </div>
                     
-                    <h3 class="font-bold text-lg text-cyan-400 mb-2 mt-4 border-t border-slate-700 pt-4">5 Pasos hacia la Propuesta Perfecta</h3>
-                     <p class="text-sm mb-1"><b>1. Análisis:</b> <button class="tts-btn" data-text="Análisis: La IA extrae los requisitos clave de las conversaciones con tus clientes.">▶️</button> La IA extrae requisitos de las conversaciones.</p>
-                     <p class="text-sm mb-1"><b>2. Construcción:</b> <button class="tts-btn" data-text="Construcción: La IA sugiere una solución estratégica y busca oportunidades de venta.">▶️</button> La IA sugiere una solución y busca oportunidades.</p>
-                     <p class="text-sm mb-1"><b>3. Rentabilidad:</b> <button class="tts-btn" data-text="Rentabilidad: Ajustas tu margen de ganancia en tiempo real.">▶️</button> Ajustas tu margen de ganancia en tiempo real.</p>
-                     <p class="text-sm mb-1"><b>4. Gestión:</b> <button class="tts-btn" data-text="Gestión: Guardas y gestionas todas tus propuestas en un dashboard centralizado.">▶️</button> Guardas y gestionas todo en un dashboard.</p>
-                     <p class="text-sm"><b>5. Documentación:</b> <button class="tts-btn" data-text="Documentación: Generas PDFs profesionales para tu cliente y tu equipo de desarrollo con un solo clic.">▶️</button> Generas PDFs profesionales con un solo clic.</p>
+                    <div class="border-t border-slate-700 pt-4">
+                        <h3 class="font-bold text-lg text-cyan-400 mb-2">5 Pasos hacia la Propuesta Perfecta</h3>
+                         <ol class="list-decimal list-inside space-y-2 text-sm">
+                            <li data-tts-content="Paso 1, Análisis: Usa el modo 'Analizar Conversación' para pegar un chat o email de tu cliente. La IA leerá la conversación y extraerá una lista clara y concisa de sus requisitos clave. Esto te da un punto de partida sólido y basado en datos.">
+                                <b>Análisis:</b> La IA extrae los requisitos clave de las conversaciones con tus clientes.
+                            </li>
+                            <li data-tts-content="Paso 2, Construcción: Cambia al modo 'Constructor'. Describe la necesidad del cliente (o usa los puntos del análisis). La IA te devolverá una propuesta de servicios completa, priorizada y con argumentos de venta, usando únicamente tu catálogo.">
+                                <b>Construcción:</b> La IA sugiere una solución estratégica y busca oportunidades de venta.
+                            </li>
+                            <li data-tts-content="Paso 3, Rentabilidad: Con la propuesta seleccionada, ve a la calculadora de rentabilidad. Ajusta tu margen de ganancia en tiempo real y observa cómo se actualiza el precio final para el cliente. Control total sobre tus beneficios.">
+                                <b>Rentabilidad:</b> Ajustas tu margen de ganancia en tiempo real.
+                            </li>
+                            <li data-tts-content="Paso 4, Gestión: Guarda la propuesta. Aparecerá en tu dashboard, donde podrás editarla, marcarla como urgente o eliminarla. Todas tus oportunidades de negocio, centralizadas en un solo lugar.">
+                                <b>Gestión:</b> Guardas y gestionas todas tus propuestas en un dashboard centralizado.
+                            </li>
+                            <li data-tts-content="Paso 5, Documentación: Con un solo clic, genera dos PDFs profesionales: una propuesta de marca blanca para tu cliente y un brief técnico detallado para tu equipo de desarrollo, todo basado en las propuestas que has guardado.">
+                                <b>Documentación:</b> Generas PDFs profesionales para tu cliente y tu equipo con un solo clic.
+                            </li>
+                         </ol>
+                    </div>
                 </div>
             </div>
         </div>
