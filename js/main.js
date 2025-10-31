@@ -56,9 +56,44 @@ function initializeSplashScreen() {
         detailsSection.classList.toggle('open');
     });
 
-    // --- LÓGICA DE LECTURA INTELIGENTE ---
+    // --- LÓGICA DE LECTURA INTELIGENTE (CON VOZ MEJORADA) ---
     let ttsQueue = [];
     let currentUtterance = null;
+    let selectedVoice = null;
+
+    const loadAndSelectVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) return;
+
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+        if (spanishVoices.length === 0) return;
+
+        // Prioridad 1: Voz masculina de Google en español.
+        const googleMaleVoice = spanishVoices.find(v => 
+            v.name.toLowerCase().includes('google') && 
+            (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('español'))
+        );
+        
+        if (googleMaleVoice) {
+            selectedVoice = googleMaleVoice;
+        } else {
+            // Prioridad 2: Cualquier voz de Google.
+            const googleVoice = spanishVoices.find(v => v.name.toLowerCase().includes('google'));
+            if (googleVoice) {
+                selectedVoice = googleVoice;
+            } else {
+                // Prioridad 3: La primera voz en español disponible.
+                selectedVoice = spanishVoices[0];
+            }
+        }
+    };
+
+    // Cargar voces al inicio y cuando cambien.
+    loadAndSelectVoice();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadAndSelectVoice;
+    }
+
 
     const highlightElement = (element) => {
         document.querySelectorAll('[data-tts-content]').forEach(el => el.classList.remove('tts-highlight'));
@@ -71,6 +106,11 @@ function initializeSplashScreen() {
         if (ttsQueue.length > 0) {
             const { element, text } = ttsQueue.shift();
             currentUtterance = new SpeechSynthesisUtterance(text);
+            
+            if (selectedVoice) {
+                currentUtterance.voice = selectedVoice;
+            }
+            
             currentUtterance.lang = 'es-ES';
             currentUtterance.rate = 1.0;
 
@@ -97,6 +137,9 @@ function initializeSplashScreen() {
             readAloudBtn.textContent = 'Leer en voz alta';
             highlightElement(null);
         } else {
+            // Asegurarse de que las voces estén cargadas antes de hablar
+            if (!selectedVoice) loadAndSelectVoice();
+
             const contentElements = document.querySelectorAll('#detailsSection [data-tts-content]');
             contentElements.forEach(element => {
                 ttsQueue.push({ element: element, text: element.dataset.ttsContent });
