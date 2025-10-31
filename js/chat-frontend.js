@@ -73,6 +73,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
     const sendChatBtn = document.getElementById('chat-send-btn');
     const summaryCard = document.getElementById('summaryCard');
     const modeSelector = document.getElementById('chat-mode-selector');
+    const clearChatBtn = document.getElementById('clear-chat-history-btn');
 
     if (!chatMessagesContainer || !chatInput || !sendChatBtn || !modeSelector) {
         console.error("Elementos esenciales del chat no encontrados.");
@@ -563,6 +564,17 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                     chatInput.focus();
                     break;
                 }
+            }
+        });
+
+        clearChatBtn?.addEventListener('click', () => {
+            const currentModeName = modeSelector.querySelector('.active')?.textContent || 'actual';
+            if (confirm(`¿Estás seguro de que quieres borrar el historial del modo "${currentModeName}"? Esta acción no se puede deshacer.`)) {
+                allChatHistories[currentAiMode] = [];
+                chatHistory = []; // Update current reference
+                saveChatHistories(allChatHistories);
+                renderChatMessages();
+                showNotification('info', 'Historial Borrado', `El historial para el modo "${currentModeName}" ha sido eliminado.`);
             }
         });
     }

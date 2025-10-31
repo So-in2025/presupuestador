@@ -4,6 +4,24 @@ import * as dom from './dom.js';
 import { getState, formatPrice } from './state.js';
 import { updateSummary } from './app.js';
 
+export function updateCurrencyToggleButton() {
+    const { currentCurrency, usdToArsRate } = getState();
+    const btn = document.getElementById('currency-toggle-btn');
+    if (!btn) return;
+
+    if (!usdToArsRate) {
+        btn.disabled = true;
+        btn.textContent = 'Configurar ARS';
+        return;
+    }
+
+    btn.disabled = false;
+    if (currentCurrency === 'USD') {
+        btn.textContent = `Ver en ARS`;
+    } else {
+        btn.textContent = `Ver en USD`;
+    }
+}
 
 export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null, showPoints = false) {
     const pointCostHTML = showPoints && svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
@@ -166,6 +184,7 @@ export function rerenderAllPrices() {
     initializeMonthlyPlansSelection();
     renderTasksDashboard();
     updateSummary();
+    updateCurrencyToggleButton();
 }
 
 

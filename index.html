@@ -362,7 +362,7 @@
         <!-- TÍTULO PRINCIPAL Y CONTROLES -->
         <div class="max-w-7xl mx-auto">
             <header class="text-center mb-8">
-                <div class="flex justify-center items-center gap-4 min-h-12">
+                <div class="flex justify-center items-center gap-4 min-h-[48px]">
                     <img id="brand-logo-display" src="" alt="Logo" class="hidden h-12"/>
                     <h1 id="main-title" class="text-3xl sm:text-4xl font-extrabold accent-color tracking-wider">
                         Centro de Operaciones
@@ -382,18 +382,11 @@
                     <button id="show-content-studio-btn" class="text-sm bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         ✨ Estudio de Contenido
                     </button>
-                     <div class="flex items-center gap-1">
-                        <button id="tieredBuilderBtn" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
-                            📊 Propuesta por Niveles
-                        </button>
-                        <button id="show-tiered-builder-help-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
-                            ?
-                        </button>
-                     </div>
-                      <div class="flex items-center gap-2">
-                        <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press-feedback">
-                            USD
-                        </button>
+                    <button id="tieredBuilderBtn" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                        📊 Propuesta por Niveles
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press-feedback"></button>
                         <button id="configure-rate-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Configurar tipo de cambio manual">
                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
                               <path d="M10 3.75a2 2 0 100 4 2 2 0 000-4zM4.375 3.75a2 2 0 100 4 2 2 0 000-4zM15.625 3.75a2 2 0 100 4 2 2 0 000-4zM10 12.25a2 2 0 100 4 2 2 0 000-4zM4.375 12.25a2 2 0 100 4 2 2 0 000-4zM15.625 12.25a2 2 0 100 4 2 2 0 000-4z" />
@@ -426,13 +419,18 @@
                                 <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
                                 <span id="ai-status-indicator" class="ml-3 h-3 w-3 bg-red-500 rounded-full"></span>
                             </div>
-                            <div class="theme-switch-wrapper">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon"><path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.06 1.06l1.06 1.06z"/></svg>
-                                <label class="theme-switch" for="chat-theme-toggle">
-                                    <input type="checkbox" id="chat-theme-toggle">
-                                    <span class="slider"></span>
-                                </label>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon"><path fill-rule="evenodd" d="M7.455 2.164A.75.75 0 018 2.5v1.25a.75.75 0 01-1.5 0V3.065a8.5 8.5 0 00-5.438 6.942 9.009 9.009 0 003.354 7.512.75.75 0 01-1.026 1.09 10.509 10.509 0 01-3.88-8.602A10.001 10.001 0 018.75 2.055a.75.75 0 01-.545-.644.75.75 0 01.25-.748zM12.23 18.63a.75.75 0 01.748-.25.75.75 0 01.644.545 10.001 10.001 0 01-10.748 3.55 1.5 1.5 0 01-.32-2.924 10.05 10.05 0 015.613-5.562.75.75 0 01.966 1.139 8.548 8.548 0 00-4.63 4.725 8.5 8.5 0 007.477-2.168z" clip-rule="evenodd"/></svg>
+                            <div class="flex items-center gap-3">
+                                <button id="clear-chat-history-btn" class="text-slate-400 hover:text-white transition" aria-label="Limpiar historial del chat" title="Limpiar historial del chat actual">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="theme-switch-wrapper">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon"><path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.06 1.06l1.06 1.06z"/></svg>
+                                    <label class="theme-switch" for="chat-theme-toggle">
+                                        <input type="checkbox" id="chat-theme-toggle">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon"><path fill-rule="evenodd" d="M7.455 2.164A.75.75 0 018 2.5v1.25a.75.75 0 01-1.5 0V3.065a8.5 8.5 0 00-5.438 6.942 9.009 9.009 0 003.354 7.512.75.75 0 01-1.026 1.09 10.509 10.509 0 01-3.88-8.602A10.001 10.001 0 018.75 2.055a.75.75 0 01-.545-.644.75.75 0 01.25-.748zM12.23 18.63a.75.75 0 01.748-.25.75.75 0 01.644.545 10.001 10.001 0 01-10.748 3.55 1.5 1.5 0 01-.32-2.924 10.05 10.05 0 015.613-5.562.75.75 0 01.966 1.139 8.548 8.548 0 00-4.63 4.725 8.5 8.5 0 007.477-2.168z" clip-rule="evenodd"/></svg>
+                                </div>
                             </div>
                         </div>
 
@@ -686,7 +684,12 @@
     <div id="tieredBuilderModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
         <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
-                <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
+                <div class="flex items-center gap-3">
+                    <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
+                    <button id="show-tiered-builder-help-btn-modal" class="h-6 w-6 flex items-center justify-center rounded-full bg-indigo-700 text-indigo-200 hover:bg-indigo-500 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
+                        ?
+                    </button>
+                </div>
                 <button id="close-tiered-builder-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 flex-grow overflow-y-auto">

@@ -29,7 +29,7 @@ import {
     showContentStudioModal,
     closeContentStudioModal
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initializeTour } from './ui.js';
+import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initializeTour, updateCurrencyToggleButton } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 
@@ -51,6 +51,7 @@ function initializeSplashScreen() {
             splashScreen.classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             updateApiKeyUI();
+            updateCurrencyToggleButton();
         }, 500);
     });
 
@@ -231,9 +232,8 @@ function initializeEventListeners() {
     document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
-    // FIX: Changed event listener to call the function correctly without passing the event object.
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
-    document.getElementById('show-tiered-builder-help-btn')?.addEventListener('click', showTieredBuilderHelp);
+    document.getElementById('show-tiered-builder-help-btn-modal')?.addEventListener('click', showTieredBuilderHelp);
     document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
     document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);
     document.getElementById('buyExtraPointsBtn')?.addEventListener('click', showExtraPointsModal);
@@ -259,7 +259,6 @@ function initializeEventListeners() {
         const current = state.getState().currentCurrency;
         const newCurrency = current === 'USD' ? 'ARS' : 'USD';
         state.setCurrentCurrency(newCurrency);
-        document.getElementById('currency-toggle-btn').textContent = newCurrency;
         rerenderAllPrices();
     });
 
