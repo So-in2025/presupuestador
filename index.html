@@ -720,24 +720,32 @@
                 <!-- Pestaña Generador de Textos -->
                 <div id="text-generator-content" class="studio-tab-content active">
                     <p class="text-sm text-slate-400 mb-4">Crea textos persuasivos para tus redes sociales en segundos. Elige tus opciones y deja que la IA haga la magia.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <select id="text-objective" class="styled-input styled-select">
-                            <option value="promocionar">Promocionar un nuevo sitio web</option>
-                            <option value="ofrecer_auditoria">Ofrecer una auditoría web gratuita</option>
-                            <option value="educar_seo">Educar sobre la importancia del SEO</option>
-                            <option value="anunciar_oferta">Anunciar una oferta especial</option>
-                        </select>
-                        <select id="text-platform" class="styled-input styled-select">
-                            <option value="instagram">Instagram</option>
-                            <option value="linkedin">LinkedIn</option>
-                            <option value="facebook">Facebook</option>
-                        </select>
-                        <select id="text-tone" class="styled-input styled-select">
-                            <option value="profesional">Profesional</option>
-                            <option value="urgente">Urgente y Directo</option>
-                            <option value="inspirador">Inspirador</option>
-                            <option value="cercano">Cercano y Amigable</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="text-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Servicio a Promocionar:</label>
+                            <select id="text-service-to-promote" class="styled-input styled-select w-full"></select>
+                        </div>
+                        <div>
+                            <label for="text-cta" class="block text-sm font-medium text-slate-300 mb-1">Llamada a la Acción (Opcional):</label>
+                            <input type="text" id="text-cta" class="styled-input w-full" placeholder="Ej: ¡Contáctame para una auditoría!">
+                        </div>
+                        <div>
+                            <label for="text-platform" class="block text-sm font-medium text-slate-300 mb-1">Plataforma:</label>
+                            <select id="text-platform" class="styled-input styled-select w-full">
+                                <option value="instagram">Instagram</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="facebook">Facebook</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="text-tone" class="block text-sm font-medium text-slate-300 mb-1">Tono:</label>
+                            <select id="text-tone" class="styled-input styled-select w-full">
+                                <option value="profesional">Profesional</option>
+                                <option value="urgente">Urgente y Directo</option>
+                                <option value="inspirador">Inspirador</option>
+                                <option value="cercano">Cercano y Amigable</option>
+                            </select>
+                        </div>
                     </div>
                     <button id="generate-text-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Texto</button>
                     <div id="text-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[150px] relative hidden">
@@ -752,24 +760,28 @@
                 <div id="image-generator-content" class="studio-tab-content">
                      <p class="text-sm text-slate-400 mb-4">Crea imágenes publicitarias únicas y profesionales. La IA está entrenada para generar contenido relevante para servicios de desarrollo web.</p>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <select id="image-style" class="styled-input styled-select">
-                            <option value="minimalista">Estilo Minimalista</option>
-                            <option value="futurista">Estilo Futurista y Neón</option>
-                            <option value="fotorealista">Estilo Fotorealista</option>
-                            <option value="abstracto">Estilo Abstracto y Corporativo</option>
-                        </select>
-                        <select id="image-concept" class="styled-input styled-select">
-                            <option value="codigo_pantalla">Código en Pantalla</option>
-                            <option value="graficos_crecimiento">Gráficos de Crecimiento</option>
-                            <option value="mockup_website">Mockup de Website</option>
-                            <option value="colaboracion_equipo">Colaboración de Equipo</option>
-                        </select>
-                        <select id="image-colors" class="styled-input styled-select">
-                            <option value="tonos_azules">Tonos Azules y Blancos</option>
-                            <option value="blanco_negro">Blanco y Negro</option>
-                            <option value="colores_vibrantes">Colores Vibrantes</option>
-                            <option value="tonos_calidos">Tonos Cálidos (Naranja/Dorado)</option>
-                        </select>
+                        <div>
+                            <label for="image-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Concepto (Basado en Servicio):</label>
+                            <select id="image-service-to-promote" class="styled-input styled-select w-full"></select>
+                        </div>
+                        <div>
+                            <label for="image-style" class="block text-sm font-medium text-slate-300 mb-1">Estilo Visual:</label>
+                            <select id="image-style" class="styled-input styled-select w-full">
+                                <option value="minimalista">Estilo Minimalista</option>
+                                <option value="futurista">Estilo Futurista y Neón</option>
+                                <option value="fotorealista">Estilo Fotorealista</option>
+                                <option value="abstracto">Estilo Abstracto y Corporativo</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label for="image-colors" class="block text-sm font-medium text-slate-300 mb-1">Paleta de Colores:</label>
+                            <select id="image-colors" class="styled-input styled-select w-full">
+                                <option value="tonos_azules">Tonos Azules y Blancos</option>
+                                <option value="blanco_negro">Blanco y Negro</option>
+                                <option value="colores_vibrantes">Colores Vibrantes</option>
+                                <option value="tonos_calidos">Tonos Cálidos (Naranja/Dorado)</option>
+                            </select>
+                        </div>
                     </div>
                     <button id="generate-image-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Imagen</button>
                      <div id="image-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[300px] flex items-center justify-center relative hidden">

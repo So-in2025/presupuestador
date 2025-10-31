@@ -2,21 +2,20 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Correct SDK for this environment)
- * Lógica de Intención: v25 - Strategic Prompting & Model Correction
+ * Lógica de Intención: v26 - Content Studio Refactor
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
 const MODEL_NAME = 'gemini-2.5-flash';
-const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image'; // CORRECT MODEL for image generation
+const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
-// REFORZADO: Prompt del Constructor con instrucciones de prioridad estrictas
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
 `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
@@ -43,8 +42,9 @@ Your response MUST be a single, valid JSON object with the following structure:
 4.  Do NOT add any text, markdown, or comments before or after the JSON object. Your entire response must be the raw JSON.`;
 
 
-// NUEVO: PROMPTS PARA ESTUDIO DE CONTENIDO ---
-const CONTENT_CREATOR_INSTRUCTION = `You are a professional social media manager specializing in the tech industry. Generate a social media post based on the user's selections. The post should be engaging, professional, and include relevant hashtags. Adapt the length and tone for the specified platform.`;
+// REFINADO: PROMPTS PARA ESTUDIO DE CONTENIDO ---
+const CONTENT_CREATOR_INSTRUCTION = `You are a professional social media manager specializing in the tech industry. Generate a social media post based on the user's instructions. The post should be engaging, professional, and include relevant hashtags. Adapt the length and tone for the specified platform.`;
+
 const IMAGE_CREATOR_PROMPT_TEMPLATE = (style, concept, colors) => `Generate a high-quality, professional, and aesthetically pleasing image suitable for a social media campaign for a web development agency. The image must be visually striking and directly related to the provided concept.
 - Style: ${style}
 - Core Concept: ${concept}
@@ -93,28 +93,31 @@ exports.handler = async (event) => {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI({ apiKey });
         
         // --- IMAGE GENERATION LOGIC ---
         if (mode === 'image-creator') {
             const { style, concept, colors } = context;
-            const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, concept, colors);
+            let finalConcept = concept;
+            if (concept === 'general') {
+                finalConcept = "A symbolic representation of digital innovation, business growth through technology, and professional web solutions.";
+            } else {
+                finalConcept = `A symbolic, visually appealing representation of the web service: "${concept}".`;
+            }
+
+            const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, finalConcept, colors);
             
-            const model = genAI.getGenerativeModel({ model: IMAGE_MODEL_NAME }); // Using correct model
-            
-            // For image generation with gemini-flash-image, we need a specific request format
-            const result = await model.generateContent({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    responseMimeType: "image/png" // Request an image directly
+            // Usando generateContent en lugar del obsoleto getGenerativeModel
+            const result = await genAI.models.generateContent({
+                model: IMAGE_MODEL_NAME,
+                contents: [{ parts: [{ text: prompt }] }],
+                config: {
+                    responseModalities: ["IMAGE"]
                 }
             });
-            
-            const response = result.response;
-            const imagePart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
 
+            // Acceso correcto a la respuesta
+            const imagePart = result.candidates?.[0]?.content?.parts.find(p => p.inlineData);
             if (!imagePart || !imagePart.inlineData.data) {
                 throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
             }
@@ -124,17 +127,29 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ base64Image: imagePart.inlineData.data })
             };
         }
-
+        
         // --- TEXT GENERATION LOGIC (ALL OTHER MODES) ---
-        const generationConfig = mode === 'builder' ? { responseMimeType: "application/json" } : undefined;
+        let finalUserMessage = userMessage; // Default message
+        
+        if (mode === 'content-creator') {
+            const { service, cta, platform, tone } = context;
+            const cta_instruction = cta ? `If provided, naturally include this call to action: "${cta}".` : "Do not include a call to action unless it feels natural.";
+
+            if (service === 'general') {
+                finalUserMessage = `Write a social media post for ${platform} with a ${tone} tone. It should be a general promotion for a web development agency that offers a wide range of services (like websites, e-commerce, SEO, security). The goal is to build brand authority and attract potential clients. ${cta_instruction}`;
+            } else {
+                finalUserMessage = `Write a social media post for ${platform} with a ${tone} tone. The post must specifically promote the service: "${service}". Explain its benefits clearly and persuasively for a potential client. ${cta_instruction}`;
+            }
+        }
+
         const model = genAI.getGenerativeModel({ 
             model: MODEL_NAME,
             systemInstruction: getSystemInstructionForMode(mode, context),
-            generationConfig: generationConfig
+            generationConfig: mode === 'builder' ? { responseMimeType: "application/json" } : undefined
         });
         
         const chat = model.startChat({ history: (historyFromClient || []).slice(0, -1) });
-        const result = await chat.sendMessage(userMessage);
+        const result = await chat.sendMessage(finalUserMessage); // Usar el mensaje final
         const response = result.response;
         const responseText = response.text();
 

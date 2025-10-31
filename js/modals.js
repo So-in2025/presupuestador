@@ -292,12 +292,47 @@ export function showTieredBuilderHelp() {
 // --- NUEVO: ESTUDIO DE CONTENIDO ---
 let isGenerating = false;
 
+function populateContentStudioDropdowns() {
+    const { allServices } = getState();
+    const serviceList = Object.values(allServices).flatMap(cat => cat.items);
+
+    const textSelect = document.getElementById('text-service-to-promote');
+    const imageSelect = document.getElementById('image-service-to-promote');
+
+    if (!textSelect || !imageSelect) return;
+
+    // Guardar los valores seleccionados si existen
+    const selectedText = textSelect.value;
+    const selectedImage = imageSelect.value;
+
+    textSelect.innerHTML = '';
+    imageSelect.innerHTML = '';
+
+    // Añadir la opción de promoción general
+    const generalOption = `<option value="general">Promoción General (Todos los servicios)</option>`;
+    textSelect.insertAdjacentHTML('beforeend', generalOption);
+    imageSelect.insertAdjacentHTML('beforeend', generalOption);
+    
+    serviceList.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.name; // Usar el nombre como valor para el prompt
+        option.textContent = service.name;
+        textSelect.appendChild(option.cloneNode(true));
+        imageSelect.appendChild(option.cloneNode(true));
+    });
+
+    // Restaurar selección previa
+    textSelect.value = selectedText || 'general';
+    imageSelect.value = selectedImage || 'general';
+}
+
 export function showContentStudioModal() {
     const modal = document.getElementById('contentStudioModal');
     if (!modal) return;
+    
+    populateContentStudioDropdowns();
     openModal(modal);
 
-    // Adjuntar listeners una sola vez para evitar duplicados
     if (!modal.dataset.listenersAttached) {
         const tabs = modal.querySelectorAll('.studio-tab');
         const contents = modal.querySelectorAll('.studio-tab-content');
@@ -345,20 +380,19 @@ async function handleGenerateText() {
         return;
     }
     
-    const objective = document.getElementById('text-objective').value;
+    const service = document.getElementById('text-service-to-promote').value;
+    const cta = document.getElementById('text-cta').value;
     const platform = document.getElementById('text-platform').value;
     const tone = document.getElementById('text-tone').value;
-
-    const userMessage = `Objective: ${objective}, Platform: ${platform}, Tone: ${tone}`;
 
     try {
         const response = await fetch('/.netlify/functions/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userMessage,
+                userMessage: "Generate social media text based on context.", // Mensaje genérico, la lógica está en el backend
                 mode: 'content-creator',
-                context: {},
+                context: { service, cta, platform, tone },
                 apiKey
             })
         });
@@ -404,8 +438,8 @@ async function handleGenerateImage() {
         return;
     }
 
+    const concept = document.getElementById('image-service-to-promote').value;
     const style = document.getElementById('image-style').value;
-    const concept = document.getElementById('image-concept').value;
     const colors = document.getElementById('image-colors').value;
 
     try {
@@ -433,10 +467,16 @@ async function handleGenerateImage() {
         downloadBtn.classList.remove('hidden');
         
     } catch (error) {
+        // Limpiar el contenedor antes de mostrar el error para evitar duplicados
+        while (resultContainer.firstChild) {
+            resultContainer.removeChild(resultContainer.firstChild);
+        }
         const errorP = document.createElement('p');
         errorP.className = 'text-red-400';
         errorP.textContent = `Error: ${error.message}`;
-        resultContainer.innerHTML = '';
+        resultContainer.appendChild(spinner); // Re-add spinner just in case
+        resultContainer.appendChild(generatedImage);
+        resultContainer.appendChild(downloadBtn);
         resultContainer.appendChild(errorP);
         console.error("Error al generar imagen:", error);
     } finally {
