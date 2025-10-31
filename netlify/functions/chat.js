@@ -2,9 +2,9 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Modern SDK)
- * Lógica de Intención: v20 - Modern SDK with Enhanced Error Handling (Restored & Corrected)
+ * Lógica de Intención: v21 - Correct SDK Instantiation and API Calls
  */
-const { GoogleGenAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 // CORRECCIÓN: Usar require() para que Netlify incluya el archivo en el bundle.
 const pricingData = require('./pricing.json');
 
@@ -54,7 +54,7 @@ function getSystemInstructionForMode(mode, selectedServicesContext = []) {
 // --- INTELLIGENCE HELPERS ---
 
 function extractAndValidateJson(text) {
-    const match = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
+    const match = text.match(/```(json)?\s*([\sS]*?)\s*```/);
     let jsonString = text.trim();
     if (match && match[2]) {
         jsonString = match[2].trim();
@@ -105,17 +105,23 @@ exports.handler = async (event) => {
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
+        // FIX: Use the correct constructor 'GoogleGenerativeAI' and pass the API key directly.
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         // --- Standard Chat Logic for non-builder modes ---
         if (mode !== 'builder') {
-            const chat = ai.chats.create({
+            // FIX: Refactor to use the correct SDK methods.
+            const model = genAI.getGenerativeModel({
                 model: MODEL_NAME,
-                history: historyFromClient.slice(0, -1), // Pass history up to the last user message
-                config: { systemInstruction: getSystemInstructionForMode(mode) }
+                systemInstruction: getSystemInstructionForMode(mode)
             });
-            const response = await chat.sendMessage({ message: userMessage });
-            const responseText = response.text;
+            const chat = model.startChat({
+                history: historyFromClient.slice(0, -1) // Pass history up to the last user message
+            });
+            const result = await chat.sendMessage(userMessage);
+            const response = result.response;
+            const responseText = response.text();
+            
             const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
             return {
                 statusCode: 200,
@@ -127,18 +133,21 @@ exports.handler = async (event) => {
         let lastResponseText = "";
         let finalResponseJsonString = "";
         let success = false;
+        
+        // FIX: Refactor to use the correct SDK methods.
+        const model = genAI.getGenerativeModel({
+            model: MODEL_NAME,
+            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext)
+        });
 
         for (let i = 0; i < MAX_RETRIES; i++) {
             const prompt = (i === 0) ? userMessage : CORRECTION_PROMPT_TEMPLATE(lastResponseText);
             const contents = [...historyFromClient.slice(0, -1), { role: 'user', parts: [{ text: prompt }] }];
             
-            const response = await ai.models.generateContent({
-                model: MODEL_NAME,
-                contents: contents,
-                config: { systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext) }
-            });
+            const result = await model.generateContent({ contents });
+            const response = result.response;
+            lastResponseText = response.text();
 
-            lastResponseText = response.text;
             const validationResult = extractAndValidateJson(lastResponseText);
             
             if (validationResult.isValid) {
