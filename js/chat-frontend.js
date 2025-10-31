@@ -179,10 +179,20 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                                 let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
                                     const serviceInfo = findServiceById(serviceObject.id);
                                     if (serviceInfo) {
-                                        return createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name, config.btnClass);
+                                        const description = serviceInfo.item.description || 'Sin descripción.';
+                                        const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full";
+                                        return `
+                                            <div class="tooltip-container relative">
+                                                <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="${baseClass} ${config.btnClass}">
+                                                    Añadir ${serviceInfo.item.name}
+                                                </button>
+                                                <div class="tooltip-content">${description}</div>
+                                            </div>
+                                        `;
                                     }
-                                    return `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                                    return `<div class="tooltip-container relative"><button class="bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed w-full" disabled>Error: "${serviceObject.name}" no encontrado</button></div>`;
                                 }).join('');
+
                                 actionsHTML += `<div class="mb-3"><p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p><div class="flex flex-wrap gap-2">${buttonsHTML}</div></div>`;
                             }
                         });
@@ -390,11 +400,6 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         if (localService) return { type: 'standard', item: localService };
         return null;
     };
-
-    function createServiceButtonHTML(serviceId, serviceType, serviceName, customClass) {
-        const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200";
-        return `<button data-action="add-service" data-service-id="${serviceId}" data-service-type="${serviceType}" class="${baseClass} ${customClass}">Añadir ${serviceName}</button>`;
-    }
 
     async function sendMessage() {
         ttsManager.stop();

@@ -17,7 +17,7 @@ const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
-`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request and build the perfect solution using ONLY items from the provided catalog. For each service, you MUST assign a 'priority' level. ${contextText}
+`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request and build the perfect solution using ONLY items from the provided catalog. Critically evaluate the user's request to assign a balanced mix of priorities. 'essential' is for the core need, 'recommended' is for the ideal solution, and 'optional' is for valuable extras. Avoid putting all services in one category unless the request is extremely simple. ${contextText}
 
 --- PRIORITY LEVELS ---
 - "essential": Absolutely necessary to meet the client's core request.

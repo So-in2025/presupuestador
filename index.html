@@ -58,7 +58,7 @@
             font-size: 0.875rem; line-height: 1.5; transition: opacity 0.3s, transform 0.3s;
             pointer-events: none; text-align: left;
         }
-        .item-card:hover .tooltip-content { visibility: visible; opacity: 1; }
+        .item-card:hover .tooltip-content, .tooltip-container:hover .tooltip-content { visibility: visible; opacity: 1; }
         .tooltip-content::before {
             content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
             border-width: 6px; border-style: solid; border-color: transparent transparent #1E293B transparent;
@@ -209,6 +209,10 @@
             font-size: clamp(0.9rem, 2vw, 1.0rem); color: #94A3B8;
             letter-spacing: 2px; margin-top: 0.5rem;
         }
+        .splash-byline a {
+            text-decoration: none;
+            color: inherit;
+        }
         .splash-action-button {
             display: inline-block;
             background: #22D3EE; color: #0F172A; font-weight: bold;
@@ -228,7 +232,7 @@
             overflow: hidden;
             transition: max-height 0.7s ease-in-out;
             text-align: left;
-            max-width: 600px;
+            max-width: 800px;
             margin: 2rem auto 0;
             color: #CBD5E1;
         }
@@ -282,7 +286,7 @@
                 <path d="M50 95 C40 70 40 40 50 20 C60 40 60 70 50 95 M50 95 C30 75 30 50 42 30 C45 60 50 75 50 95 M50 95 C70 75 70 50 58 30 C55 60 50 75 50 95 M50 95 C20 80 15 60 35 45 C40 65 50 80 50 95 M50 95 C80 80 85 60 65 45 C60 65 50 80 50 95 M50 95 C10 85 5 70 28 60 C35 75 50 85 50 95 M50 95 C90 85 95 70 72 60 C65 75 50 85 50 95" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <h1 class="splash-title">Proyecto Zen</h1>
-            <p class="splash-byline">by SO->IN</p>
+            <p class="splash-byline">by <a href="https://websoin.netlify.app/" target="_blank" rel="noopener noreferrer" class="hover:text-white transition">SO->IN</a></p>
 
             <div>
                 <button id="start-app-btn" class="splash-action-button">Comenzar</button>
@@ -357,14 +361,6 @@
                     <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
                     </button>
-                    <a href="https://api.whatsapp.com/send?phone=5492617145654" target="_blank" rel="noopener noreferrer" class="text-sm bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback inline-flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v13A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-13zM13 6a1 1 0 011 1v1.586l-2.5-2.5A1 1 0 0113 6zm-2 2a1 1 0 01-1.414 0L7 5.414A1 1 0 017 4h2a1 1 0 011 1v3zM4 14a1 1 0 011-1h10a1 1 0 011 1v1a1 1 0 01-1 1H5a1 1 0 01-1-1v-1z" /></svg>
-                        Contacto WhatsApp
-                    </a>
-                    <a href="https://websoin.netlify.app/" target="_blank" rel="noopener noreferrer" class="text-sm bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback inline-flex items-center gap-2">
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>
-                        Mi Sitio Web
-                    </a>
                      <div class="flex items-center gap-1">
                         <button id="tieredBuilderBtn" class="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                             📊 Propuesta por Niveles
@@ -539,6 +535,11 @@
                     <div id="messageContainer" class="mt-4"></div>
                 </div>
             </div>
+            
+            <!-- FOOTER -->
+            <footer class="text-center py-6 mt-10 border-t border-slate-700">
+                <p class="text-sm text-slate-400">Desarrollado con ❤️ por <a href="https://websoin.netlify.app/" target="_blank" rel="noopener noreferrer" class="font-semibold accent-color hover:underline">SO-&gt;IN Soluciones Informáticas</a></p>
+            </footer>
         </div>
     </div>
     
@@ -718,6 +719,12 @@
         </div>
     </div>
 
+    <!-- BOTÓN FLOTANTE DE WHATSAPP -->
+    <a href="https://api.whatsapp.com/send?phone=5492617145654" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg z-50 transition transform hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.487 5.235 3.487 8.413 0 6.557-5.338 11.892-11.894 11.892-1.99 0-3.903-.52-5.687-1.475L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.447-4.435-9.884-9.888-9.884-5.448 0-9.886 4.434-9.889 9.884-.001 2.225.651 4.315 1.731 6.086l-.516 1.866 1.88-.515z"/>
+        </svg>
+    </a>
 
     <script type="module" src="js/main.js"></script>
 
