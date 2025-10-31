@@ -373,7 +373,7 @@
                     </div>
                     
                     <!-- CONTENEDOR DEL CHAT IA -->
-                    <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px]">
+                    <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[500px] relative">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center">
                                 <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
@@ -393,6 +393,26 @@
                             <button data-mode="builder" class="chat-mode-btn active">Constructor</button>
                             <button data-mode="objection" class="chat-mode-btn">Objeciones</button>
                             <button data-mode="analyze" class="chat-mode-btn">Analizar Conversación</button>
+                        </div>
+                        
+                        <!-- NUEVO: API KEY OVERLAY -->
+                        <div id="api-key-overlay" class="absolute inset-0 bg-slate-800/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-4 rounded-xl hidden">
+                            <div class="text-center max-w-sm">
+                                <h3 class="text-lg font-semibold text-white">Configuración del Asistente IA</h3>
+                                <p class="text-sm text-slate-300 mt-2 mb-4">
+                                    Para activar el Asistente, por favor introduce tu propia API Key de Google AI.
+                                </p>
+                                <div class="flex gap-2">
+                                    <input type="password" id="inlineApiKeyInput" class="styled-input w-full" placeholder="Pega tu clave aquí">
+                                    <button id="save-inline-api-key-btn" class="accent-bg font-medium py-2 px-4 rounded-lg transition btn-press-feedback">Guardar</button>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2">
+                                    ¿No tienes una clave? 
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="accent-color hover:underline font-semibold">
+                                        Obtén una API Key en Google AI Studio &rarr;
+                                    </a>
+                                </p>
+                            </div>
                         </div>
                         
                         <div id="chat-messages" class="flex-grow space-y-4 overflow-y-auto p-2 bg-slate-900/50 rounded-lg border border-slate-700">
@@ -632,39 +652,6 @@
                 <button id="tour-end" class="text-sm py-1 px-3 rounded bg-red-800 hover:bg-red-700 transition">Finalizar</button>
                 <button id="tour-prev" class="text-sm py-1 px-3 rounded bg-slate-600 hover:bg-slate-500 transition">Anterior</button>
                 <button id="tour-next" class="text-sm py-1 px-3 rounded accent-bg">Siguiente</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL API KEY -->
-    <div id="apiKeyModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
-        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
-            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-red-600 flex justify-between items-center">
-                <h3 id="apiKeyModalTitle" class="text-lg">Configuración de Asistente IA</h3>
-            </div>
-            <div class="p-5 space-y-4">
-                <p class="text-sm text-slate-300">
-                    Para activar el Asistente IA, por favor introduce tu propia API Key de Google AI. Tu clave se usará de forma segura solo durante esta sesión.
-                </p>
-                <div>
-                    <label for="apiKeyInput" class="block text-sm font-medium text-slate-300 mb-1">Tu Google AI API Key:</label>
-                    <input type="password" id="apiKeyInput" class="w-full styled-input" placeholder="Pega tu clave aquí">
-                </div>
-                <p class="text-xs text-slate-400">
-                    ¿No tienes una clave? 
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="accent-color hover:underline font-semibold">
-                        Obtén una API Key en Google AI Studio &rarr;
-                    </a>
-                </p>
-                <div class="text-right pt-2">
-                    <button id="save-api-key-btn" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition flex justify-center items-center gap-2">
-                         <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="btn-text">Guardar y Activar</span>
-                    </button>
-                </div>
             </div>
         </div>
     </div>

@@ -7,8 +7,7 @@ import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, upda
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { 
     removeCustomService, 
-    showNotification, 
-    showApiKeyModal,
+    showNotification,
     closeNotificationModal,
     showCustomServiceModal,
     closeCustomServiceModal,
@@ -20,7 +19,6 @@ import {
     showTieredBuilderModal,
     closeTieredBuilderModal,
     addTieredProposal,
-    handleSaveApiKey,
     showTieredBuilderHelp,
     showExtraPointsModal,
     closeExtraPointsModal,
@@ -29,7 +27,7 @@ import {
     closeExchangeRateModal,
     handleSaveExchangeRate
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, saveBranding, restartTour } from './ui.js';
+import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initializeTour } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 
@@ -46,7 +44,7 @@ function initializeSplashScreen() {
             splashScreen.classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             // Check for API key ONLY after the app starts
-            checkApiKey();
+            updateApiKeyUI();
         }, 500); // Match transition duration
     });
 
@@ -75,6 +73,53 @@ function initializeSplashScreen() {
     });
 }
 
+// --- GESTIÓN DE API KEY UI ---
+function updateApiKeyUI(forceShow = false) {
+    const apiKeyOverlay = document.getElementById('api-key-overlay');
+    const apiKey = state.getSessionApiKey();
+    const chatInput = document.getElementById('chat-input');
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    const aiStatusIndicator = document.getElementById('ai-status-indicator');
+
+    if (!apiKey || forceShow) {
+        apiKeyOverlay.classList.remove('hidden');
+        chatInput.disabled = true;
+        chatSendBtn.disabled = true;
+        if(aiStatusIndicator) {
+            aiStatusIndicator.classList.remove('bg-green-400', 'animate-pulse');
+            aiStatusIndicator.classList.add('bg-red-500');
+        }
+    } else {
+        apiKeyOverlay.classList.add('hidden');
+        chatInput.disabled = false;
+        chatSendBtn.disabled = false;
+        if(aiStatusIndicator) {
+            aiStatusIndicator.classList.remove('bg-red-500');
+            aiStatusIndicator.classList.add('bg-green-400', 'animate-pulse');
+        }
+    }
+}
+
+function handleSaveInlineApiKey() {
+    const input = document.getElementById('inlineApiKeyInput');
+    const key = input.value.trim();
+    if (!key) {
+        showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key.');
+        return;
+    }
+
+    state.setSessionApiKey(key);
+    updateApiKeyUI();
+    input.value = ''; // Clear for security
+    
+    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
+    
+    if (!localStorage.getItem('zenTourCompleted')) {
+        initializeTour();
+    }
+}
+
+
 // --- CENTRALIZED EVENT LISTENERS ---
 function initializeEventListeners() {
     // Modal Buttons
@@ -92,13 +137,13 @@ function initializeEventListeners() {
     document.getElementById('close-tiered-builder-modal-btn')?.addEventListener('click', closeTieredBuilderModal);
     document.getElementById('cancel-tiered-builder-btn')?.addEventListener('click', closeTieredBuilderModal);
     document.getElementById('add-tiered-proposal-btn')?.addEventListener('click', addTieredProposal);
-    document.getElementById('save-api-key-btn')?.addEventListener('click', handleSaveApiKey);
+    document.getElementById('save-inline-api-key-btn')?.addEventListener('click', handleSaveInlineApiKey);
     document.getElementById('close-exchange-rate-modal-btn')?.addEventListener('click', closeExchangeRateModal);
     document.getElementById('save-exchange-rate-btn')?.addEventListener('click', handleSaveExchangeRate);
     
     // Header Buttons
     document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
-    document.getElementById('change-api-key-btn')?.addEventListener('click', showApiKeyModal);
+    document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', showTieredBuilderModal);
     document.getElementById('show-tiered-builder-help-btn')?.addEventListener('click', showTieredBuilderHelp);
@@ -188,16 +233,4 @@ document.addEventListener('DOMContentLoaded', () => {
     resetForm();
     initializeChatAssistant();
     initializeEventListeners(); // The new central hub for all interactions
-    // API Key check is now deferred until after splash screen
 });
-
-function checkApiKey() {
-    if (!state.getSessionApiKey()) {
-        showApiKeyModal();
-        const indicator = document.getElementById('ai-status-indicator');
-        if(indicator) {
-            indicator.classList.remove('bg-green-400', 'animate-pulse');
-            indicator.classList.add('bg-red-500');
-        }
-    }
-}

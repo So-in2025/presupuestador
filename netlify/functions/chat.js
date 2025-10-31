@@ -1,23 +1,24 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * SDK: @google/generative-ai (Legacy SDK v0.24.1)
- * Lógica de Intención: v19 - Fault-Tolerant with Self-Correction
+ * SDK: @google/genai (Modern SDK)
+ * Lógica de Intención: v20 - Modern SDK with Enhanced Error Handling
  */
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
 // --- CONSTANTS & CONFIGURATION ---
 const MAX_RETRIES = 3;
+const MODEL_NAME = 'gemini-2.5-pro'; // Centralized model name
 
 let pricingData;
 try {
-    // Using a more robust path resolution for Netlify functions
     const pricingPath = path.resolve(process.env.LAMBDA_TASK_ROOT || __dirname, 'pricing.json');
     pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
 } catch (err) {
     console.error("CRITICAL ERROR: Could not load pricing.json.", err);
+    // This function will fail gracefully if pricingData is not available.
 }
 
 // --- PROMPT TEMPLATES ---
@@ -49,10 +50,8 @@ function getSystemInstructionForMode(mode, selectedServicesContext = []) {
         : '';
 
     switch (mode) {
-        case 'analyze':
-            return ANALYZE_INSTRUCTION;
-        case 'objection':
-            return OBJECTION_INSTRUCTION;
+        case 'analyze': return ANALYZE_INSTRUCTION;
+        case 'objection': return OBJECTION_INSTRUCTION;
         case 'builder':
         default:
             const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
@@ -72,7 +71,6 @@ function extractAndValidateJson(text) {
     
     try {
         const parsed = JSON.parse(jsonString);
-        // Deep validation: ensure all required keys are present.
         if (
             typeof parsed.introduction === 'string' &&
             Array.isArray(parsed.services) &&
@@ -82,18 +80,14 @@ function extractAndValidateJson(text) {
         ) {
             return { isValid: true, json: parsed, jsonString };
         }
-    } catch (e) {
-        // JSON parse failed
-    }
+    } catch (e) { /* JSON parse failed */ }
     
-    return { isValid: false, json: null, jsonString: text }; // Return original text for correction prompt
+    return { isValid: false, json: null, jsonString: text };
 }
 
 function createErrorJsonResponse(introduction, closing) {
     return JSON.stringify({
-        introduction,
-        services: [],
-        closing,
+        introduction, services: [], closing,
         client_questions: ["¿Podrías reformular tu solicitud para ser más específico?"],
         sales_pitch: "El asistente no pudo generar una recomendación con la información actual."
     });
@@ -111,11 +105,8 @@ exports.handler = async (event) => {
     }
 
     let body;
-    try {
-        body = JSON.parse(event.body);
-    } catch (e) {
-        return { statusCode: 400, body: "Invalid JSON-formatted request body." };
-    }
+    try { body = JSON.parse(event.body); } 
+    catch (e) { return { statusCode: 400, body: "Invalid JSON-formatted request body." }; }
 
     const { userMessage, history: historyFromClient, mode, selectedServicesContext, apiKey } = body;
     if (!userMessage || !historyFromClient || !mode || !apiKey) {
@@ -123,18 +114,17 @@ exports.handler = async (event) => {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-pro",
-            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext),
-        });
+        const ai = new GoogleGenAI({ apiKey });
 
-        // --- Standard Logic for non-builder modes ---
+        // --- Standard Chat Logic for non-builder modes ---
         if (mode !== 'builder') {
-            const chat = model.startChat({ history: historyFromClient.slice(0, -1) });
-            const result = await chat.sendMessage(userMessage);
-            const response = await result.response;
-            const responseText = response.text();
+            const chat = ai.chats.create({
+                model: MODEL_NAME,
+                history: historyFromClient.slice(0, -1), // Pass history up to the last user message
+                config: { systemInstruction: getSystemInstructionForMode(mode) }
+            });
+            const response = await chat.sendMessage({ message: userMessage });
+            const responseText = response.text;
             const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
             return {
                 statusCode: 200,
@@ -142,21 +132,22 @@ exports.handler = async (event) => {
             };
         }
 
-        // --- Fault-Tolerant Logic for 'builder' mode ---
+        // --- Fault-Tolerant, Self-Correcting Logic for 'builder' mode ---
         let lastResponseText = "";
         let finalResponseJsonString = "";
         let success = false;
 
         for (let i = 0; i < MAX_RETRIES; i++) {
-            const chat = model.startChat({ history: historyFromClient.slice(0, -1) });
-            
-            // On first try, send the user message. On retries, send a correction prompt.
             const prompt = (i === 0) ? userMessage : CORRECTION_PROMPT_TEMPLATE(lastResponseText);
+            const contents = [...historyFromClient.slice(0, -1), { role: 'user', parts: [{ text: prompt }] }];
             
-            const result = await chat.sendMessage(prompt);
-            const response = await result.response;
-            lastResponseText = response.text();
-            
+            const response = await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: contents,
+                config: { systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext) }
+            });
+
+            lastResponseText = response.text;
             const validationResult = extractAndValidateJson(lastResponseText);
             
             if (validationResult.isValid) {
@@ -164,7 +155,7 @@ exports.handler = async (event) => {
                 success = true;
                 break; // Exit loop on success
             }
-            // If not valid, loop will continue with correction prompt
+            // If not valid, loop will continue with the correction prompt
         }
         
         if (!success) {
@@ -181,27 +172,34 @@ exports.handler = async (event) => {
             body: JSON.stringify({ response: finalResponseJsonString, history: updatedHistory })
         };
 
-
     } catch (err) {
         console.error("Error in Netlify function handler:", err);
-        const errorMessage = `Lo siento, un error ocurrió al comunicarme con el asistente: ${err.message}. Si el error persiste, verifica que tu API Key sea correcta y tenga fondos.`;
         
-        if (mode === 'builder') {
-            const errorJson = createErrorJsonResponse(
-                "Hubo un error de conexión con la IA.",
-                `Detalles del error: ${err.message}. Asegúrate de que tu API Key sea válida.`
-            );
-            const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorJson }] }];
-            return {
-                statusCode: 200, // Return 200 so the frontend can display the error gracefully
-                body: JSON.stringify({ response: errorJson, history: errorHistory })
-            };
+        // --- Enhanced Error Handling ---
+        let userFriendlyMessage = "un error inesperado ocurrió al comunicarme con el asistente.";
+        const errorMessage = err.message || err.toString();
+
+        if (errorMessage.includes('API key not valid')) {
+            userFriendlyMessage = "Error de Autenticación: La API Key proporcionada no es válida. Por favor, verifica que la has copiado correctamente.";
+        } else if (errorMessage.includes('billing account')) {
+            userFriendlyMessage = "Error de Facturación: La API Key es válida, pero no está asociada a un proyecto con una cuenta de facturación activa. Revisa tu configuración en Google Cloud.";
+        } else if (errorMessage.includes('quota')) {
+            userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes para tu API Key. Por favor, espera un momento o revisa los límites de tu cuenta.";
+        } else if (err.status >= 500) {
+            userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Por favor, inténtalo de nuevo más tarde.";
         }
         
-        const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorMessage }] }];
+        const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
+
+        // Return error in the expected format for both builder and other modes
+        const errorJson = (mode === 'builder')
+            ? createErrorJsonResponse("Hubo un error de conexión con la IA.", `Detalles: ${userFriendlyMessage}`)
+            : finalMessage;
+
+        const errorHistory = [...historyFromClient, { role: 'model', parts: [{ text: errorJson }] }];
         return {
-            statusCode: 200, // Return 200 so the frontend can display the error gracefully
-            body: JSON.stringify({ response: errorMessage, history: errorHistory })
+            statusCode: 200, // Return 200 for graceful frontend handling
+            body: JSON.stringify({ response: errorJson, history: errorHistory })
         };
     }
 };

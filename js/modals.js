@@ -1,9 +1,9 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate, setSessionApiKey } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
 import { updateSelectedItems, handleAddTask } from './app.js';
-import { initializeTour, rerenderAllPrices } from './ui.js';
+import { rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
@@ -236,37 +236,6 @@ document.getElementById('extraPointsAmount')?.addEventListener('input', (e) => {
     document.getElementById('extraPointsCostFeedback').textContent = amount > 0 ? `Costo Adicional: ${formatPrice(cost)}` : '';
 });
 
-
-// --- API KEY MODAL ---
-export function showApiKeyModal() {
-    openModal(dom.apiKeyModal);
-    dom.apiKeyInput.focus();
-}
-
-export function closeApiKeyModal() {
-    closeModal(dom.apiKeyModal);
-}
-
-export function handleSaveApiKey() {
-    const key = dom.apiKeyInput.value.trim();
-    if (!key) {
-        showNotification('error', 'Clave Requerida', 'Por favor, introduce una API Key.');
-        return;
-    }
-
-    setSessionApiKey(key);
-    
-    const indicator = document.getElementById('ai-status-indicator');
-    if(indicator) {
-        indicator.classList.remove('bg-red-500');
-        indicator.classList.add('bg-green-400', 'animate-pulse');
-    }
-
-    closeApiKeyModal();
-    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
-    
-    initializeTour();
-}
 
 // --- TIPO DE CAMBIO MANUAL MODAL ---
 export function showExchangeRateModal() {
