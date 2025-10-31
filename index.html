@@ -230,10 +230,11 @@
 
         .details-section {
             max-height: 0;
-            overflow: hidden;
+            overflow-y: hidden;
+            overflow-x: auto;
             transition: max-height 0.7s ease-in-out;
             text-align: left;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 2rem auto 0;
             color: #CBD5E1;
         }
@@ -312,42 +313,42 @@
             </div>
 
             <div id="detailsSection" class="details-section">
-                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50 space-y-4">
+                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50 space-y-4" style="min-width: 700px;">
                     <div class="text-center">
                         <button id="read-aloud-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-6 rounded-lg transition shadow-md btn-press-feedback">
                             Leer en voz alta
                         </button>
                     </div>
                     <div>
-                        <h3 class="font-bold text-lg text-cyan-400 mb-2">3 Pilares Fundamentales</h3>
-                        <p class="mb-2 text-sm" data-tts-content="Pilar 1: Tu Socio Estratégico de IA. Esto no es un simple chatbot. Es un copiloto de ventas entrenado para pensar como un estratega. Analiza lo que tu cliente realmente necesita, revisa tu catálogo de servicios y te recomienda la combinación más rentable y efectiva. Su objetivo no es solo responder, es ayudarte a vender más y mejor.">
-                            <b>1. Tu Socio Estratégico de IA:</b> Esto no es un simple chatbot. Es un copiloto de ventas que analiza las necesidades de tu cliente, revisa tu catálogo y te recomienda la combinación de servicios más rentable y efectiva para ayudarte a vender más.
+                        <h3 class="font-bold text-lg text-cyan-400 mb-2">Tus 3 Ventajas Competitivas</h3>
+                        <p class="mb-2 text-sm" data-tts-content="Pilar 1: Tu Arsenal de Ventas IA. Esto no es solo una herramienta, es tu ventaja competitiva. Un experto en ventas IA que entiende las necesidades de tu cliente y construye propuestas ganadoras usando tu propio catálogo de servicios. Está diseñado para hacerte lucir como un estratega y cerrar tratos más rápido.">
+                            <b>1. Tu Arsenal de Ventas IA:</b> Esto no es solo una herramienta, es tu ventaja competitiva. Un experto en ventas IA que entiende las necesidades de tu cliente y construye propuestas ganadoras usando <em>tu propio</em> catálogo de servicios. Está diseñado para hacerte lucir como un estratega y cerrar tratos más rápido.
                         </p>
-                        <p class="mb-2 text-sm" data-tts-content="Pilar 2: Privacidad y Control Absoluto. Tu negocio, tu información. Esta plataforma funciona enteramente en tu navegador. No hay servidores externos, no hay bases de datos en la nube, no hay suscripciones mensuales. Tu API Key, tus propuestas y tus precios se guardan localmente en tu equipo. Es una herramienta que compras una vez y te pertenece, dándote total seguridad y autonomía.">
-                            <b>2. Privacidad y Control Absoluto:</b> Tu negocio, tu información. La plataforma funciona 100% en tu navegador, sin nubes ni suscripciones. Tu API Key, propuestas y precios se guardan localmente, dándote una seguridad y autonomía que ninguna otra plataforma ofrece.
+                        <p class="mb-2 text-sm" data-tts-content="Pilar 2: Proyecta Profesionalismo Instantáneo. Te damos una plataforma que automatiza las partes tediosas para que te concentres en la relación con el cliente. Genera propuestas 'marca blanca' con tu logo, briefs técnicos para tu equipo y gestiona todo tu pipeline de ventas visualmente. Tú vendes, la plataforma organiza.">
+                            <b>2. Proyecta Profesionalismo Instantáneo:</b> Te damos una plataforma que automatiza las partes tediosas para que te concentres en la relación con el cliente. Genera propuestas 'marca blanca' con <em>tu logo</em>, briefs técnicos para tu equipo y gestiona todo tu pipeline de ventas visualmente. Tú vendes, la plataforma organiza.
                         </p>
-                        <p class="mb-4 text-sm" data-tts-content="Pilar 3: Un Flujo de Trabajo que Ahorra Horas. Hemos automatizado las partes más tediosas de la venta. Desde entender al cliente hasta generar los documentos finales, cada función está diseñada para eliminar el trabajo administrativo. Esto te libera para que te concentres en lo que realmente genera ingresos: la estrategia, la negociación y la ejecución del proyecto.">
-                            <b>3. Un Flujo de Trabajo que Ahorra Horas:</b> Automatizamos las tareas más tediosas para que tú te concentres en lo que genera ingresos. Desde el análisis inicial hasta la creación de PDFs, cada clic está diseñado para maximizar tu productividad y rentabilidad.
+                        <p class="mb-4 text-sm" data-tts-content="Pilar 3: Rentabilidad y Control Total. Esta plataforma es tu centro de comando financiero. La calculadora te permite definir tu margen de ganancia en cada proyecto, mostrándote al instante el precio final para el cliente y tus ganancias. Sin hojas de cálculo, sin adivinanzas. Visibilidad total, control total.">
+                            <b>3. Rentabilidad y Control Total:</b> Esta plataforma es tu centro de comando financiero. La calculadora te permite definir tu margen de ganancia en cada proyecto, mostrándote al instante el precio final para el cliente y tus ganancias. Sin hojas de cálculo, sin adivinanzas. Visibilidad total, control total.
                         </p>
                     </div>
                     
                     <div class="border-t border-slate-700 pt-4">
-                        <h3 class="font-bold text-lg text-cyan-400 mb-2">5 Pasos hacia la Propuesta Perfecta</h3>
+                        <h3 class="font-bold text-lg text-cyan-400 mb-2">Tu Flujo de Venta en 5 Pasos</h3>
                          <ol class="list-decimal list-inside space-y-2 text-sm">
-                            <li data-tts-content="Paso 1, Análisis Profundo: Usa el modo 'Analizar Conversación'. Pega un email o un chat de tu cliente y la IA lo traducirá en una lista clara de sus necesidades reales y puntos de dolor. Es el fin de las suposiciones; empiezas cada propuesta con una base sólida y basada en datos.">
-                                <b>Análisis Profundo:</b> Pega una conversación de tu cliente y la IA extraerá sus necesidades clave. Se acabaron las suposiciones, empiezas cada venta con datos reales.
+                            <li data-tts-content="Paso 1, Descubre la Necesidad Real: Usa el modo 'Analizar Conversación'. Pega el email o chat de un cliente. La IA actúa como tu analista, dándote una lista clara de sus puntos de dolor. Empezarás cada llamada de ventas con información precisa.">
+                                <b>Descubre la Necesidad Real:</b> Usa el modo 'Analizar Conversación'. Pega el email o chat de un cliente. La IA actúa como tu analista, dándote una lista clara de sus puntos de dolor. Empezarás cada llamada de ventas con información precisa.
                             </li>
-                            <li data-tts-content="Paso 2, Construcción Inteligente: Cambia al modo 'Constructor'. Describe la necesidad del cliente y la IA creará una propuesta estratégica usando únicamente los servicios y precios de tu catálogo. Además, identificará proactivamente las mejores oportunidades para ofrecer servicios adicionales (upsell).">
-                                <b>Construcción Inteligente:</b> La IA usa tu catálogo para crear una propuesta estratégica, identificando las mejores oportunidades para añadir servicios de mayor valor (upsell) y aumentar el ticket de venta.
+                            <li data-tts-content="Paso 2, Construye la Oferta Perfecta: Cambia al modo 'Constructor'. Describe el objetivo del cliente. La IA crea una propuesta estratégica desde tu catálogo, sugiriendo inteligentemente servicios de mayor valor (upsells) para maximizar el proyecto y tu ganancia.">
+                                <b>Construye la Oferta Perfecta:</b> Cambia al modo 'Constructor'. Describe el objetivo del cliente. La IA crea una propuesta estratégica desde tu catálogo, sugiriendo inteligentemente servicios de mayor valor (upsells) para maximizar el proyecto y tu ganancia.
                             </li>
-                            <li data-tts-content="Paso 3, Rentabilidad al Instante: Una vez seleccionada la solución, ve a la calculadora. Ajusta tu margen de ganancia y mira cómo el precio para el cliente se actualiza en tiempo real. Tienes control total y visibilidad inmediata sobre los beneficios de cada proyecto.">
-                                <b>Rentabilidad al Instante:</b> Ajusta tu margen de ganancia en la calculadora y observa cómo se actualiza el precio final al instante. Control total sobre tus beneficios, sin hojas de cálculo.
+                            <li data-tts-content="Paso 3, Domina tu Rentabilidad: Ve a la calculadora. Define tu margen de ganancia deseado. El precio para el cliente se actualiza al instante. Aquí es donde tomas decisiones de negocio, no solo técnicas.">
+                                <b>Domina tu Rentabilidad:</b> Ve a la calculadora. Define tu margen de ganancia deseado. El precio para el cliente se actualiza al instante. Aquí es donde tomas decisiones de negocio, no solo técnicas.
                             </li>
-                            <li data-tts-content="Paso 4, Gestión Centralizada: Guarda la propuesta. Aparecerá en tu dashboard, tu centro de comando para todas tus oportunidades de negocio. Desde aquí puedes editar, marcar como urgente para un seguimiento prioritario, o eliminarla. Todo organizado en un solo lugar.">
-                                <b>Gestión Centralizada:</b> Guarda tus propuestas en un dashboard donde puedes editarlas, priorizarlas como 'urgentes' y gestionar todo tu pipeline de ventas de forma visual y ordenada.
+                            <li data-tts-content="Paso 4, Gestiona tu Pipeline como un Pro: Guarda la propuesta. Aparece en tu dashboard, tu centro de comando para todas las oportunidades. Marca tratos como 'urgentes', edita sobre la marcha y visualiza tus ganancias potenciales de un vistazo.">
+                                <b>Gestiona tu Pipeline como un Pro:</b> Guarda la propuesta. Aparece en tu dashboard, tu centro de comando para todas las oportunidades. Marca tratos como 'urgentes', edita sobre la marcha y visualiza tus ganancias potenciales de un vistazo.
                             </li>
-                            <li data-tts-content="Paso 5, Documentación Profesional: Con un clic, genera dos PDFs listos para usar: una propuesta de 'marca blanca' con tu logo para enviar al cliente, y un detallado brief técnico para tu equipo interno. Ahorras horas de trabajo y proyectas una imagen impecable.">
-                                <b>Documentación Profesional:</b> Con un clic, genera una propuesta de 'marca blanca' para tu cliente (con tu logo) y un brief técnico para tu equipo. Ahorra tiempo y luce profesional.
+                            <li data-tts-content="Paso 5, Cierra el Trato con Documentos Impecables: Con un clic, genera dos documentos críticos: una propuesta profesional 'marca blanca' con tu marca para el cliente, y un brief técnico detallado para tu equipo interno o desarrolladores. Ahorras horas y proyectas una imagen excepcional.">
+                                <b>Cierra el Trato con Documentos Impecables:</b> Con un clic, genera dos documentos críticos: una propuesta profesional 'marca blanca' con <em>tu marca</em> para el cliente, y un brief técnico detallado para tu equipo interno o desarrolladores. Ahorras horas y proyectas una imagen excepcional.
                             </li>
                          </ol>
                     </div>
