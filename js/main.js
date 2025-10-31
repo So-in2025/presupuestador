@@ -33,6 +33,43 @@ import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initi
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 
+// --- LÓGICA MODO ENFOQUE CHAT ---
+const chatContainer = document.getElementById('ai-assistant-container');
+const focusContainer = document.getElementById('ai-chat-focus-container');
+const originalChatParent = chatContainer.parentElement;
+const toggleFocusBtn = document.getElementById('toggle-chat-focus-btn');
+const expandIcon = document.getElementById('focus-icon-expand');
+const collapseIcon = document.getElementById('focus-icon-collapse');
+let isChatFocused = false;
+
+function toggleChatFocusMode() {
+    isChatFocused = !isChatFocused;
+
+    if (isChatFocused) {
+        // Expandir
+        focusContainer.appendChild(chatContainer);
+        focusContainer.classList.remove('hidden');
+        setTimeout(() => focusContainer.classList.remove('opacity-0'), 10);
+        chatContainer.classList.add('is-focused');
+        expandIcon.classList.add('hidden');
+        collapseIcon.classList.remove('hidden');
+        toggleFocusBtn.setAttribute('title', 'Salir del Modo Enfoque');
+    } else {
+        // Encoger
+        focusContainer.classList.add('opacity-0');
+        setTimeout(() => {
+            focusContainer.classList.add('hidden');
+            // Reinsertar en la posición correcta (después del primer elemento, que es #proposal-details-container)
+            originalChatParent.insertBefore(chatContainer, originalChatParent.children[1]); 
+        }, 300); // Coincide con la duración de la transición
+        chatContainer.classList.remove('is-focused');
+        expandIcon.classList.remove('hidden');
+        collapseIcon.classList.add('hidden');
+        toggleFocusBtn.setAttribute('title', 'Activar Modo Enfoque');
+    }
+}
+
+
 // --- LÓGICA DEL SPLASH SCREEN ---
 function initializeSplashScreen() {
     const startBtn = document.getElementById('start-app-btn');
@@ -228,6 +265,7 @@ function initializeEventListeners() {
     document.getElementById('close-content-studio-modal-btn')?.addEventListener('click', closeContentStudioModal);
 
     // Header Buttons
+    document.getElementById('toggle-chat-focus-btn')?.addEventListener('click', toggleChatFocusMode);
     document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
     document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
