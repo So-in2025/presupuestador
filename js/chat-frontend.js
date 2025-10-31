@@ -6,7 +6,7 @@
 
 import { getState, setLocalServices } from './state.js';
 import { saveLocalServices, loadChatHistories, saveChatHistories } from './data.js';
-import { showNotification, showApiKeyModal } from './modals.js';
+import { showNotification } from './modals.js';
 import { appendLocalServiceToUI } from './ui.js';
 
 // --- INICIO: BLOQUE TTS MODIFICADO ---
@@ -67,7 +67,7 @@ let shouldAutoplay = true;
 
 // --- FIN: BLOQUE TTS MODIFICADO ---
 
-export function initializeChatAssistant() {
+export function initializeChatAssistant(showApiKeyOverlay) {
     const chatMessagesContainer = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const sendChatBtn = document.getElementById('chat-send-btn');
@@ -369,8 +369,7 @@ export function initializeChatAssistant() {
 
         const apiKey = getState().sessionApiKey;
         if (!apiKey) {
-            showApiKeyModal();
-            showNotification('error', 'API Key Requerida', 'Por favor, introduce tu API Key de Google AI para usar el asistente.');
+            showApiKeyOverlay(true);
             return;
         }
 
