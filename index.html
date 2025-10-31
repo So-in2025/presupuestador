@@ -477,7 +477,13 @@
                             <p>Costo Producción: <span id="totalDeveloperPrice">$0.00 USD</span></p>
                             <p class="accent-color">Precio a Cliente: <span id="totalClientPrice">$0.00 USD</span></p>
                         </div>
-                        <button id="addTask" class="w-full accent-bg font-bold py-3 mt-4 rounded-lg transition shadow-xl btn-press-feedback">Guardar Propuesta</button>
+                        <div class="mt-4">
+                            <label for="isUrgentCheckbox" class="flex items-center gap-2 cursor-pointer p-2 rounded-md hover:bg-slate-700 transition">
+                                <input type="checkbox" id="isUrgentCheckbox" class="custom-checkbox">
+                                <span class="text-sm font-medium text-slate-200">Marcar como Propuesta Urgente</span>
+                            </label>
+                        </div>
+                        <button id="addTask" class="w-full accent-bg font-bold py-3 mt-2 rounded-lg transition shadow-xl btn-press-feedback">Guardar Propuesta</button>
                         <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
                         <div id="selectedItems" class="text-sm space-y-2 p-3 bg-slate-900 rounded-lg h-40 overflow-y-auto border border-slate-700">
                             <p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>

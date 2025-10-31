@@ -98,6 +98,12 @@ export function renderTasksDashboard() {
                 let serviceList = '';
                 let priceText = '';
                 let icon = '';
+                const isUrgent = task.isUrgent;
+
+                const urgentLabelHTML = isUrgent ? '<span class="ml-2 text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">URGENTE</span>' : '';
+                const editBtnClasses = isUrgent ? 'bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold px-3 py-1' : 'text-blue-400 hover:text-blue-300';
+                const deleteBtnClasses = isUrgent ? 'bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1' : 'text-red-400 hover:text-red-300';
+
 
                 if (task.isTiered) {
                     icon = '📊';
@@ -121,12 +127,12 @@ export function renderTasksDashboard() {
                 }
 
                 return `
-                    <div class="p-3 border border-slate-700 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
+                    <div class="p-3 border ${isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
                         <div class="flex justify-between items-start mb-1">
-                            <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
+                            <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'} ${urgentLabelHTML}</h4>
                             <div class="flex gap-2">
-                                <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button">Editar</button>
-                                <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button">Eliminar</button>
+                                <button data-action="edit" data-index="${index}" class="${editBtnClasses} text-sm action-button rounded-md transition">Editar</button>
+                                <button data-action="delete" data-index="${index}" class="${deleteBtnClasses} text-sm action-button rounded-md transition">Eliminar</button>
                             </div>
                         </div>
                         ${serviceList}

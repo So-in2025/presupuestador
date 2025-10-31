@@ -142,6 +142,7 @@ export function handleAddTask(taskData = null) {
         }
         const margin = parseFloat(dom.marginPercentageInput.value) / 100 || 0;
         const totalClientPrice = margin < 1 ? totalDevCost / (1 - margin) : totalDevCost * (1 + margin);
+        const isUrgent = document.getElementById('isUrgentCheckbox').checked;
 
 
         newTask = {
@@ -163,6 +164,7 @@ export function handleAddTask(taskData = null) {
             services: individualItems,
             type: dom.serviceTypeSelect.value,
             isTiered: false,
+            isUrgent: isUrgent,
         };
     }
 
@@ -184,6 +186,7 @@ export function resetForm() {
     document.getElementById('webName').value = '';
     dom.serviceTypeSelect.value = 'puntual';
     dom.marginPercentageInput.value = '60';
+    document.getElementById('isUrgentCheckbox').checked = false;
     toggleSelectionMode('puntual');
     clearAllSelections();
 }
@@ -196,6 +199,7 @@ export function editTask(index) {
     document.getElementById('clientName').value = task.clientName;
     document.getElementById('webName').value = task.webName;
     dom.marginPercentageInput.value = (task.margin * 100).toFixed(0);
+    document.getElementById('isUrgentCheckbox').checked = task.isUrgent || false;
     
     if (task.isTiered) {
         showNotification('info', 'Editando Propuesta por Niveles', 'Abre el constructor de propuestas por niveles para editar los detalles.');
