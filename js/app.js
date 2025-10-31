@@ -66,7 +66,7 @@ export function updateSelectedItems() {
     
     const exclusiveSelection = currentSelected.find(s => s.type === 'package' || s.type === 'plan');
     document.querySelectorAll('.item-card:has([data-type="standard"])').forEach(card => card.classList.toggle('item-disabled', !!exclusiveSelection));
-    document.querySelector('button[onclick="showCustomServiceModal()"]').disabled = !!exclusiveSelection;
+    document.getElementById('add-custom-service-modal-btn').disabled = !!exclusiveSelection;
 
     dom.clearSelectionsBtn.classList.toggle('hidden', currentSelected.length === 0);
     
