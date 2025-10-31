@@ -1,4 +1,5 @@
 
+
 // js/dom.js
 
 export const appContainer = document.getElementById('appContainer');
@@ -30,7 +31,6 @@ export const notificationTitle = document.getElementById('notificationTitle');
 export const notificationMessage = document.getElementById('notificationMessage');
 export const customServiceModal = document.getElementById('customServiceModal');
 export const pdfOptionsModal = document.getElementById('pdfOptionsModal');
-export const apiKeyModal = document.getElementById('apiKeyModal');
 
 // Inputs de Modales
 export const customServiceNameInput = document.getElementById('customServiceName');
@@ -39,4 +39,3 @@ export const pdfLogoInput = document.getElementById('pdfLogoInput');
 export const pdfResellerInfo = document.getElementById('pdfResellerInfo');
 export const pdfClientInfo = document.getElementById('pdfClientInfo');
 export const pdfTerms = document.getElementById('pdfTerms');
-export const apiKeyInput = document.getElementById('apiKeyInput');

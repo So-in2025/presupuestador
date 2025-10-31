@@ -2,24 +2,15 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Modern SDK)
- * Lógica de Intención: v20 - Modern SDK with Enhanced Error Handling
+ * Lógica de Intención: v20 - Modern SDK with Enhanced Error Handling (Restored & Corrected)
  */
-const fs = require('fs');
-const path = require('path');
 const { GoogleGenAI } = require('@google/generative-ai');
+// CORRECCIÓN: Usar require() para que Netlify incluya el archivo en el bundle.
+const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
 const MAX_RETRIES = 3;
 const MODEL_NAME = 'gemini-2.5-pro'; // Centralized model name
-
-let pricingData;
-try {
-    const pricingPath = path.resolve(process.env.LAMBDA_TASK_ROOT || __dirname, 'pricing.json');
-    pricingData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
-} catch (err) {
-    console.error("CRITICAL ERROR: Could not load pricing.json.", err);
-    // This function will fail gracefully if pricingData is not available.
-}
 
 // --- PROMPT TEMPLATES ---
 

@@ -253,10 +253,14 @@ export function initializeChatAssistant(showApiKeyOverlay) {
 
     function getWelcomeMessageForMode(mode) {
         switch(mode) {
-            case 'builder': return '¡Hola! Soy Zen Assistant. Describe el proyecto de tu cliente y te ayudaré a seleccionar los servicios.';
-            case 'objection': return 'Bienvenido al modo de objeciones. Escribe la objeción de tu cliente y te ayudaré a formular una respuesta.';
-            case 'analyze': return 'Bienvenido al modo de análisis. Pega aquí la conversación con tu cliente para que extraiga los puntos clave.';
-            default: return '¡Hola! Soy Zen Assistant.';
+            case 'builder': 
+                return '¡Listo para construir! Describe el proyecto de tu cliente y te crearé una propuesta estratégica con los mejores servicios de tu catálogo.';
+            case 'objection': 
+                return "Tu cliente tiene dudas. Escribe su objeción (ej: 'Es muy caro') y te daré un argumento de venta sólido para convertir la duda en confianza.";
+            case 'analyze': 
+                return '¿Mucha charla con tu cliente? Pega la conversación aquí y extraeré automáticamente sus 5 necesidades más importantes para que sepas exactamente qué ofrecerle.';
+            default: 
+                return '¡Hola! Soy Zen Assistant.';
         }
     }
 
@@ -266,9 +270,18 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             switchMode(button.dataset.mode);
         }
     });
+    
+    function getPlaceholderForMode(mode) {
+        switch(mode) {
+            case 'builder': return "Ej: 'Necesito una web para un restaurante vegano...'";
+            case 'objection': return "Ej: 'Tu propuesta es más cara que la de la competencia...'";
+            case 'analyze': return 'Pega la conversación con tu cliente aquí...';
+            default: return 'Escribe tu mensaje...';
+        }
+    }
 
     function updateChatUIForMode() {
-        chatInput.placeholder = getWelcomeMessageForMode(currentAiMode).replace('¡Hola! Soy Zen Assistant. ', '').replace('Bienvenido al modo de objeciones. ', '').replace('Bienvenido al modo de análisis. ', '');
+        chatInput.placeholder = getPlaceholderForMode(currentAiMode);
     }
     
     function populateVoiceList() {
