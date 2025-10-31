@@ -1,7 +1,7 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v15 (Event Delegation Refactor)
+ * v16 (Strategic UI Refactor)
  */
 
 import { getState, setLocalServices } from './state.js';
@@ -160,29 +160,50 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                         textToSpeak = cleanText;
                         
                         let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                        let serviceButtonsHTML = '';
                         
-                        jsonResponse.services.forEach(serviceObject => {
-                            const serviceInfo = findServiceById(serviceObject.id);
-                            if (serviceInfo) {
-                                 serviceButtonsHTML += createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name);
-                            } else {
-                                console.warn(`Servicio recomendado no encontrado: ID=${serviceObject.id}`);
-                                 serviceButtonsHTML += `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg mt-2 mr-2 cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                        const servicesByPriority = { essential: [], recommended: [], optional: [] };
+                        jsonResponse.services.forEach(service => {
+                            (servicesByPriority[service.priority] || servicesByPriority.optional).push(service);
+                        });
+
+                        const priorityConfig = {
+                            essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white' },
+                            recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white' },
+                            optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white' }
+                        };
+
+                        let actionsHTML = '';
+                        Object.keys(priorityConfig).forEach(priority => {
+                            if (servicesByPriority[priority].length > 0) {
+                                const config = priorityConfig[priority];
+                                let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
+                                    const serviceInfo = findServiceById(serviceObject.id);
+                                    if (serviceInfo) {
+                                        return createServiceButtonHTML(serviceInfo.item.id, serviceInfo.type, serviceInfo.item.name, config.btnClass);
+                                    }
+                                    return `<button class="add-service-btn bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                                }).join('');
+                                actionsHTML += `<div class="mb-3"><p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p><div class="flex flex-wrap gap-2">${buttonsHTML}</div></div>`;
                             }
                         });
                         
                         if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
                         finalHTML = messageText;
                         
-                        if (serviceButtonsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-purple-300 mb-2">Acciones Rápidas:</p><div class="flex flex-wrap gap-2">${serviceButtonsHTML}</div></div>`;
+                        if (actionsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">${actionsHTML}</div>`;
 
                         if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
-                            let questionButtonsHTML = jsonResponse.client_questions.map(question => {
+                            let questionsHTML = jsonResponse.client_questions.map((question, index) => {
                                 const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                return `<button data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-btn text-left text-sm bg-slate-800 text-slate-300 py-2 px-3 rounded-lg hover:bg-slate-600 transition duration-200 mt-2 w-full">❔ ${question}</button>`;
+                                const questionId = `question-${Date.now()}-${index}`;
+                                return `
+                                    <div class="flex items-center justify-between gap-2 bg-slate-800 rounded-lg w-full p-2">
+                                        <p id="${questionId}" data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-text text-left text-sm text-slate-300 flex-grow cursor-pointer hover:text-cyan-300 transition">❔ ${question}</p>
+                                        <button data-action="copy-question" data-target-id="${questionId}" class="text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition flex-shrink-0">Copiar</button>
+                                    </div>
+                                `;
                             }).join('');
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2">${questionButtonsHTML}</div></div>`;
+                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2 w-full">${questionsHTML}</div></div>`;
                         }
                         
                         if (jsonResponse.sales_pitch) {
@@ -370,8 +391,9 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         return null;
     };
 
-    function createServiceButtonHTML(serviceId, serviceType, serviceName) {
-        return `<button data-action="add-service" data-service-id="${serviceId}" data-service-type="${serviceType}" class="add-service-btn bg-slate-900 text-cyan-300 font-bold py-2 px-4 rounded-lg hover:bg-cyan-800 hover:text-white transition duration-200 mt-2 mr-2">Añadir ${serviceName}</button>`;
+    function createServiceButtonHTML(serviceId, serviceType, serviceName, customClass) {
+        const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200";
+        return `<button data-action="add-service" data-service-id="${serviceId}" data-service-type="${serviceType}" class="${baseClass} ${customClass}">Añadir ${serviceName}</button>`;
     }
 
     async function sendMessage() {
@@ -478,45 +500,60 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         });
     
         chatMessagesContainer.addEventListener('click', (event) => {
-            const button = event.target.closest('button[data-action]');
-            if (!button || button.disabled) return;
+            const actionTarget = event.target.closest('[data-action]');
+            if (!actionTarget || actionTarget.disabled) return;
 
-            const { action } = button.dataset;
+            const { action } = actionTarget.dataset;
+            const button = actionTarget.tagName === 'BUTTON' ? actionTarget : null;
 
             switch (action) {
                 case 'add-service': {
-                    const { serviceId, serviceType } = button.dataset;
+                    const { serviceId, serviceType } = actionTarget.dataset;
                     let elementId = (serviceType === 'package') ? `package-${serviceId}` : (serviceType === 'plan') ? `plan-${serviceId}` : `standard-${serviceId}`;
                     const serviceElement = document.getElementById(elementId);
                     
                     if (serviceElement) {
                         serviceElement.click();
                         summaryCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        button.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800');
-                        button.classList.add('bg-green-700', 'text-white', 'cursor-default');
-                        button.textContent = `Añadido ✔️`;
-                        button.disabled = true;
+                        if(button) {
+                            button.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800'); // Clean up old styles, might need adjustment based on priority
+                            button.className = button.className.replace(/bg-\w+-\d+/g, '').replace(/text-\w+-\d+/g, '').replace(/hover:bg-\w+-\d+/g, '');
+                            button.classList.add('bg-green-700', 'text-white', 'cursor-default');
+                            button.textContent = `Añadido ✔️`;
+                            button.disabled = true;
+                        }
                     } else {
                         console.error(`Elemento del DOM no encontrado: #${elementId}`);
-                        button.textContent = `Error: No encontrado`;
-                        button.disabled = true;
+                        if(button) {
+                            button.textContent = `Error: No encontrado`;
+                            button.disabled = true;
+                        }
                     }
                     break;
                 }
                 case 'tts':
-                    handleTTSButtonClick(button);
+                    if(button) handleTTSButtonClick(button);
                     break;
                 case 'copy-pitch': {
-                    const targetId = button.dataset.targetId;
+                    const targetId = actionTarget.dataset.targetId;
                     const pitchElement = document.getElementById(targetId);
                     if (pitchElement) {
                         navigator.clipboard.writeText(pitchElement.innerText);
-                        button.textContent = '¡Copiado!';
+                        if(button) button.textContent = '¡Copiado!';
+                    }
+                    break;
+                }
+                case 'copy-question': {
+                    const targetId = actionTarget.dataset.targetId;
+                    const questionElement = document.getElementById(targetId);
+                    if (questionElement) {
+                        navigator.clipboard.writeText(questionElement.innerText.replace('❔ ', ''));
+                        if(button) button.textContent = '¡Copiado!';
                     }
                     break;
                 }
                 case 'suggest-question': {
-                    const question = button.dataset.question;
+                    const question = actionTarget.dataset.question;
                     chatInput.value = `Mi cliente respondió a '${question}', y dijo que...`;
                     chatInput.focus();
                     break;

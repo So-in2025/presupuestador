@@ -2,7 +2,7 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Correct SDK for this environment)
- * Lógica de Intención: v21 - Infallible JSON Mode
+ * Lógica de Intención: v22 - Strategic Priority
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pricingData = require('./pricing.json');
@@ -17,14 +17,20 @@ const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
-`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request for a web project and build the perfect solution using ONLY items from the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell' based on the user's needs. ${contextText}
+`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request and build the perfect solution using ONLY items from the provided catalog. For each service, you MUST assign a 'priority' level. ${contextText}
+
+--- PRIORITY LEVELS ---
+- "essential": Absolutely necessary to meet the client's core request.
+- "recommended": High-value additions that significantly improve the solution. The ideal upsell.
+- "optional": "Nice-to-have" extras or potential future upgrades.
 
 --- AVAILABLE CATALOG ---
 ${serviceList}
 ${planList}
 
 --- REQUIRED JSON STRUCTURE ---
-Your response MUST conform to this exact structure: { "introduction": "A brief, friendly opening for the proposal.", "services": [{ "id": "The exact ID from the catalog.", "is_new": false, "name": "The service name.", "description": "A brief justification for why this service was chosen.", "price": 123.45 }], "closing": "A confident closing statement.", "client_questions": ["Three strategic questions to ask the client to further the sale."], "sales_pitch": "A concise sales argument for the end client." }.`;
+Your response MUST conform to this exact structure: { "introduction": "...", "services": [{ "id": "...", "priority": "essential", "is_new": false, "name": "...", "description": "...", "price": 123.45 }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }.`;
+
 
 // --- PROMPT ENGINEERING HELPERS ---
 
