@@ -2,14 +2,13 @@
 /**
  * Backend para Asistente Zen
  * SDK: @google/generative-ai (Correct SDK for this environment)
- * Lógica de Intención: v20 - Self-Correcting Logic (Restored & Repaired)
+ * Lógica de Intención: v21 - Infallible JSON Mode
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const MAX_RETRIES = 2; // Reduced to conserve quota
-const MODEL_NAME = 'gemini-2.5-flash'; // Optimized for speed and free tier
+const MODEL_NAME = 'gemini-2.5-flash'; // Optimized for speed, cost, and free tier
 
 // --- PROMPT TEMPLATES ---
 
@@ -18,19 +17,14 @@ const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) => 
-`Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using the catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
+`Act as a JSON API. Your response MUST be a single, valid JSON object and nothing else. Analyze the user's request for a web project and build the perfect solution using ONLY items from the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell' based on the user's needs. ${contextText}
 
 --- AVAILABLE CATALOG ---
 ${serviceList}
 ${planList}
 
-Your response MUST be a single valid JSON object with the following structure: { "introduction": "...", "services": [{ "id": "...", "is_new": false, "name": "...", "description": "...", "price": ... }], "closing": "...", "client_questions": ["..."], "sales_pitch": "..." }. Do not add any text before or after the JSON object.`;
-
-const CORRECTION_PROMPT_TEMPLATE = (badResponse) => 
-`Your previous response was invalid. It did not conform to the required JSON structure. 
-Previous invalid response: \n\`\`\`\n${badResponse}\n\`\`\`\n
-Correct your mistake. You MUST return ONLY the valid JSON object with the correct structure and content based on the original user request. Do not include apologies, explanations, or any other text outside the JSON object.`;
-
+--- REQUIRED JSON STRUCTURE ---
+Your response MUST conform to this exact structure: { "introduction": "A brief, friendly opening for the proposal.", "services": [{ "id": "The exact ID from the catalog.", "is_new": false, "name": "The service name.", "description": "A brief justification for why this service was chosen.", "price": 123.45 }], "closing": "A confident closing statement.", "client_questions": ["Three strategic questions to ask the client to further the sale."], "sales_pitch": "A concise sales argument for the end client." }.`;
 
 // --- PROMPT ENGINEERING HELPERS ---
 
@@ -51,29 +45,6 @@ function getSystemInstructionForMode(mode, selectedServicesContext = []) {
 }
 
 // --- INTELLIGENCE HELPERS ---
-
-function extractAndValidateJson(text) {
-    const match = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
-    let jsonString = text.trim();
-    if (match && match[2]) {
-        jsonString = match[2].trim();
-    }
-    
-    try {
-        const parsed = JSON.parse(jsonString);
-        if (
-            typeof parsed.introduction === 'string' &&
-            Array.isArray(parsed.services) &&
-            typeof parsed.closing === 'string' &&
-            Array.isArray(parsed.client_questions) &&
-            typeof parsed.sales_pitch === 'string'
-        ) {
-            return { isValid: true, json: parsed, jsonString };
-        }
-    } catch (e) { /* JSON parse failed */ }
-    
-    return { isValid: false, json: null, jsonString: text };
-}
 
 function createErrorJsonResponse(introduction, closing) {
     return JSON.stringify({
@@ -105,61 +76,31 @@ exports.handler = async (event) => {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
+        
+        // --- Infallible JSON Mode Configuration ---
+        const generationConfig = mode === 'builder'
+            ? { responseMimeType: "application/json" }
+            : undefined;
+
         const model = genAI.getGenerativeModel({ 
             model: MODEL_NAME,
-            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext)
+            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext),
+            generationConfig: generationConfig
         });
-
-        // --- Standard Chat Logic for non-builder modes ---
-        if (mode !== 'builder') {
-            const chat = model.startChat({
-                history: historyFromClient.slice(0, -1), // Pass history up to the last user message
-            });
-            const result = await chat.sendMessage(userMessage);
-            const response = result.response;
-            const responseText = response.text();
-            const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ response: responseText, history: updatedHistory })
-            };
-        }
-
-        // --- Fault-Tolerant, Self-Correcting Logic for 'builder' mode ---
-        let lastResponseText = "";
-        let finalResponseJsonString = "";
-        let success = false;
-        let currentHistory = historyFromClient.slice(0, -1); // History without the last user message
-
-        for (let i = 0; i < MAX_RETRIES; i++) {
-            const prompt = (i === 0) ? userMessage : CORRECTION_PROMPT_TEMPLATE(lastResponseText);
-            
-            const result = await model.generateContent(prompt);
-            const response = result.response;
-            lastResponseText = response.text();
-
-            const validationResult = extractAndValidateJson(lastResponseText);
-            
-            if (validationResult.isValid) {
-                finalResponseJsonString = validationResult.jsonString;
-                success = true;
-                break; // Exit loop on success
-            }
-            // If not valid, loop will continue with the correction prompt
-        }
         
-        if (!success) {
-            console.error(`Failed to get valid JSON after ${MAX_RETRIES} attempts. Last response:`, lastResponseText);
-            finalResponseJsonString = createErrorJsonResponse(
-                `Lo siento, no pude generar una propuesta válida después de ${MAX_RETRIES} intentos. La IA no está respondiendo con el formato correcto.`,
-                "Intenta simplificar o reformular tu solicitud. Por ejemplo: 'Crea una web simple para un restaurante'."
-            );
-        }
+        const chat = model.startChat({
+            history: historyFromClient.slice(0, -1),
+        });
+        
+        const result = await chat.sendMessage(userMessage);
+        const response = result.response;
+        const responseText = response.text();
 
-        const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: finalResponseJsonString }] }];
+        // The response is now guaranteed to be valid JSON in builder mode, or text otherwise.
+        const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
         return {
             statusCode: 200,
-            body: JSON.stringify({ response: finalResponseJsonString, history: updatedHistory })
+            body: JSON.stringify({ response: responseText, history: updatedHistory })
         };
 
     } catch (err) {
@@ -181,7 +122,6 @@ exports.handler = async (event) => {
         
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
 
-        // Return error in the expected format for both builder and other modes
         const errorJson = (mode === 'builder')
             ? createErrorJsonResponse("Hubo un error de conexión con la IA.", `Detalles: ${userFriendlyMessage}`)
             : finalMessage;
