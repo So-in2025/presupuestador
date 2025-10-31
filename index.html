@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proyecto Zen - Centro de Operaciones</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         /* --- BRANDING VARIABLES --- */
@@ -361,7 +362,7 @@
         <!-- TÍTULO PRINCIPAL Y CONTROLES -->
         <div class="max-w-7xl mx-auto">
             <header class="text-center mb-8">
-                <div class="flex justify-center items-center gap-4">
+                <div class="flex justify-center items-center gap-4 min-h-12">
                     <img id="brand-logo-display" src="" alt="Logo" class="hidden h-12"/>
                     <h1 id="main-title" class="text-3xl sm:text-4xl font-extrabold accent-color tracking-wider">
                         Centro de Operaciones
@@ -826,6 +827,7 @@
         </svg>
     </a>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script type="module" src="js/main.js"></script>
 
 </body>
