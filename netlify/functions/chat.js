@@ -1,16 +1,15 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * SDK: @google/generative-ai (Modern SDK)
- * Lógica de Intención: v21 - Correct SDK Instantiation and API Calls
+ * SDK: @google/generative-ai (Correct SDK for this environment)
+ * Lógica de Intención: v20 - Self-Correcting Logic (Restored & Repaired)
  */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// CORRECCIÓN: Usar require() para que Netlify incluya el archivo en el bundle.
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const MAX_RETRIES = 3;
-const MODEL_NAME = 'gemini-2.5-pro'; // Centralized model name
+const MAX_RETRIES = 2; // Reduced to conserve quota
+const MODEL_NAME = 'gemini-2.5-flash'; // Optimized for speed and free tier
 
 // --- PROMPT TEMPLATES ---
 
@@ -54,7 +53,7 @@ function getSystemInstructionForMode(mode, selectedServicesContext = []) {
 // --- INTELLIGENCE HELPERS ---
 
 function extractAndValidateJson(text) {
-    const match = text.match(/```(json)?\s*([\sS]*?)\s*```/);
+    const match = text.match(/```(json)?\s*([\s\S]*?)\s*```/);
     let jsonString = text.trim();
     if (match && match[2]) {
         jsonString = match[2].trim();
@@ -105,23 +104,20 @@ exports.handler = async (event) => {
     }
 
     try {
-        // FIX: Use the correct constructor 'GoogleGenerativeAI' and pass the API key directly.
         const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ 
+            model: MODEL_NAME,
+            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext)
+        });
 
         // --- Standard Chat Logic for non-builder modes ---
         if (mode !== 'builder') {
-            // FIX: Refactor to use the correct SDK methods.
-            const model = genAI.getGenerativeModel({
-                model: MODEL_NAME,
-                systemInstruction: getSystemInstructionForMode(mode)
-            });
             const chat = model.startChat({
-                history: historyFromClient.slice(0, -1) // Pass history up to the last user message
+                history: historyFromClient.slice(0, -1), // Pass history up to the last user message
             });
             const result = await chat.sendMessage(userMessage);
             const response = result.response;
             const responseText = response.text();
-            
             const updatedHistory = [...historyFromClient, { role: 'model', parts: [{ text: responseText }] }];
             return {
                 statusCode: 200,
@@ -133,18 +129,12 @@ exports.handler = async (event) => {
         let lastResponseText = "";
         let finalResponseJsonString = "";
         let success = false;
-        
-        // FIX: Refactor to use the correct SDK methods.
-        const model = genAI.getGenerativeModel({
-            model: MODEL_NAME,
-            systemInstruction: getSystemInstructionForMode(mode, selectedServicesContext)
-        });
+        let currentHistory = historyFromClient.slice(0, -1); // History without the last user message
 
         for (let i = 0; i < MAX_RETRIES; i++) {
             const prompt = (i === 0) ? userMessage : CORRECTION_PROMPT_TEMPLATE(lastResponseText);
-            const contents = [...historyFromClient.slice(0, -1), { role: 'user', parts: [{ text: prompt }] }];
             
-            const result = await model.generateContent({ contents });
+            const result = await model.generateContent(prompt);
             const response = result.response;
             lastResponseText = response.text();
 
@@ -183,7 +173,7 @@ exports.handler = async (event) => {
             userFriendlyMessage = "Error de Autenticación: La API Key proporcionada no es válida. Por favor, verifica que la has copiado correctamente.";
         } else if (errorMessage.includes('billing account')) {
             userFriendlyMessage = "Error de Facturación: La API Key es válida, pero no está asociada a un proyecto con una cuenta de facturación activa. Revisa tu configuración en Google Cloud.";
-        } else if (errorMessage.includes('quota')) {
+        } else if (err.status === 429 || errorMessage.includes('quota')) {
             userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes para tu API Key. Por favor, espera un momento o revisa los límites de tu cuenta.";
         } else if (err.status >= 500) {
             userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Por favor, inténtalo de nuevo más tarde.";
