@@ -70,8 +70,8 @@ export function showPdfOptionsModal() {
 
     document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = false);
     
-    // Limpiar la información del cliente de la generación anterior.
-    dom.pdfClientInfo.value = '';
+    // CORRECCIÓN: Se eliminó la línea que intentaba acceder a un elemento inexistente.
+    // dom.pdfClientInfo.value = ''; 
     
     openModal(dom.pdfOptionsModal);
 }
