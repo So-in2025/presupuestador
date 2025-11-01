@@ -51,13 +51,21 @@ export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey 
 
 export function initializeServiceCheckboxes() {
     const { allServices, localServices } = getState();
-    let servicesHTML = Object.keys(allServices).map(key => {
+    let servicesHTML = Object.keys(allServices).map((key, index) => {
         const category = allServices[key];
         const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, category.isExclusive ? 'package' : 'standard', category.isExclusive ? 'selectionGroup' : `item-${svc.id}`, category.isExclusive, key, false)).join('');
+        const isOpenClass = index === 0 ? 'is-open' : '';
         return `
-            <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
-                <h3 class="text-xl font-semibold mb-3 accent-color">${category.name}</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+            <div class="accordion-item bg-slate-900 rounded-xl shadow-inner ${isOpenClass}">
+                <button class="accordion-header p-4 w-full">
+                    <h3 class="text-xl font-semibold accent-color">${category.name}</h3>
+                    <svg class="accordion-chevron h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="accordion-content px-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+                </div>
             </div>`;
     }).join('');
 
@@ -65,9 +73,16 @@ export function initializeServiceCheckboxes() {
     if (localServices.length > 0) {
         const localItemsHTML = localServices.map(svc => createServiceItemHTML(svc, 'standard', `item-${svc.id}`, false, 'local', false)).join('');
         servicesHTML += `
-            <div id="local-services-container" class="p-4 bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
-                <h3 class="text-xl font-semibold mb-3 text-purple-400">H. Servicios Personalizados (Guardados)</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${localItemsHTML}</div>
+            <div id="local-services-container" class="accordion-item bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
+                 <button class="accordion-header p-4 w-full">
+                    <h3 class="text-xl font-semibold text-purple-400">H. Servicios Personalizados (Guardados)</h3>
+                     <svg class="accordion-chevron h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="accordion-content px-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${localItemsHTML}</div>
+                </div>
             </div>`;
     }
 
@@ -79,9 +94,16 @@ export function appendLocalServiceToUI(service) {
     let container = document.getElementById('local-services-container');
     if (!container) {
         dom.servicesSelectionDiv.insertAdjacentHTML('beforeend', `
-             <div id="local-services-container" class="p-4 bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
-                <h3 class="text-xl font-semibold mb-3 text-purple-400">H. Servicios Personalizados (Guardados)</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+             <div id="local-services-container" class="accordion-item bg-purple-900/20 rounded-xl shadow-inner border border-purple-700">
+                <button class="accordion-header p-4 w-full">
+                    <h3 class="text-xl font-semibold text-purple-400">H. Servicios Personalizados (Guardados)</h3>
+                     <svg class="accordion-chevron h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="accordion-content px-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                </div>
             </div>
         `);
         container = document.getElementById('local-services-container');
@@ -107,9 +129,16 @@ export function initializeMonthlyPlansSelection() {
         </div>`).join('');
 
     dom.monthlyPlansContainer.innerHTML = `
-        <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
-            <h3 class="text-xl font-semibold mb-3 accent-color">Planes Mensuales (Exclusivos)</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${plansHTML}</div>
+        <div class="accordion-item bg-slate-900 rounded-xl shadow-inner is-open">
+            <button class="accordion-header p-4 w-full">
+                <h3 class="text-xl font-semibold accent-color">Planes Mensuales (Exclusivos)</h3>
+                <svg class="accordion-chevron h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div class="accordion-content px-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${plansHTML}</div>
+            </div>
         </div>`;
 }
 

@@ -331,7 +331,7 @@ function initializeEventListeners() {
 
     dom.appContainer.addEventListener('click', (e) => {
         const card = e.target.closest('.item-card');
-        if (card && !e.target.matches('input, button, svg, path')) {
+        if (card && !e.target.matches('input, button, svg, path, .accordion-header, h3')) {
             const input = card.querySelector('input');
             if (input && !input.disabled) {
                 input.click();
@@ -346,6 +346,35 @@ function initializeEventListeners() {
             if (action === 'delete') deleteTask(parseInt(index));
             if (action === 'remove-custom') removeCustomService(id);
             if (action === 'delete-local-service') deleteLocalService(id);
+        }
+
+        // --- LÓGICA DEL ACORDEÓN ---
+        const accordionHeader = e.target.closest('.accordion-header');
+        if (accordionHeader) {
+            const accordionItem = accordionHeader.closest('.accordion-item');
+            if (!accordionItem) return;
+
+            const accordionContainer = accordionItem.parentElement;
+            const wasOpen = accordionItem.classList.contains('is-open');
+
+            // Cerrar todos los items en el mismo contenedor
+            if (accordionContainer) {
+                accordionContainer.querySelectorAll('.accordion-item').forEach(item => {
+                    item.classList.remove('is-open');
+                });
+            }
+
+            // Si estaba cerrado, abrirlo y enfocar
+            if (!wasOpen) {
+                accordionItem.classList.add('is-open');
+                // Pequeño retraso para permitir que el layout comience a expandirse antes de hacer scroll
+                setTimeout(() => {
+                    accordionItem.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }, 150);
+            }
         }
     });
 }

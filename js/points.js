@@ -20,13 +20,21 @@ export function handlePlanSelection(planId, preSelectedIds = []) {
     let initialUsedPoints = 0;
     let initialSelectedServices = [];
 
-    dom.servicesTabsDiv.innerHTML = Object.keys(allServices).filter(k => !allServices[k].isExclusive).map(key => {
+    dom.servicesTabsDiv.innerHTML = Object.keys(allServices).filter(k => !allServices[k].isExclusive).map((key, index) => {
         const category = allServices[key];
         const itemsHTML = category.items.map(svc => createServiceItemHTML(svc, 'plan-service', `plan-service-${key}`, false, key, true)).join('');
+        const isOpenClass = index === 0 ? 'is-open' : '';
         return `
-            <div class="p-4 bg-slate-900 rounded-xl shadow-inner">
-                <h3 class="text-xl font-semibold mb-3 text-cyan-500">${category.name}</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+            <div class="accordion-item bg-slate-900 rounded-xl shadow-inner ${isOpenClass}">
+                <button class="accordion-header p-4 w-full">
+                    <h3 class="text-xl font-semibold text-cyan-500">${category.name}</h3>
+                    <svg class="accordion-chevron h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="accordion-content px-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${itemsHTML}</div>
+                </div>
             </div>`;
     }).join('');
     
