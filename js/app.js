@@ -150,8 +150,10 @@ export function handleAddTask(taskData = null) {
 
 
         newTask = {
-            clientName: document.getElementById('clientName').value || 'Sin Cliente',
-            webName: document.getElementById('webName').value || 'Sin Web',
+            clientName: dom.clientNameInput.value || 'Sin Cliente',
+            clientCompany: dom.clientCompanyInput.value || '',
+            clientEmail: dom.clientEmailInput.value || '',
+            webName: dom.webNameInput.value || 'Sin Nombre de Proyecto',
             margin: margin,
             totalDev: totalDevCost,
             totalClient: totalClientPrice,
@@ -190,8 +192,10 @@ export function handleAddTask(taskData = null) {
 
 export function resetForm() {
     state.setEditingIndex(-1);
-    document.getElementById('clientName').value = '';
-    document.getElementById('webName').value = '';
+    dom.clientNameInput.value = '';
+    dom.clientCompanyInput.value = '';
+    dom.clientEmailInput.value = '';
+    dom.webNameInput.value = '';
     dom.serviceTypeSelect.value = 'puntual';
     dom.marginPercentageInput.value = '60';
     document.getElementById('isUrgentCheckbox').checked = false;
@@ -204,8 +208,10 @@ export function editTask(index) {
     const task = tasks[index];
     state.setEditingIndex(index);
     
-    document.getElementById('clientName').value = task.clientName;
-    document.getElementById('webName').value = task.webName;
+    dom.clientNameInput.value = task.clientName;
+    dom.clientCompanyInput.value = task.clientCompany || '';
+    dom.clientEmailInput.value = task.clientEmail || '';
+    dom.webNameInput.value = task.webName;
     dom.marginPercentageInput.value = (task.margin * 100).toFixed(0);
     document.getElementById('isUrgentCheckbox').checked = task.isUrgent || false;
     

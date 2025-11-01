@@ -429,13 +429,33 @@
                 <div class="lg:col-span-2 xl:col-span-3 space-y-6">
                     <div id="proposal-details-container" class="card-bg p-5 rounded-xl shadow-lg">
                         <h2 class="text-2xl font-semibold accent-color">1. Iniciar Nueva Propuesta</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input type="text" id="clientName" placeholder="Nombre del Cliente" class="styled-input">
-                            <input type="text" id="webName" placeholder="Nombre del Proyecto" class="styled-input">
-                            <select id="serviceType" class="styled-input styled-select accent-color">
-                                <option value="puntual">Proyecto de Pago Único</option>
-                                <option value="mensual">Servicio Mensual (Retainer)</option>
-                            </select>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label for="clientName" class="block text-sm font-medium text-slate-300 mb-1">Nombre del Cliente:</label>
+                                <input type="text" id="clientName" placeholder="Ej: Juan Pérez" class="styled-input w-full">
+                            </div>
+                            <div>
+                                <label for="clientCompany" class="block text-sm font-medium text-slate-300 mb-1">Empresa del Cliente:</label>
+                                <input type="text" id="clientCompany" placeholder="Ej: Innovatech Solutions" class="styled-input w-full">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="clientEmail" class="block text-sm font-medium text-slate-300 mb-1">Email del Cliente:</label>
+                                <input type="email" id="clientEmail" placeholder="Ej: juan.perez@example.com" class="styled-input w-full">
+                            </div>
+                            
+                            <div class="border-t border-slate-700 my-2 md:col-span-2"></div>
+
+                            <div>
+                                <label for="webName" class="block text-sm font-medium text-slate-300 mb-1">Nombre del Proyecto:</label>
+                                <input type="text" id="webName" placeholder="Ej: Nuevo Sitio Corporativo" class="styled-input w-full">
+                            </div>
+                            <div>
+                                <label for="serviceType" class="block text-sm font-medium text-slate-300 mb-1">Tipo de Propuesta:</label>
+                                <select id="serviceType" class="styled-input styled-select w-full accent-color">
+                                    <option value="puntual">Proyecto de Pago Único</option>
+                                    <option value="mensual">Servicio Mensual (Retainer)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -682,11 +702,6 @@
                 <button id="close-pdf-options-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div>
-                    <label for="pdfClientInfo" class="block text-sm font-medium text-slate-300 mb-1">Datos del Cliente Final:</label>
-                    <p class="text-xs text-slate-400 mb-2">Introduce la información del cliente para esta propuesta específica.</p>
-                    <textarea id="pdfClientInfo" class="w-full styled-textarea" rows="4" placeholder="Nombre del Contacto del Cliente&#10;Nombre de la Empresa Cliente&#10;email@cliente.com"></textarea>
-                </div>
                 <div class="pt-2 space-y-3">
                     <button id="generate-client-pdf-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
                         <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
