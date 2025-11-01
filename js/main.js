@@ -29,7 +29,7 @@ import {
     showContentStudioModal,
     closeContentStudioModal
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton } from './ui.js';
+import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 
