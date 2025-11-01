@@ -281,21 +281,6 @@ export function handleSaveExchangeRate() {
 }
 
 
-export function showTieredBuilderHelp() {
-    const helpTitle = "Estrategia de Venta por Niveles";
-    const helpMessage = `
-        <p class="mb-2">Esta es una técnica de venta poderosa para aumentar el valor de tus propuestas. La idea es presentarle al cliente 3 opciones en lugar de una:</p>
-        <ul class="list-disc list-inside text-left space-y-1 text-sm text-slate-400">
-            <li><b>Básico:</b> La solución esencial. Cubre la necesidad principal del cliente.</li>
-            <li><b>Recomendado:</b> La solución ideal. Incluye lo básico más los servicios que realmente llevarán el proyecto al siguiente nivel.</li>
-            <li><b>Completo:</b> La solución premium. Incluye todo lo anterior más los extras de alto valor (ej: seguridad avanzada, optimización, etc.).</li>
-        </ul>
-        <p class="mt-3 font-semibold text-cyan-300">¿Por qué funciona? Aprovecha la psicología de "anclaje de precios" y le da al cliente la sensación de control, aumentando la probabilidad de que elija la opción recomendada.</p>
-    `;
-    showNotification('info', helpTitle, helpMessage);
-}
-
-
 // --- ESTUDIO DE CONTENIDO ---
 let isGenerating = false;
 

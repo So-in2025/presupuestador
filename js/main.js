@@ -19,7 +19,6 @@ import {
     showTieredBuilderModal,
     closeTieredBuilderModal,
     addTieredProposal,
-    showTieredBuilderHelp,
     showExtraPointsModal,
     closeExtraPointsModal,
     addExtraPoints,
@@ -44,7 +43,12 @@ const infoTTSManager = {
             window.speechSynthesis.cancel();
         }
         if (this.currentButton) {
-            this.currentButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" /><path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" /></svg>`;
+            const svgElement = this.currentButton.querySelector('svg');
+            const textSpan = this.currentButton.querySelector('.tts-button-text');
+            if (svgElement) {
+                svgElement.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" /><path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" /></svg>`;
+            }
+            if (textSpan) textSpan.textContent = 'Escuchar Explicación';
             this.currentButton.classList.remove('bg-red-500');
         }
         this.currentUtterance = null;
@@ -52,11 +56,11 @@ const infoTTSManager = {
     },
 
     speak(text, button) {
-        if (this.currentButton === button) { // If same button is clicked
+        if (this.currentButton === button) {
             this.stop();
             return;
         }
-        this.stop(); // Stop any previous playback
+        this.stop();
 
         let selectedVoice = null;
         const voices = window.speechSynthesis.getVoices();
@@ -80,8 +84,15 @@ const infoTTSManager = {
         this.currentUtterance.onerror = () => this.stop();
 
         this.currentButton = button;
-        this.currentButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2H4z" /></svg>`;
+        const svgElement = this.currentButton.querySelector('svg');
+        const textSpan = this.currentButton.querySelector('.tts-button-text');
+
+        if (svgElement) {
+             svgElement.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2H4z" /></svg>`;
+        }
+        if (textSpan) textSpan.textContent = 'Detener';
         this.currentButton.classList.add('bg-red-500');
+
 
         window.speechSynthesis.speak(this.currentUtterance);
     }
@@ -326,7 +337,6 @@ function initializeEventListeners() {
     document.getElementById('generate-lead-gen-plan-btn')?.addEventListener('click', showLeadGenPlanModal);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
-    document.getElementById('show-tiered-builder-help-btn-modal')?.addEventListener('click', showTieredBuilderHelp);
     document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
     document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);
     document.getElementById('buyExtraPointsBtn')?.addEventListener('click', showExtraPointsModal);
@@ -371,6 +381,15 @@ function initializeEventListeners() {
             e.preventDefault();
             const text = "Este es tu estudio creativo. Su propósito es ahorrarte horas de trabajo y eliminar el bloqueo del escritor. La estrategia es simple: generar contenido de alta calidad, tanto textos como imágenes, que resuenen con tu audiencia y estén alineados a los servicios que ofreces. La visión es convertirte en una máquina de contenido, publicando de manera consistente y profesional para construir tu marca y atraer clientes sin esfuerzo.";
             infoTTSManager.speak(text, contentStudioTTSBtn);
+        });
+    }
+
+    const tieredBuilderTTSBtn = document.getElementById('tiered-builder-tts-btn');
+    if (tieredBuilderTTSBtn) {
+        tieredBuilderTTSBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const text = "Esta es una de las técnicas de venta más poderosas. En lugar de dar un solo precio, presentas tres opciones: una Básica, una Recomendada y una Completa. Esto aprovecha la psicología de 'anclaje de precios' y le da al cliente una sensación de control. La mayoría de las veces, elegirán la opción del medio, la que tú consideras ideal, aumentando así significativamente el valor promedio de tus tratos y tu tasa de cierre.";
+            infoTTSManager.speak(text, tieredBuilderTTSBtn);
         });
     }
 

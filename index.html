@@ -812,15 +812,19 @@
     <div id="tieredBuilderModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
         <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
-                    <button id="show-tiered-builder-help-btn-modal" class="h-6 w-6 flex items-center justify-center rounded-full bg-indigo-700 text-indigo-200 hover:bg-indigo-500 transition btn-press-feedback" aria-label="Ayuda sobre Propuesta por Niveles">
-                        ?
-                    </button>
-                </div>
+                <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
                 <button id="close-tiered-builder-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 flex-grow overflow-y-auto">
+                <div class="text-center mb-4">
+                    <button id="tiered-builder-tts-btn" class="inline-flex items-center justify-center gap-2 text-sm bg-indigo-700 text-indigo-200 hover:bg-indigo-500 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback" aria-label="Escuchar explicación de la herramienta">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                          <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" />
+                          <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" />
+                        </svg>
+                        <span class="tts-button-text">Escuchar Explicación</span>
+                    </button>
+                </div>
                 <p class="text-sm text-slate-400 mb-4 italic">Usa el nivel Básico para lo esencial, el Recomendado para la solución ideal, y el Completo para añadir todos los extras de alto valor.</p>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="tiered-builder-columns">
                     <!-- Columnas se generarán aquí -->
@@ -837,18 +841,19 @@
     <div id="contentStudioModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
         <div class="card-bg w-full max-w-4xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-fuchsia-600 flex justify-between items-center flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <h3 class="text-lg">✨ Estudio de Contenido para Redes</h3>
-                    <button id="content-studio-tts-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-fuchsia-700 text-fuchsia-200 hover:bg-fuchsia-500 transition btn-press-feedback" aria-label="Escuchar explicación">
+                <h3 class="text-lg">✨ Estudio de Contenido para Redes</h3>
+                <button id="close-content-studio-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 flex-grow overflow-y-auto">
+                 <div class="text-center mb-4">
+                    <button id="content-studio-tts-btn" class="inline-flex items-center justify-center gap-2 text-sm bg-fuchsia-700 text-fuchsia-200 hover:bg-fuchsia-500 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback" aria-label="Escuchar explicación de la herramienta">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                           <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" />
                           <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" />
                         </svg>
+                        <span class="tts-button-text">Escuchar Explicación</span>
                     </button>
                 </div>
-                <button id="close-content-studio-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
-            </div>
-            <div class="p-5 flex-grow overflow-y-auto">
                 <div class="flex border-b border-slate-700 mb-4">
                     <button data-tab="text-generator" class="studio-tab py-2 px-4 font-semibold active">Generador de Textos</button>
                     <button data-tab="image-generator" class="studio-tab py-2 px-4 font-semibold">Generador de Imágenes</button>
@@ -952,19 +957,20 @@
     <div id="leadGenPlanModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
         <div class="card-bg w-full max-w-xl rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <h3 class="text-lg">🚀 Generar Plan de Captación de Clientes (7 Días)</h3>
-                    <button id="lead-gen-tts-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-green-700 text-green-200 hover:bg-green-500 transition btn-press-feedback" aria-label="Escuchar explicación">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                          <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" />
-                          <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" />
-                        </svg>
-                    </button>
-                </div>
+                <h3 class="text-lg">🚀 Generar Plan de Captación de Clientes (7 Días)</h3>
                 <button id="close-lead-gen-plan-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <p class="text-sm text-slate-300">Define la estrategia para que la IA cree un plan de acción semanal para que consigas tus primeros clientes.</p>
+                <div class="text-center my-2">
+                    <button id="lead-gen-tts-btn" class="inline-flex items-center justify-center gap-2 text-sm bg-green-700 text-green-200 hover:bg-green-500 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback" aria-label="Escuchar explicación de la herramienta">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                          <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" />
+                          <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" />
+                        </svg>
+                        <span class="tts-button-text">Escuchar Explicación</span>
+                    </button>
+                </div>
                 <div>
                     <label for="lead-gen-plan-service-select" class="block text-sm font-medium text-slate-300 mb-1">Servicio Principal a Promocionar:</label>
                     <select id="lead-gen-plan-service-select" class="styled-input styled-select w-full"></select>
