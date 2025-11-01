@@ -284,12 +284,14 @@ export function saveBranding() {
             newInfo.logo = e.target.result;
             localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
             applyBranding(newInfo.logo, newInfo.color);
+            updateWhatsAppLink();
             document.getElementById('close-branding-modal-btn').click();
         };
         reader.readAsDataURL(logoFile);
     } else {
         localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
         applyBranding(newInfo.logo, newInfo.color);
+        updateWhatsAppLink();
         document.getElementById('close-branding-modal-btn').click();
     }
 }
@@ -297,6 +299,7 @@ export function saveBranding() {
 export function initializeBranding() {
     const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
     applyBranding(brandInfo.logo, brandInfo.color);
+    updateWhatsAppLink();
 
     document.getElementById('removeBrandLogo').addEventListener('click', () => {
         const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
@@ -327,39 +330,58 @@ const stepCounter = document.getElementById('tour-step-counter');
 const prevBtn = document.getElementById('tour-prev');
 const nextBtn = document.getElementById('tour-next');
 const endBtn = document.getElementById('tour-end');
+const tourArrow = document.getElementById('tour-arrow');
 
 function positionTooltip(targetElement) {
     if (!isTourActive || !targetElement) return;
 
     requestAnimationFrame(() => {
+        tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
+        
         const targetRect = targetElement.getBoundingClientRect();
+        // Recalcular las dimensiones del tooltip en cada paso por si el texto cambia
+        tooltip.style.width = 'auto'; 
         const tooltipRect = tooltip.getBoundingClientRect();
-        const spaceAbove = targetRect.top;
-        const spaceBelow = window.innerHeight - targetRect.bottom;
         
+        const margin = 12;
         let top, left;
+        let arrowClass = 'tooltip-is-below';
 
-        // Posicionar verticalmente (preferir abajo)
-        if (spaceBelow > tooltipRect.height + 20) {
-            top = targetRect.bottom + 10;
-        } else if (spaceAbove > tooltipRect.height + 20) {
-            top = targetRect.top - tooltipRect.height - 10;
+        // Lógica de posicionamiento vertical: Priorizar ARRIBA
+        if (targetRect.top > tooltipRect.height + margin) {
+            top = targetRect.top - tooltipRect.height - margin;
+            arrowClass = 'tooltip-is-above';
         } else {
-            // Centrar si no hay espacio
-            top = (window.innerHeight - tooltipRect.height) / 2;
+            // Si no hay espacio arriba, colocar DEBAJO
+            top = targetRect.bottom + margin;
+            arrowClass = 'tooltip-is-below';
         }
 
-        // Posicionar horizontalmente
+        // Lógica de posicionamiento horizontal: Centrar con el elemento
         left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
-        
-        // Ajustar si se sale de la pantalla
-        if (left < 10) left = 10;
-        if (left + tooltipRect.width > window.innerWidth - 10) {
-            left = window.innerWidth - tooltipRect.width - 10;
+
+        // Ajustar si se sale de los bordes de la pantalla
+        if (left < margin) {
+            left = margin;
+        }
+        if (left + tooltipRect.width > window.innerWidth - margin) {
+            left = window.innerWidth - tooltipRect.width - margin;
         }
 
+        // Aplicar posiciones
         tooltip.style.top = `${top}px`;
         tooltip.style.left = `${left}px`;
+        tooltip.classList.add(arrowClass);
+
+        // Alinear la flecha con el centro del elemento
+        const targetCenterX = targetRect.left + targetRect.width / 2;
+        let arrowLeft = targetCenterX - left; // Posición de la flecha relativa al tooltip
+        
+        const arrowWidth = 16; // Ancho de la base de la flecha (8px de borde * 2)
+        if (arrowLeft < arrowWidth / 2) arrowLeft = arrowWidth / 2;
+        if (arrowLeft > tooltipRect.width - arrowWidth / 2) arrowLeft = tooltipRect.width - arrowWidth / 2;
+
+        tourArrow.style.left = `${arrowLeft}px`;
     });
 }
 
@@ -376,7 +398,6 @@ function showStep(index) {
     const step = tourSteps[index];
     const targetElement = document.querySelector(step.el);
 
-    // --- ROBUSTEZ: Manejo de elemento no visible ---
     if (!targetElement || !(targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length)) {
         console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
         endTour();
@@ -386,12 +407,11 @@ function showStep(index) {
     targetElement.classList.add('tour-highlight-active');
     targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
-    // Esperar a que el scroll termine para posicionar
     setTimeout(() => {
         tourText.textContent = step.text;
         stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-        tooltip.classList.remove('hidden');
-        tourOverlay.classList.remove('hidden');
+        tooltip.style.opacity = '1';
+        tourOverlay.style.opacity = '1';
         positionTooltip(targetElement);
     }, 350);
 
@@ -403,8 +423,8 @@ function endTour() {
     if (!isTourActive) return;
     isTourActive = false;
     document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
-    tooltip.classList.add('hidden');
-    tourOverlay.classList.add('hidden');
+    tooltip.style.opacity = '0';
+    tourOverlay.style.opacity = '0';
     localStorage.setItem('zenTourCompleted', 'true');
     window.removeEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
 }
@@ -413,7 +433,6 @@ function endTour() {
 export function initializeTour() {
     if (localStorage.getItem('zenTourCompleted') === 'true') return;
 
-    // Asignar listeners solo una vez para evitar duplicados
     if (!window.tourListenersAttached) {
         nextBtn.addEventListener('click', () => showStep(currentStep + 1));
         prevBtn.addEventListener('click', () => showStep(currentStep - 1));
@@ -428,6 +447,10 @@ export function initializeTour() {
         if (initialStepElement && initialStepElement.offsetParent !== null) {
             clearInterval(checkInterval);
             isTourActive = true;
+            tooltip.classList.remove('hidden');
+            tourOverlay.classList.remove('hidden');
+            tooltip.style.opacity = '0'; // Start hidden for fade-in
+            tourOverlay.style.opacity = '0';
             showStep(0);
             window.addEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
         } else {
@@ -450,4 +473,19 @@ export function restartTour() {
 export function initializeUI() {
     initializeServiceCheckboxes();
     initializeMonthlyPlansSelection();
+}
+
+export function updateWhatsAppLink() {
+    const whatsAppBtn = document.getElementById('whatsapp-float-btn');
+    if (!whatsAppBtn) return;
+
+    const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
+    const resellerInfo = brandInfo.resellerInfo || '';
+    const resellerName = resellerInfo.split('\n')[0].trim() || 'Afiliado Zen';
+    
+    const phone = '5492617145654';
+    const message = `Hola, soy el revendedor "${resellerName}". Necesito soporte/asistencia, ¿me puedes ayudar?`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    whatsAppBtn.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
 }
