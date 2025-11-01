@@ -3,7 +3,7 @@
 import * as dom from './dom.js';
 import * as state from './state.js';
 import { loadPricingData, loadLocalData, saveTasks } from './data.js';
-import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask, deleteLocalService } from './app.js';
+import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask, deleteLocalService, updateTaskStatus } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { 
     removeCustomService, 
@@ -29,7 +29,7 @@ import {
     showContentStudioModal,
     closeContentStudioModal
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, saveBranding, restartTour, initializeTour, updateCurrencyToggleButton } from './ui.js';
+import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 
@@ -324,6 +324,8 @@ function initializeEventListeners() {
             updateSelectedItems();
         } else if (target.matches('input[name^="plan-service-"]')) {
             handleServiceSelection(target, target.checked);
+        } else if (target.matches('.task-status-select')) {
+            updateTaskStatus(parseInt(target.dataset.index), target.value);
         }
     });
 

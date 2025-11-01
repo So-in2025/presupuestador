@@ -80,7 +80,8 @@ export function loadChatHistories() {
             const completeHistories = {
                 builder: histories.builder || [],
                 objection: histories.objection || [],
-                analyze: histories.analyze || []
+                analyze: histories.analyze || [],
+                entrenamiento: histories.entrenamiento || [],
             };
             return completeHistories;
         }
@@ -88,7 +89,7 @@ export function loadChatHistories() {
         console.error("Error al cargar historiales del chat:", e);
     }
     // Devuelve una estructura limpia si no hay nada o hay un error
-    return { builder: [], objection: [], analyze: [] };
+    return { builder: [], objection: [], analyze: [], entrenamiento: [] };
 }
 
 export function saveChatHistories(histories) {

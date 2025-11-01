@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v34 - Cost Buckets & API Response Fix
+ * Lógica de Intención: v35 - Sales Pipeline & Training Mode
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -14,6 +14,20 @@ const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+
+const ENTRENAMIENTO_INSTRUCTION_TEMPLATE = (catalogData) => `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
+
+**Your Core Directives:**
+1.  **Be an Expert:** When asked about a service, explain what it is, who it's for, and most importantly, what the key selling points (benefits) are.
+2.  **Stay Focused:** Do NOT invent services or features. If a service is not in the catalog, state that clearly and professionally.
+3.  **Think Like a Salesperson:** Frame your answers to help the affiliate sell. Instead of just listing features, explain the value they provide to the end client. For example, instead of "it has SEO," say "it helps the client get found on Google, attracting more customers."
+4.  **Be Clear and Concise:** Provide answers in a structured way, using bullet points or short paragraphs for readability.
+
+--- SO->IN SERVICE CATALOG (YOUR KNOWLEDGE BASE) ---
+${catalogData}
+--- END OF CATALOG ---
+
+Now, answer the affiliate's question based on this information.`;
 
 const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText, customTaskList) =>
 `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
@@ -88,6 +102,20 @@ function getSystemInstructionForMode(mode, context = {}) {
         case 'analyze': return ANALYZE_INSTRUCTION;
         case 'objection': return OBJECTION_INSTRUCTION;
         case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
+        case 'entrenamiento': {
+            let catalogString = '';
+            Object.values(pricingData.allServices).forEach(category => {
+                catalogString += `\nCATEGORY: ${category.name}\n`;
+                category.items.forEach(item => {
+                    catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
+                    if(item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
+                });
+            });
+            pricingData.monthlyPlans.forEach(plan => {
+                 catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
+            });
+            return ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
+        }
         case 'builder':
         default:
             const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');

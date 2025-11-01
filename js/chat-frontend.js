@@ -1,7 +1,7 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v17 (Cost Buckets UI)
+ * v18 (Training Mode UI)
  */
 
 import { getState } from './state.js';
@@ -110,7 +110,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         applyChatTheme(systemPrefersDark ? 'dark' : 'light');
     }
 
-    let allChatHistories = { builder: [], objection: [], analyze: [] };
+    let allChatHistories = { builder: [], objection: [], analyze: [], entrenamiento: [] };
     let chatHistory = []; // Referencia al historial activo
     let isSending = false;
     let currentAiMode = 'builder';
@@ -289,6 +289,8 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         switch(mode) {
             case 'builder': 
                 return '¡Listo para construir! Describe el proyecto de tu cliente y te crearé una propuesta estratégica con los mejores servicios de tu catálogo.';
+            case 'entrenamiento':
+                return 'Modo Entrenamiento activado. Soy tu Experto de Producto. Pregúntame cualquier cosa sobre el catálogo de servicios y te daré los argumentos clave para venderlos.';
             case 'objection': 
                 return "Tu cliente tiene dudas. Escribe su objeción (ej: 'Es muy caro') y te daré un argumento de venta sólido para convertir la duda en confianza.";
             case 'analyze': 
@@ -308,6 +310,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
     function getPlaceholderForMode(mode) {
         switch(mode) {
             case 'builder': return "Ej: 'Necesito una web para un restaurante vegano...'";
+            case 'entrenamiento': return "Ej: 'Háblame del E-commerce Avanzado...'";
             case 'objection': return "Ej: 'Tu propuesta es más cara que la de la competencia...'";
             case 'analyze': return 'Pega la conversación con tu cliente aquí...';
             default: return 'Escribe tu mensaje...';
@@ -482,11 +485,12 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             allChatHistories.builder = loadedHistories.builder || [];
             allChatHistories.objection = loadedHistories.objection || [];
             allChatHistories.analyze = loadedHistories.analyze || [];
+            allChatHistories.entrenamiento = loadedHistories.entrenamiento || [];
             switchMode('builder', true);
         } catch(e) {
             console.error("Error catastrófico al inicializar el chat, reiniciando estado.", e);
             localStorage.removeItem('zenChatHistories');
-            allChatHistories = { builder: [], objection: [], analyze: [] };
+            allChatHistories = { builder: [], objection: [], analyze: [], entrenamiento: [] };
             switchMode('builder', true);
         }
 

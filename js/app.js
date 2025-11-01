@@ -125,7 +125,11 @@ export function handleAddTask(taskData = null) {
 
     let newTask;
     if (isTiered) {
-        newTask = taskData;
+        newTask = {
+            ...taskData,
+            status: 'Propuesta Guardada',
+            dateUpdated: new Date().toISOString()
+        };
     } else {
         const packageSelection = selectedServices.find(s => s.type === 'package');
         const planSelection = selectedServices.find(s => s.type === 'plan');
@@ -165,12 +169,16 @@ export function handleAddTask(taskData = null) {
             type: dom.serviceTypeSelect.value,
             isTiered: false,
             isUrgent: isUrgent,
+            status: 'Propuesta Guardada',
+            dateUpdated: new Date().toISOString()
         };
     }
 
     let { tasks } = state.getState();
     if (editingIndex !== -1) {
-        tasks[editingIndex] = newTask;
+        // Al editar, mantener el status original si no se provee uno nuevo, y actualizar la fecha.
+        const originalTask = tasks[editingIndex];
+        tasks[editingIndex] = { ...newTask, status: originalTask.status, dateUpdated: new Date().toISOString() };
     } else {
         tasks.push(newTask);
     }
@@ -240,6 +248,17 @@ export function deleteTask(index) {
     saveTasks();
     showNotification('info', 'Propuesta Eliminada', `La propuesta ha sido eliminada.`);
     if (index === editingIndex) resetForm(); 
+}
+
+export function updateTaskStatus(index, newStatus) {
+    let { tasks } = state.getState();
+    if (tasks[index]) {
+        tasks[index].status = newStatus;
+        tasks[index].dateUpdated = new Date().toISOString();
+        state.setTasks(tasks);
+        saveTasks();
+        showNotification('info', 'Estado Actualizado', `El estado de la propuesta para "${tasks[index].webName}" es ahora "${newStatus}".`);
+    }
 }
 
 export function deleteLocalService(serviceId) {

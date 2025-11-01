@@ -299,6 +299,27 @@
             margin-bottom: 1.25rem !important;
         }
 
+        /* --- DASHBOARD DE RENDIMIENTO --- */
+        .stat-card {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .stat-card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-card-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen">
@@ -450,6 +471,7 @@
 
                         <div id="chat-mode-selector" class="flex justify-start mb-2 border-b border-slate-700 -mx-5 px-5">
                             <button data-mode="builder" class="chat-mode-btn active">Constructor</button>
+                            <button data-mode="entrenamiento" class="chat-mode-btn">Entrenamiento</button>
                             <button data-mode="objection" class="chat-mode-btn">Objeciones</button>
                             <button data-mode="analyze" class="chat-mode-btn">Analizar Conversación</button>
                         </div>
@@ -549,14 +571,31 @@
                         </div>
                     </div>
 
-                    <div id="saved-proposals-container" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold text-pink-400">4. Propuestas Guardadas</h2>
-                        <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
-                        <div class="text-lg font-bold space-y-2 pt-4 mt-4 border-t border-slate-700">
-                            <p>COSTO TOTAL (Prod): <span id="grandTotalDeveloperPrice">$0.00 USD</span></p>
-                            <p class="text-green-400">VENTA TOTAL: <span id="grandTotalClientPrice">$0.00 USD</span></p>
-                            <p class="text-yellow-400">GANANCIA TOTAL: <span id="totalProfit">$0.00 USD</span></p>
+                    <div id="performance-dashboard" class="card-bg p-5 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-semibold text-teal-300">Dashboard de Rendimiento</h2>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div class="stat-card">
+                                <div class="stat-card-title">Ventas (Mes)</div>
+                                <div id="sales-this-month" class="stat-card-value text-green-400">$0.00</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-title">Ganancia (Mes)</div>
+                                <div id="profit-this-month" class="stat-card-value text-yellow-400">$0.00</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-title">Pipeline Activo</div>
+                                <div id="active-pipeline-value" class="stat-card-value text-cyan-400">$0.00</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-title">Tasa de Cierre</div>
+                                <div id="close-rate" class="stat-card-value text-fuchsia-400">0%</div>
+                            </div>
                         </div>
+                    </div>
+
+                    <div id="saved-proposals-container" class="card-bg p-5 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-semibold text-pink-400">4. Pipeline de Ventas</h2>
+                        <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
                         <div class="mt-4 flex gap-2">
                             <button id="exportPdfBtn" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
                             <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button btn-press-feedback">Limpiar Todo</button>

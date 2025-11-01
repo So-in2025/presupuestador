@@ -116,77 +116,93 @@ export function initializeMonthlyPlansSelection() {
 export function renderTasksDashboard() {
     const dashboard = dom.tasksDashboardDiv;
     dashboard.style.opacity = '0';
+    
+    const statuses = ['Propuesta Guardada', 'Enviada', 'En Negociación', 'Ganada', 'Perdida'];
 
     setTimeout(() => {
         const { tasks, monthlyPlans } = getState();
         dashboard.innerHTML = tasks.length === 0
             ? '<p class="text-slate-400">No hay propuestas guardadas.</p>'
             : tasks.map((task, index) => {
+                const statusOptions = statuses.map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${s}</option>`).join('');
+                const statusSelectHTML = `
+                    <select data-index="${index}" class="task-status-select styled-select styled-input text-xs p-1 w-full mt-2">
+                        ${statusOptions}
+                    </select>`;
+
                 let serviceList = '';
-                let priceText = '';
                 let icon = '';
                 const isUrgent = task.isUrgent;
 
                 const urgentLabelHTML = isUrgent ? '<span class="ml-2 text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">URGENTE</span>' : '';
-                const editBtnClasses = isUrgent ? 'bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold px-3 py-1' : 'text-blue-400 hover:text-blue-300';
-                const deleteBtnClasses = isUrgent ? 'bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1' : 'text-red-400 hover:text-red-300';
-
 
                 if (task.isTiered) {
                     icon = '📊';
-                    const prices = task.tiers.map(t => formatPrice(t.totalDev)).join(' / ');
                     serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
-                    priceText = `<p class="text-xs text-red-300">Costos Dev: ${prices}</p>`;
                 } else if (task.package) {
                     icon = '📦';
                     serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
-                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
                 } else if (task.plan) {
                     icon = '📅';
                     const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
-                    const remainingText = task.plan.remainingPoints > 0 ? `<br><span class="text-xs text-yellow-400">Sobrante: ${task.plan.remainingPoints} Pts</span>` : '';
-                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>${remainingText}`;
-                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
+                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>`;
                 } else {
                     icon = '🧩';
                     serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
-                    priceText = `<p class="text-xs text-red-300">Costo Dev: ${formatPrice(task.totalDev)}</p><p class="text-sm font-bold text-green-400">Precio Cliente: ${formatPrice(task.totalClient)}</p>`;
                 }
 
                 return `
                     <div class="p-3 border ${isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
                         <div class="flex justify-between items-start mb-1">
-                            <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'} ${urgentLabelHTML}</h4>
+                            <div>
+                                <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
+                                ${serviceList}
+                                ${urgentLabelHTML}
+                            </div>
                             <div class="flex gap-2">
-                                <button data-action="edit" data-index="${index}" class="${editBtnClasses} text-sm action-button rounded-md transition">Editar</button>
-                                <button data-action="delete" data-index="${index}" class="${deleteBtnClasses} text-sm action-button rounded-md transition">Eliminar</button>
+                                <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button rounded-md transition">Editar</button>
+                                <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
                             </div>
                         </div>
-                        ${serviceList}
-                        <p class="text-xs text-slate-400 mt-1">Margen: ${(task.margin * 100).toFixed(0)}%</p>
-                        ${priceText}
+                        ${statusSelectHTML}
                     </div>`;
             }).join('');
 
         dom.exportPdfBtn.disabled = tasks.length === 0;
         dom.clearAllTasksBtn.disabled = tasks.length === 0;
 
-        let grandTotalDev = tasks.reduce((sum, t) => {
-            if (t.isTiered) return sum; // Ignorar tiered para el total general por ahora
-            return sum + t.totalDev;
-        }, 0);
-        let grandTotalClient = tasks.reduce((sum, t) => {
-            if (t.isTiered) return sum;
-            return sum + t.totalClient;
-        }, 0);
-
-        dom.grandTotalDevSpan.innerHTML = formatPrice(grandTotalDev);
-        dom.grandTotalClientSpan.innerHTML = formatPrice(grandTotalClient);
-        dom.totalProfitSpan.innerHTML = formatPrice(grandTotalClient - grandTotalDev);
+        updatePerformanceDashboard();
         
         dashboard.style.opacity = '1';
     }, 300); // Coincide con la duración de la transición
 }
+
+export function updatePerformanceDashboard() {
+    const { tasks } = getState();
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const wonThisMonth = tasks.filter(t => {
+        const updatedDate = new Date(t.dateUpdated);
+        return t.status === 'Ganada' && updatedDate >= firstDayOfMonth;
+    });
+
+    const salesThisMonth = wonThisMonth.reduce((sum, t) => sum + (t.totalClient || 0), 0);
+    const profitThisMonth = wonThisMonth.reduce((sum, t) => sum + ((t.totalClient || 0) - (t.totalDev || 0)), 0);
+    
+    const activePipelineTasks = tasks.filter(t => t.status !== 'Ganada' && t.status !== 'Perdida');
+    const activePipelineValue = activePipelineTasks.reduce((sum, t) => sum + (t.totalClient || 0), 0);
+
+    const closedTasks = tasks.filter(t => t.status === 'Ganada' || t.status === 'Perdida');
+    const wonTasksCount = tasks.filter(t => t.status === 'Ganada').length;
+    const closeRate = closedTasks.length > 0 ? (wonTasksCount / closedTasks.length) * 100 : 0;
+
+    document.getElementById('sales-this-month').innerHTML = formatPrice(salesThisMonth);
+    document.getElementById('profit-this-month').innerHTML = formatPrice(profitThisMonth);
+    document.getElementById('active-pipeline-value').innerHTML = formatPrice(activePipelineValue);
+    document.getElementById('close-rate').textContent = `${closeRate.toFixed(0)}%`;
+}
+
 
 export function rerenderAllPrices() {
     initializeServiceCheckboxes();
