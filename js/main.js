@@ -34,6 +34,59 @@ import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, upd
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf, generateActionPlanPdf } from './pdf.js';
 
+// --- TTS Manager for Explanations ---
+const infoTTSManager = {
+    currentUtterance: null,
+    currentButton: null,
+
+    stop() {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        if (this.currentButton) {
+            this.currentButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" /><path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" /></svg>`;
+            this.currentButton.classList.remove('bg-red-500');
+        }
+        this.currentUtterance = null;
+        this.currentButton = null;
+    },
+
+    speak(text, button) {
+        if (this.currentButton === button) { // If same button is clicked
+            this.stop();
+            return;
+        }
+        this.stop(); // Stop any previous playback
+
+        let selectedVoice = null;
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+             const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+             if (spanishVoices.length > 0) {
+                selectedVoice = 
+                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('español'))) ||
+                    spanishVoices.find(v => v.name.toLowerCase().includes('google')) ||
+                    spanishVoices[0];
+             }
+        }
+
+        this.currentUtterance = new SpeechSynthesisUtterance(text);
+        if (selectedVoice) {
+            this.currentUtterance.voice = selectedVoice;
+        }
+        this.currentUtterance.lang = 'es-ES';
+        
+        this.currentUtterance.onend = () => this.stop();
+        this.currentUtterance.onerror = () => this.stop();
+
+        this.currentButton = button;
+        this.currentButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2H4z" /></svg>`;
+        this.currentButton.classList.add('bg-red-500');
+
+        window.speechSynthesis.speak(this.currentUtterance);
+    }
+};
+
 // --- LÓGICA MODO ENFOQUE CHAT ---
 const chatContainer = document.getElementById('ai-assistant-container');
 const focusContainer = document.getElementById('ai-chat-focus-container');
@@ -301,6 +354,25 @@ function initializeEventListeners() {
         state.setCurrentCurrency(newCurrency);
         rerenderAllPrices();
     });
+
+    // TTS Buttons for Modals
+    const leadGenTTSBtn = document.getElementById('lead-gen-tts-btn');
+    if (leadGenTTSBtn) {
+        leadGenTTSBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const text = "Esta herramienta es tu estratega de marketing personal. Su único fin es darte un plan de acción de 7 días, claro y accionable, para que puedas captar a tu primer cliente de alto valor. La visión es simple: dejar de esperar a que lleguen los clientes y empezar a buscarlos activamente con una estrategia profesional. Usa esta guía para posicionarte como un experto en tu nicho y llenar tu pipeline de ventas.";
+            infoTTSManager.speak(text, leadGenTTSBtn);
+        });
+    }
+
+    const contentStudioTTSBtn = document.getElementById('content-studio-tts-btn');
+    if (contentStudioTTSBtn) {
+        contentStudioTTSBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const text = "Este es tu estudio creativo. Su propósito es ahorrarte horas de trabajo y eliminar el bloqueo del escritor. La estrategia es simple: generar contenido de alta calidad, tanto textos como imágenes, que resuenen con tu audiencia y estén alineados a los servicios que ofreces. La visión es convertirte en una máquina de contenido, publicando de manera consistente y profesional para construir tu marca y atraer clientes sin esfuerzo.";
+            infoTTSManager.speak(text, contentStudioTTSBtn);
+        });
+    }
 
     // Event Delegation
     dom.appContainer.addEventListener('change', (e) => {
