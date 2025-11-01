@@ -342,10 +342,14 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         if (savedVoice) {
             voiceSelect.value = savedVoice.voiceURI;
         } else {
-            const googleVoice = voices.find(v => v.name.includes('Google') && v.name.includes('español')) || voices[0];
-            if (googleVoice) {
-                 voiceSelect.value = googleVoice.voiceURI;
-                 selectedVoiceURI = googleVoice.voiceURI;
+            const maleGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male'));
+            const spanishGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español'));
+            const anyGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google'));
+            const defaultVoice = maleGoogleVoice || spanishGoogleVoice || anyGoogleVoice || voices[0];
+            
+            if (defaultVoice) {
+                 voiceSelect.value = defaultVoice.voiceURI;
+                 selectedVoiceURI = defaultVoice.voiceURI;
                  localStorage.setItem('zenAssistantVoiceURI', selectedVoiceURI);
             }
         }

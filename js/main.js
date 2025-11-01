@@ -70,7 +70,8 @@ const infoTTSManager = {
              const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
              if (spanishVoices.length > 0) {
                 selectedVoice = 
-                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('español'))) ||
+                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
+                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
                     spanishVoices.find(v => v.name.toLowerCase().includes('google')) ||
                     spanishVoices[0];
              }
@@ -175,24 +176,11 @@ function initializeSplashScreen() {
         const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
         if (spanishVoices.length === 0) return;
 
-        // Prioridad 1: Voz masculina de Google en español.
-        const googleMaleVoice = spanishVoices.find(v => 
-            v.name.toLowerCase().includes('google') && 
-            (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('español'))
-        );
-        
-        if (googleMaleVoice) {
-            selectedVoice = googleMaleVoice;
-        } else {
-            // Prioridad 2: Cualquier voz de Google.
-            const googleVoice = spanishVoices.find(v => v.name.toLowerCase().includes('google'));
-            if (googleVoice) {
-                selectedVoice = googleVoice;
-            } else {
-                // Prioridad 3: La primera voz en español disponible.
-                selectedVoice = spanishVoices[0];
-            }
-        }
+        selectedVoice = 
+            spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
+            spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
+            spanishVoices.find(v => v.name.toLowerCase().includes('google')) ||
+            spanishVoices[0];
     };
 
     // Cargar voces al inicio y cuando cambien.
@@ -394,6 +382,15 @@ function initializeEventListeners() {
             e.preventDefault();
             const text = "Esta es una de las técnicas de venta más poderosas. En lugar de dar un solo precio, presentas tres opciones: una Básica, una Recomendada y una Completa. Esto aprovecha la psicología de 'anclaje de precios' y le da al cliente una sensación de control. La mayoría de las veces, elegirán la opción del medio, la que tú consideras ideal, aumentando así significativamente el valor promedio de tus tratos y tu tasa de cierre.";
             infoTTSManager.speak(text, tieredBuilderTTSBtn);
+        });
+    }
+
+    const salesChannelsTTSBtn = document.getElementById('sales-channels-tts-btn');
+    if (salesChannelsTTSBtn) {
+        salesChannelsTTSBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const text = "Esta sección es tu mapa del tesoro. No basta con tener la mejor propuesta, hay que saber dónde presentarla. Aquí te damos una lista curada de plataformas y comunidades donde tus clientes potenciales ya están buscando soluciones. La estrategia es simple: ve a donde está la conversación, aporta valor y presenta tu solución en el momento justo. Esto acelera tu ciclo de ventas y te conecta con oportunidades reales.";
+            infoTTSManager.speak(text, salesChannelsTTSBtn);
         });
     }
 
