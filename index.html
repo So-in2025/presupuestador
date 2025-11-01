@@ -483,6 +483,9 @@
                     <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
                     </button>
+                    <button id="show-sales-channels-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                        🌐 Canales de Venta
+                    </button>
                     <button id="generate-lead-gen-plan-btn" class="text-sm bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🚀 Plan de Captación
                     </button>
@@ -962,6 +965,53 @@
                         <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span class="btn-text">Generar Plan en PDF</span>
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Channels Modal -->
+    <div id="salesChannelsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+        <div class="card-bg w-full max-w-2xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-800 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg">🌐 Canales de Venta Recomendados</h3>
+                <button id="close-sales-channels-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-6 flex-grow overflow-y-auto space-y-6">
+                <div>
+                    <h4 class="text-lg font-semibold text-cyan-400 mb-2">Plataformas Freelance</h4>
+                    <ul class="list-disc list-inside space-y-2 text-slate-300 text-sm">
+                        <li><b>Upwork:</b> Ideal para proyectos de alto valor y clientes internacionales. Requiere un perfil muy profesional en inglés.</li>
+                        <li><b>Workana & Freelancer.com:</b> Excelentes para empezar y conseguir proyectos en el mercado de habla hispana.</li>
+                        <li><b>Fiverr:</b> Enfocado en "gigs" o servicios empaquetados. Perfecto para ofrecer servicios específicos como "Landing Page en 7 días".</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-cyan-400 mb-2">Grupos de Facebook Estratégicos (Ejemplos)</h4>
+                    <p class="text-xs text-slate-400 mb-3 italic">Importante: Antes de publicar, lee las reglas de cada grupo. La clave es aportar valor, no solo vender.</p>
+                    <ul class="list-disc list-inside space-y-3 text-slate-300 text-sm">
+                        <li>
+                            <b>Grupos de Emprendedores y PyMEs:</b>
+                            <ul class="list-disc list-inside ml-4 text-slate-400">
+                                <li>Busca términos como "Emprendedores [Tu País]", "Marketing para PyMEs", "Negocios Online".</li>
+                                <li>Aporta valor respondiendo dudas sobre tecnología, webs, etc. y luego ofrece tus servicios.</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <b>Grupos de Nicho Específico:</b>
+                            <ul class="list-disc list-inside ml-4 text-slate-400">
+                                <li>¿Tu cliente ideal son los fotógrafos? Únete a "Fotógrafos Profesionales [Tu Ciudad]".</li>
+                                <li>¿Restaurantes? Busca "Dueños de Restaurantes y Bares". Sé el experto en tecnología dentro de su comunidad.</li>
+                            </ul>
+                        </li>
+                         <li>
+                            <b>Grupos de Agencias y Freelancers (Networking):</b>
+                             <ul class="list-disc list-inside ml-4 text-slate-400">
+                                <li>Busca "Agencias de Marketing Digital", "Diseñadores Web Freelance".</li>
+                                <li>Aquí puedes encontrar colaboraciones y subcontrataciones. A menudo una agencia de marketing necesita un desarrollador de confianza.</li>
+                             </ul>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>

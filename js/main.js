@@ -27,7 +27,9 @@ import {
     handleSaveExchangeRate,
     showContentStudioModal,
     closeContentStudioModal,
-    showLeadGenPlanModal
+    showLeadGenPlanModal,
+    showSalesChannelsModal,
+    closeSalesChannelsModal
 } from './modals.js';
 import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
@@ -328,6 +330,7 @@ function initializeEventListeners() {
     document.getElementById('close-exchange-rate-modal-btn')?.addEventListener('click', closeExchangeRateModal);
     document.getElementById('save-exchange-rate-btn')?.addEventListener('click', handleSaveExchangeRate);
     document.getElementById('close-content-studio-modal-btn')?.addEventListener('click', closeContentStudioModal);
+    document.getElementById('close-sales-channels-modal-btn')?.addEventListener('click', closeSalesChannelsModal);
 
     // Header Buttons
     document.getElementById('toggle-chat-focus-btn')?.addEventListener('click', toggleChatFocusMode);
@@ -336,6 +339,7 @@ function initializeEventListeners() {
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
     document.getElementById('generate-lead-gen-plan-btn')?.addEventListener('click', showLeadGenPlanModal);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
+    document.getElementById('show-sales-channels-btn')?.addEventListener('click', showSalesChannelsModal);
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
     document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
     document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);

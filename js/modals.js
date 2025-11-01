@@ -559,3 +559,18 @@ async function handleGenerateLeadGenPlan() {
         closeLeadGenPlanModal();
     }
 }
+
+// --- NUEVO: CANALES DE VENTA ---
+export function showSalesChannelsModal() {
+    const modal = document.getElementById('salesChannelsModal');
+    if (modal) {
+        openModal(modal);
+    }
+}
+
+export function closeSalesChannelsModal() {
+    const modal = document.getElementById('salesChannelsModal');
+    if (modal) {
+        closeModal(modal);
+    }
+}

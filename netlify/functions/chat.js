@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v37 - Image Prompt Generator
+ * Lógica de Intención: v38 - Optimized Image Prompt Generator
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -134,13 +134,30 @@ const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite 
 
 **FINAL OUTPUT:** The entire response should be the generated post, ready to be copied and pasted.`;
 
-const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are an expert AI prompt engineer specializing in creating hyper-detailed, artistic prompts for image generation models like Midjourney or DALL-E. Your task is to analyze the provided social media post text and generate a single, concise, and powerful prompt that will create a visually stunning and conceptually relevant image.
+const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and AI Prompt Engineer. Your mission is to transform a social media post's concept into a masterpiece-level, hyper-detailed prompt for an advanced image generation AI like Midjourney or DALL-E 3. You must be extremely specific and artistic.
 
-**CRITICAL INSTRUCTIONS:**
-1.  **Language:** The output prompt MUST be in English.
-2.  **Format:** Your entire response must be ONLY the prompt text. Do not include any explanation, labels, or markdown.
-3.  **Content:** The prompt should describe a scene, subject, style, lighting, and mood. Be specific. Use artistic terms.
-4.  **Example:** If the text is about a sleek e-commerce website, a good prompt would be: "A minimalist, floating e-commerce website interface on a dark background, glowing with neon blue light, product cards hovering in the air, hyper-realistic, cinematic lighting, photorealistic, 8k --style raw"
+**YOUR METHODOLOGY (Follow these steps rigorously):**
+
+1.  **Deconstruct the Core Concept:** Read the social media post and identify the single most important subject or feeling. Is it about "conversion," "professionalism," "creativity," "growth," or "technology"? This is your conceptual anchor.
+
+2.  **Build the Scene (The "What"):**
+    *   **Subject:** Define the main character or object. Avoid generic terms. Instead of "a website," describe it: "a sleek, futuristic e-commerce website interface, glowing and semi-transparent."
+    *   **Action/Pose:** What is the subject doing? "hovering in a dark, minimalist space," "being assembled by robotic arms," "emerging from a digital blueprint."
+    *   **Environment:** Where is this happening? "a high-tech command center," "a serene, minimalist office with soft morning light," "a dynamic background of flowing data streams."
+
+3.  **Define the Art Direction (The "How"):**
+    *   **Style:** Be precise. Choose from styles like: "ultra photorealistic," "cinematic photography," "digital illustration," "3D octane render," "corporate clean vector style," "epic fantasy art."
+    *   **Lighting:** This is critical. Use descriptive terms: "dramatic cinematic lighting with volumetric rays," "soft, diffused studio lighting," "vibrant neon glow," "golden hour sunset."
+    *   **Color Palette:** Specify the dominant colors. "a palette of deep blues, electric cyan, and sharp silver accents," "warm, inviting earth tones with a single splash of vibrant orange."
+    *   **Composition:** How is the shot framed? "extreme close-up on a glowing UI element," "wide-angle shot showing the entire scene," "dynamic low-angle perspective," "macro shot," "depth of field with a blurry background."
+
+4.  **Add the "Magic Ingredients" (The Details):**
+    *   Include technical keywords that advanced AIs understand: "8K," "UHD," "trending on Artstation," "masterpiece," "sharp focus," "physically-based rendering."
+
+5.  **Final Assembly:**
+    *   Combine all these elements into a single, cohesive paragraph.
+    *   The prompt MUST be in **English**.
+    *   Your entire response MUST be **ONLY the prompt text**. No explanations, no "Here is your prompt:", just the raw text.
 
 **Social Media Post Text to Analyze:**
 ---
