@@ -1,9 +1,9 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v32 - Correct API Structure Fix
+ * Lógica de Intención: v34 - Cost Buckets & API Response Fix
  */
-const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Modality } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
@@ -15,17 +15,19 @@ const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task 
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
-const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText) =>
+const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText, customTaskList) =>
 `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
 --- AVAILABLE CATALOG ---
 ${serviceList}
 ${planList}
+--- CUSTOM TASKS (Use these for requests not in the catalog) ---
+${customTaskList}
 
 Your response MUST be a single, valid JSON object with the following structure: 
 { 
   "introduction": "...", 
-  "services": [{ "id": "...", "name": "...", "priority": "..." }], 
+  "services": [{ "id": "...", "name": "...", "priority": "...", "is_new": boolean (optional) }], 
   "closing": "...", 
   "client_questions": ["..."], 
   "sales_pitch": "..." 
@@ -34,10 +36,13 @@ Your response MUST be a single, valid JSON object with the following structure:
 **CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
 1.  For each service object, you MUST include a "priority" key.
 2.  The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
-3.  **Classification Strategy:**
-    -   **"essential":** Use for services that DIRECTLY fulfill the client's core request. This is the absolute minimum viable solution.
-    -   **"recommended":** Use for high-value services that create the IDEAL solution. These are the key upsells that solve the client's problem better.
-    -   **"optional":** Use for 'nice-to-have' extras, future improvements, or complementary services that are not critical right now.
+3.  **NEW TASK: CUSTOM SERVICE SUGGESTIONS:**
+    - If the user requests a specific feature NOT in the standard catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
+    - First, ESTIMATE its complexity: 'small', 'medium', or 'large'.
+    - Second, assign the corresponding ID from the 'CUSTOM TASKS' list ('custom-s', 'custom-m', 'custom-l').
+    - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
+    - Fourth, you MUST include the property '"is_new": true'.
+    - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
 4.  Do NOT add any text, markdown, or comments before or after the JSON object. Your entire response must be the raw JSON.`;
 
 const CONTENT_CREATOR_INSTRUCTION = `You are a professional social media manager specializing in the tech industry. Generate a social media post based on the user's instructions. The post should be engaging, professional, and include relevant hashtags. Adapt the length and tone for the specified platform.`;
@@ -57,12 +62,13 @@ function getSystemInstructionForMode(mode, context = {}) {
         case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
         case 'builder':
         default:
-            const serviceList = Object.values(pricingData.allServices).flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
+            const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
             const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
+            const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
             const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
                 ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
                 : '';
-            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText);
+            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
     }
 }
 
@@ -204,10 +210,12 @@ exports.handler = async (event) => {
         const result = await chat.sendMessage(finalUserMessage);
         const response = await result.response;
 
-        if (!response || !response.text) {
+        // CRITICAL FIX: The original code used response.text(), which is incorrect for this library version and caused the API KEY error.
+        const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!responseText) {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
         }
-        const responseText = response.text();
         
         const finalHistory = [...(historyFromClient || []), { role: 'user', parts: [{ text: userMessage }] }, { role: 'model', parts: [{ text: responseText }] }];
 

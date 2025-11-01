@@ -224,6 +224,30 @@
           "description": "Permite a los compradores dejar valoraciones y comentarios en los productos, aumentando la prueba social y la confianza para futuras ventas."
         }
       ]
+    },
+    "customTasks": {
+      "name": "H. Tareas a Medida (Sugeridas por IA)",
+      "isExclusive": false,
+      "items": [
+        {
+          "id": "custom-s",
+          "name": "Tarea a Medida (Pequeña)",
+          "price": 25,
+          "description": "Para ajustes menores o integraciones simples que no están en el catálogo estándar. Estimado por la IA como una tarea de baja complejidad."
+        },
+        {
+          "id": "custom-m",
+          "name": "Tarea a Medida (Mediana)",
+          "price": 60,
+          "description": "Para funcionalidades de complejidad moderada, como la integración con una API externa o la creación de un componente interactivo. Estimado por la IA como una tarea de complejidad media."
+        },
+        {
+          "id": "custom-l",
+          "name": "Tarea a Medida (Grande)",
+          "price": 120,
+          "description": "Para el desarrollo de módulos completos o integraciones complejas que requieren un esfuerzo considerable. Estimado por la IA como una tarea de alta complejidad."
+        }
+      ]
     }
   },
   "monthlyPlans": [
@@ -266,7 +290,7 @@
       "id": 6,
       "name": "Plan de Desarrollo Intensivo",
       "price": 120,
-      "description": "Un 'sprint' de desarrollo mensual para construir aplicaciones web complejas a un ritmo rápido. Otorga 35 Puntos de Desarrollo.",
+      "description": "Un 'sprint' de desarrollo mensual para construir aplicaciones web complexas a un ritmo rápido. Otorga 35 Puntos de Desarrollo.",
       "points": 35
     },
     {

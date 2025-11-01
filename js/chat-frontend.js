@@ -1,13 +1,12 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v16 (Strategic UI Refactor)
+ * v17 (Cost Buckets UI)
  */
 
-import { getState, setLocalServices } from './state.js';
-import { saveLocalServices, loadChatHistories, saveChatHistories } from './data.js';
+import { getState } from './state.js';
+import { loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification } from './modals.js';
-import { appendLocalServiceToUI } from './ui.js';
 
 // --- INICIO: BLOQUE TTS MODIFICADO ---
 const ttsManager = {
@@ -149,12 +148,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                  try {
                     const jsonResponse = JSON.parse(message);
                     if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
-                        jsonResponse.services.forEach(serviceObject => {
-                            if (serviceObject.is_new) {
-                                saveAndRenderNewLocalService(serviceObject);
-                            }
-                        });
-
+                        
                         let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
                         if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
                         if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
@@ -178,14 +172,17 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                             if (servicesByPriority[priority].length > 0) {
                                 const config = priorityConfig[priority];
                                 let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
+                                    // Para servicios nuevos (is_new), el `id` es el del "balde de costo",
+                                    // y el `name` es el descriptivo.
                                     const serviceInfo = findServiceById(serviceObject.id);
                                     if (serviceInfo) {
+                                        const displayName = serviceObject.name || serviceInfo.item.name;
                                         const description = serviceInfo.item.description || 'Sin descripción.';
                                         const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full";
                                         return `
                                             <div class="tooltip-container relative">
                                                 <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="${baseClass} ${config.btnClass}">
-                                                    Añadir ${serviceInfo.item.name}
+                                                    Añadir ${displayName}
                                                 </button>
                                                 <div class="tooltip-content">${description}</div>
                                             </div>
@@ -375,30 +372,18 @@ export function initializeChatAssistant(showApiKeyOverlay) {
     
     window.addEventListener('beforeunload', () => ttsManager.stop());
 
-    function saveAndRenderNewLocalService(service) {
-        const { localServices } = getState();
-        if (localServices.find(s => s.id === service.id) || document.getElementById(`standard-${service.id}`)) {
-            return;
-        }
-        const newLocalServices = [...localServices, service];
-        setLocalServices(newLocalServices);
-        saveLocalServices();
-        appendLocalServiceToUI(service);
-        showNotification('info', 'Servicio Personalizado Guardado', `"${service.name}" ha sido añadido a tu catálogo local.`);
-    }
-
     const findServiceById = (id) => {
-        const { allServices, monthlyPlans, localServices } = getState();
+        const { allServices, monthlyPlans } = getState();
         let plan = monthlyPlans.find(p => p.id == id);
         if (plan) return { type: 'plan', item: plan };
+        
         const allStandardServices = Object.values(allServices).flatMap(category => category.items);
         let service = allStandardServices.find(s => s.id === id);
         if (service) {
             const isPackage = Object.values(allServices).find(cat => cat.isExclusive && cat.items.some(i => i.id === id));
             return { type: isPackage ? 'package' : 'standard', item: service };
         }
-        let localService = localServices.find(s => s.id === id);
-        if (localService) return { type: 'standard', item: localService };
+        
         return null;
     };
 
