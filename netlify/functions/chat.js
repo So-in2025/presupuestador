@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v35 - Sales Pipeline & Training Mode
+ * Lógica de Intención: v36 - Lead Gen Plan
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -14,6 +14,53 @@ const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+
+const LEAD_GEN_PLAN_INSTRUCTION = `You are a "Marketing & Sales Strategist" AI. Your one and only mission is to empower a web development affiliate/reseller to get their first high-quality client within 7 days. You will create a detailed, actionable 7-day plan.
+
+**CONTEXT:**
+- The affiliate will promote a specific service: [SERVICE TO PROMOTE]
+- Their ideal client is: [TARGET AUDIENCE]
+
+**YOUR TASK:**
+Create a step-by-step 7-day plan. For each day, provide a clear "Theme" and a list of 2-3 concrete, actionable "Tasks". The tasks should be practical and focused on building authority, creating value, and initiating conversations.
+
+**OUTPUT FORMAT:**
+Your response MUST be a single, valid JSON object. Do NOT include any text, comments, or markdown before or after the JSON.
+
+**JSON STRUCTURE:**
+{
+  "title": "Plan de Captación de Clientes: Tu Hoja de Ruta de 7 Días",
+  "introduction": "Este plan está diseñado para posicionarte como un experto y atraer a tu cliente ideal en una semana. La clave es la consistencia y aportar valor en cada paso.",
+  "daily_plan": [
+    {
+      "day": 1,
+      "theme": "Optimización de Perfil y Mentalidad",
+      "tasks": [
+        "Tarea 1 para el día 1...",
+        "Tarea 2 para el día 1..."
+      ]
+    },
+    {
+      "day": 2,
+      "theme": "Creación de Contenido de Valor",
+      "tasks": [
+        "Tarea 1 para el día 2...",
+        "Tarea 2 para el día 2..."
+      ]
+    },
+    // ... continue for all 7 days ...
+    {
+      "day": 7,
+      "theme": "La Llamada a la Acción (CTA)",
+      "tasks": [
+        "Tarea 1 para el día 7...",
+        "Tarea 2 para el día 7..."
+      ]
+    }
+  ],
+  "next_steps": "Al final de esta semana, no solo tendrás más visibilidad, sino que habrás iniciado conversaciones valiosas. ¡Ahora, a ejecutar con disciplina!"
+}
+`;
 
 const ENTRENAMIENTO_INSTRUCTION_TEMPLATE = (catalogData) => `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
 
@@ -102,6 +149,7 @@ function getSystemInstructionForMode(mode, context = {}) {
         case 'analyze': return ANALYZE_INSTRUCTION;
         case 'objection': return OBJECTION_INSTRUCTION;
         case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
+        case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
         case 'entrenamiento': {
             let catalogString = '';
             Object.values(pricingData.allServices).forEach(category => {
@@ -166,38 +214,24 @@ exports.handler = async (event) => {
                 finalConcept = `A symbolic, visually appealing representation of the web service: "${concept}".`;
             }
             const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, finalConcept, colors);
-
-            // REFACTORIZADO: Se eliminó el código redundante y con errores.
-            // La versión anterior contenía múltiples intentos fallidos para generar una imagen.
-            // Esta es la llamada única, directa y correcta para la librería @google/generative-ai.
             const result = await model.generateContent(prompt);
             const response = await result.response;
-            
             const candidate = response.candidates?.[0];
-
-            // MANEJO DE ERRORES MEJORADO:
-            // 1. Verifica si la IA devolvió una respuesta válida.
             if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-                // 2. Si la IA se negó (ej. por seguridad), puede devolver un texto explicativo.
                 const refusalText = response.text(); 
                 if (refusalText) {
                     throw new Error(`La IA no generó una imagen. Razón: ${refusalText}`);
                 }
                 throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
             }
-
-            // 3. Busca la parte que contiene la imagen en Base64.
             const imagePart = candidate.content.parts.find(p => p.inlineData && p.inlineData.data);
-
             if (!imagePart) {
-                 // 4. Si no hay imagen, puede que la IA respondiera con texto. Lo mostramos.
                 const textResponse = response.text();
                 if (textResponse) {
                      throw new Error(`La IA respondió con texto en lugar de una imagen: "${textResponse}"`);
                 }
                 throw new Error("La respuesta de la IA no contiene datos de imagen válidos.");
             }
-            
             return {
                 statusCode: 200,
                 body: JSON.stringify({ base64Image: imagePart.inlineData.data })
@@ -212,7 +246,7 @@ exports.handler = async (event) => {
         const chat = model.startChat({
             history: historyFromClient || [],
             generationConfig: {
-                ...(mode === 'builder' && { responseMimeType: "application/json" })
+                ...((mode === 'builder' || mode === 'lead-gen-plan') && { responseMimeType: "application/json" })
             }
         });
 
@@ -221,14 +255,13 @@ exports.handler = async (event) => {
         if (mode === 'content-creator') {
             const { service, cta, platform, tone } = context;
             finalUserMessage = `Service to promote: "${service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
+        } else if (mode === 'lead-gen-plan') {
+            const { service, audience } = context;
+            finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
         }
         
         const result = await chat.sendMessage(finalUserMessage);
         const response = await result.response;
-
-        // CORRECCIÓN CRÍTICA: La causa del error de "formato no esperado" en el modo "Constructor".
-        // La versión anterior usaba `response.candidates?.[0]...`, que es una sintaxis para OTRA librería.
-        // El método correcto para la librería que estás usando (@google/generative-ai) es `response.text()`.
         const responseText = response.text();
 
         if (!responseText) {
@@ -263,7 +296,7 @@ exports.handler = async (event) => {
         }
 
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
-        const errorBody = (mode === 'builder')
+        const errorBody = (mode === 'builder' || mode === 'lead-gen-plan')
             ? createErrorJsonResponse("Hubo un error de conexión con la IA.", `Detalles: ${userFriendlyMessage}`)
             : finalMessage;
 

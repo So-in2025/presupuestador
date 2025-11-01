@@ -5,6 +5,7 @@ import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setEx
 import { updateSelectedItems, handleAddTask } from './app.js';
 import { rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
+import { generateActionPlanPdf } from './pdf.js';
 
 // --- HELPERS DE ANIMACIÓN DE MODALES ---
 const openModal = (modalElement) => {
@@ -69,9 +70,6 @@ export function showPdfOptionsModal() {
     }
 
     document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = false);
-    
-    // CORRECCIÓN: Se eliminó la línea que intentaba acceder a un elemento inexistente.
-    // dom.pdfClientInfo.value = ''; 
     
     openModal(dom.pdfOptionsModal);
 }
@@ -298,48 +296,37 @@ export function showTieredBuilderHelp() {
 }
 
 
-// --- NUEVO: ESTUDIO DE CONTENIDO ---
+// --- ESTUDIO DE CONTENIDO ---
 let isGenerating = false;
 
-function populateContentStudioDropdowns() {
+function populateServiceDropdowns(selectElementId) {
     const { allServices } = getState();
     const serviceList = Object.values(allServices).flatMap(cat => cat.items);
+    const select = document.getElementById(selectElementId);
+    if (!select) return;
 
-    const textSelect = document.getElementById('text-service-to-promote');
-    const imageSelect = document.getElementById('image-service-to-promote');
-
-    if (!textSelect || !imageSelect) return;
-
-    // Guardar los valores seleccionados si existen
-    const selectedText = textSelect.value;
-    const selectedImage = imageSelect.value;
-
-    textSelect.innerHTML = '';
-    imageSelect.innerHTML = '';
-
-    // Añadir la opción de promoción general
-    const generalOption = `<option value="general">Promoción General (Todos los servicios)</option>`;
-    textSelect.insertAdjacentHTML('beforeend', generalOption);
-    imageSelect.insertAdjacentHTML('beforeend', generalOption);
+    const selectedValue = select.value;
+    select.innerHTML = '';
     
-    serviceList.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.name; // Usar el nombre como valor para el prompt
-        option.textContent = service.name;
-        textSelect.appendChild(option.cloneNode(true));
-        imageSelect.appendChild(option.cloneNode(true));
-    });
+    const generalOption = `<option value="general">Promoción General</option>`;
+    select.insertAdjacentHTML('beforeend', generalOption);
 
-    // Restaurar selección previa
-    textSelect.value = selectedText || 'general';
-    imageSelect.value = selectedImage || 'general';
+    serviceList.forEach(service => {
+        if (service.price > 0) { // No incluir "A cotizar"
+             const option = `<option value="${service.name}">${service.name}</option>`;
+             select.insertAdjacentHTML('beforeend', option);
+        }
+    });
+    
+    select.value = selectedValue || 'general';
 }
 
 export function showContentStudioModal() {
     const modal = document.getElementById('contentStudioModal');
     if (!modal) return;
     
-    populateContentStudioDropdowns();
+    populateServiceDropdowns('text-service-to-promote');
+    populateServiceDropdowns('image-service-to-promote');
     openModal(modal);
 
     if (!modal.dataset.listenersAttached) {
@@ -399,7 +386,7 @@ async function handleGenerateText() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userMessage: "Generate social media text based on context.", // Mensaje genérico, la lógica está en el backend
+                userMessage: "Generate social media text based on context.",
                 mode: 'content-creator',
                 context: { service, cta, platform, tone },
                 apiKey
@@ -433,6 +420,9 @@ async function handleGenerateImage() {
     const spinner = document.getElementById('image-spinner');
     const generatedImage = document.getElementById('generated-image');
     const downloadBtn = document.getElementById('download-image-btn');
+    
+    let errorP = resultContainer.querySelector('.text-red-400');
+    if(errorP) errorP.remove();
 
     resultContainer.classList.remove('hidden');
     spinner.classList.remove('hidden');
@@ -456,7 +446,7 @@ async function handleGenerateImage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userMessage: 'Generate an image based on the context.', // Placeholder message
+                userMessage: 'Generate an image based on the context.',
                 mode: 'image-creator',
                 context: { style, concept, colors },
                 apiKey
@@ -476,16 +466,9 @@ async function handleGenerateImage() {
         downloadBtn.classList.remove('hidden');
         
     } catch (error) {
-        // Limpiar el contenedor antes de mostrar el error para evitar duplicados
-        while (resultContainer.firstChild) {
-            resultContainer.removeChild(resultContainer.firstChild);
-        }
-        const errorP = document.createElement('p');
-        errorP.className = 'text-red-400';
+        errorP = document.createElement('p');
+        errorP.className = 'text-red-400 mt-2';
         errorP.textContent = `Error: ${error.message}`;
-        resultContainer.appendChild(spinner); // Re-add spinner just in case
-        resultContainer.appendChild(generatedImage);
-        resultContainer.appendChild(downloadBtn);
         resultContainer.appendChild(errorP);
         console.error("Error al generar imagen:", error);
     } finally {
@@ -501,4 +484,94 @@ function handleCopyText() {
     navigator.clipboard.writeText(text).then(() => {
         button.textContent = '¡Copiado!';
     });
+}
+
+// --- NUEVO: PLAN DE CAPTACIÓN DE CLIENTES ---
+export function showLeadGenPlanModal() {
+    const modal = document.getElementById('leadGenPlanModal');
+    if (!modal) return;
+    
+    populateServiceDropdowns('lead-gen-plan-service-select');
+    document.getElementById('lead-gen-plan-audience').value = '';
+    
+    openModal(modal);
+
+    if (!modal.dataset.listenersAttached) {
+        document.getElementById('close-lead-gen-plan-modal-btn').addEventListener('click', closeLeadGenPlanModal);
+        document.getElementById('generate-lead-gen-plan-pdf-btn').addEventListener('click', handleGenerateLeadGenPlan);
+        modal.dataset.listenersAttached = 'true';
+    }
+}
+
+export function closeLeadGenPlanModal() {
+    closeModal(document.getElementById('leadGenPlanModal'));
+}
+
+async function handleGenerateLeadGenPlan() {
+    const button = document.getElementById('generate-lead-gen-plan-pdf-btn');
+    const spinner = button.querySelector('.spinner');
+    const btnText = button.querySelector('.btn-text');
+    const originalText = btnText.textContent;
+    
+    if (isGenerating) return;
+    isGenerating = true;
+    
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Generando...';
+    button.disabled = true;
+
+    const apiKey = getState().sessionApiKey;
+    if (!apiKey) {
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key antes de usar esta función.');
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+        return;
+    }
+
+    const service = document.getElementById('lead-gen-plan-service-select').value;
+    const audience = document.getElementById('lead-gen-plan-audience').value;
+
+    if (!audience) {
+        showNotification('error', 'Público Requerido', 'Por favor, describe a tu público objetivo para crear un plan relevante.');
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+        return;
+    }
+
+    try {
+        const response = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userMessage: 'Generate lead gen plan.',
+                mode: 'lead-gen-plan',
+                context: { service, audience },
+                apiKey
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error del servidor al generar el plan.');
+        }
+
+        const data = await response.json();
+        const planData = JSON.parse(data.response);
+        
+        await generateActionPlanPdf(planData);
+
+    } catch (error) {
+        showNotification('error', 'Error de Generación', `No se pudo generar el plan: ${error.message}`);
+        console.error("Error al generar plan de captación:", error);
+    } finally {
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+        closeLeadGenPlanModal();
+    }
 }

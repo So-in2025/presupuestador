@@ -27,11 +27,12 @@ import {
     closeExchangeRateModal,
     handleSaveExchangeRate,
     showContentStudioModal,
-    closeContentStudioModal
+    closeContentStudioModal,
+    showLeadGenPlanModal
 } from './modals.js';
 import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
-import { generatePdf } from './pdf.js';
+import { generatePdf, generateActionPlanPdf } from './pdf.js';
 
 // --- LÓGICA MODO ENFOQUE CHAT ---
 const chatContainer = document.getElementById('ai-assistant-container');
@@ -269,6 +270,7 @@ function initializeEventListeners() {
     document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
     document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
     document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
+    document.getElementById('generate-lead-gen-plan-btn')?.addEventListener('click', showLeadGenPlanModal);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
     document.getElementById('show-tiered-builder-help-btn-modal')?.addEventListener('click', showTieredBuilderHelp);

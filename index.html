@@ -325,42 +325,17 @@
             margin-bottom: 1.25rem !important;
         }
         
-        /* --- NUEVO DASHBOARD DE RENDIMIENTO (REDISEÑADO) --- */
-        .stat-card {
-            background-color: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 0.25rem;
+        /* --- BARRA DE RENDIMIENTO FIJA (NUEVO DISEÑO) --- */
+        #performance-dashboard-bar {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
-        .stat-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .stat-card-title {
-            font-size: 0.75rem; /* 12px */
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .stat-card-icon {
-            color: var(--text-secondary);
-        }
-        .stat-card-value {
-            font-size: clamp(1.25rem, 4vw, 1.5rem); /* Responsive font size */
+        .dashboard-value {
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
             font-weight: 700;
-            line-height: 1.2;
-            white-space: nowrap; /* Prevents number from breaking */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: right;
+            line-height: 1;
+            white-space: nowrap; /* Evita que el número se parta */
         }
-
 
         /* --- ESTILOS ACORDEÓN DE SERVICIOS --- */
         .accordion-item .accordion-header {
@@ -461,6 +436,33 @@
 
     <!-- MAIN APP CONTAINER (Initially Hidden) -->
     <div id="main-app" class="hidden p-4 sm:p-6 md:p-10">
+        <!-- BARRA DE RENDIMIENTO FIJA -->
+        <div id="performance-dashboard-bar" class="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700 -mx-4 sm:-mx-6 md:-mx-10 px-4 sm:px-6 md:px-10 mb-8">
+            <div class="max-w-7xl mx-auto py-2 flex flex-wrap justify-center sm:justify-around items-center gap-x-6 gap-y-2 text-sm">
+                
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-slate-400 uppercase tracking-wider">Ventas (Mes)</span>
+                    <p id="sales-this-month" class="dashboard-value text-green-400">$0.00</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-slate-400 uppercase tracking-wider">Ganancia (Mes)</span>
+                    <p id="profit-this-month" class="dashboard-value text-yellow-400">$0.00</p>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-slate-400 uppercase tracking-wider">Pipeline Activo</span>
+                    <p id="active-pipeline-value" class="dashboard-value text-cyan-400">$0.00</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-slate-400 uppercase tracking-wider">Tasa Cierre</span>
+                    <p id="close-rate" class="dashboard-value text-fuchsia-400">0%</p>
+                </div>
+                
+            </div>
+        </div>
+
         <!-- TÍTULO PRINCIPAL Y CONTROLES -->
         <div class="max-w-7xl mx-auto">
             <header class="text-center mb-8">
@@ -480,6 +482,9 @@
                     </button>
                     <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔄 Reiniciar Tour
+                    </button>
+                    <button id="generate-lead-gen-plan-btn" class="text-sm bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
+                        🚀 Plan de Captación
                     </button>
                     <button id="show-content-studio-btn" class="text-sm bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         ✨ Estudio de Contenido
@@ -663,44 +668,6 @@
                         <h3 class="text-md font-semibold mt-6 mb-2 text-slate-300 border-t border-slate-700 pt-4">Resumen de la Solución:</h3>
                         <div id="selectedItems" class="text-sm space-y-2 p-3 bg-slate-900 rounded-lg h-40 overflow-y-auto border border-slate-700">
                             <p class="text-slate-400">Los servicios seleccionados aparecerán aquí.</p>
-                        </div>
-                    </div>
-
-                    <div id="performance-dashboard" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold text-teal-300">Dashboard de Rendimiento</h2>
-                        <div class="mt-4 grid grid-cols-2 gap-4">
-                            <!-- Ventas -->
-                            <div class="stat-card">
-                                <div class="stat-card-header">
-                                    <span class="stat-card-title">Ventas (Mes)</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>
-                                </div>
-                                <div id="sales-this-month" class="stat-card-value text-green-400">$0.00</div>
-                            </div>
-                            <!-- Ganancia -->
-                            <div class="stat-card">
-                                <div class="stat-card-header">
-                                    <span class="stat-card-title">Ganancia (Mes)</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                </div>
-                                <div id="profit-this-month" class="stat-card-value text-yellow-400">$0.00</div>
-                            </div>
-                            <!-- Pipeline -->
-                            <div class="stat-card">
-                                <div class="stat-card-header">
-                                    <span class="stat-card-title">Pipeline Activo</span>
-                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                </div>
-                                <div id="active-pipeline-value" class="stat-card-value text-cyan-400">$0.00</div>
-                            </div>
-                            <!-- Tasa de Cierre -->
-                            <div class="stat-card">
-                                <div class="stat-card-header">
-                                    <span class="stat-card-title">Tasa de Cierre</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                                </div>
-                                <div id="close-rate" class="stat-card-value text-fuchsia-400">0%</div>
-                            </div>
                         </div>
                     </div>
 
@@ -902,110 +869,129 @@
                             <label for="text-tone" class="block text-sm font-medium text-slate-300 mb-1">Tono:</label>
                             <select id="text-tone" class="styled-input styled-select w-full">
                                 <option value="profesional">Profesional</option>
-                                <option value="urgente">Urgente y Directo</option>
+                                <option value="amigable">Amigable</option>
+                                <option value="urgente">Urgente</option>
                                 <option value="inspirador">Inspirador</option>
-                                <option value="cercano">Cercano y Amigable</option>
                             </select>
                         </div>
                     </div>
-                    <button id="generate-text-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Texto</button>
-                    <div id="text-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[150px] relative hidden">
-                         <div id="text-spinner" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 rounded-lg hidden">
-                            <svg class="spinner h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <button id="generate-text-btn" class="w-full bg-fuchsia-600 text-white font-bold py-2 rounded-lg hover:bg-fuchsia-700 transition">Generar Texto</button>
+                    <div id="text-result-container" class="mt-4 hidden p-4 bg-slate-800 rounded-lg relative">
+                        <div id="text-spinner" class="absolute inset-0 flex items-center justify-center hidden">
+                             <svg class="spinner h-8 w-8 text-fuchsia-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         </div>
                         <p id="generated-text" class="text-slate-200 whitespace-pre-wrap"></p>
-                        <button id="copy-generated-text-btn" class="absolute top-2 right-2 text-xs bg-slate-800 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition hidden">Copiar</button>
+                        <button id="copy-generated-text-btn" class="hidden absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button>
                     </div>
                 </div>
-                <!-- Pestaña Generador de Imágenes -->
+                 <!-- Pestaña Generador de Imágenes -->
                 <div id="image-generator-content" class="studio-tab-content">
-                     <p class="text-sm text-slate-400 mb-4">Crea imágenes publicitarias únicas y profesionales. La IA está entrenada para generar contenido relevante para servicios de desarrollo web.</p>
-                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <p class="text-sm text-slate-400 mb-4">Genera imágenes impactantes para tus publicaciones. Describe el concepto y la IA lo visualizará por ti.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
-                            <label for="image-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Concepto (Basado en Servicio):</label>
+                            <label for="image-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Concepto Base:</label>
                             <select id="image-service-to-promote" class="styled-input styled-select w-full"></select>
                         </div>
                         <div>
                             <label for="image-style" class="block text-sm font-medium text-slate-300 mb-1">Estilo Visual:</label>
                             <select id="image-style" class="styled-input styled-select w-full">
-                                <option value="minimalista">Estilo Minimalista</option>
-                                <option value="futurista">Estilo Futurista y Neón</option>
-                                <option value="fotorealista">Estilo Fotorealista</option>
-                                <option value="abstracto">Estilo Abstracto y Corporativo</option>
+                                <option value="minimalist and clean">Minimalista y Limpio</option>
+                                <option value="cyberpunk neon glow">Cyberpunk Neón</option>
+                                <option value="abstract geometric">Abstracto Geométrico</option>
+                                <option value="photorealistic and sharp">Fotorrealista</option>
+                                <option value="digital art, synthwave">Arte Digital (Synthwave)</option>
                             </select>
                         </div>
                         <div>
-                             <label for="image-colors" class="block text-sm font-medium text-slate-300 mb-1">Paleta de Colores:</label>
-                            <select id="image-colors" class="styled-input styled-select w-full">
-                                <option value="tonos_azules">Tonos Azules y Blancos</option>
-                                <option value="blanco_negro">Blanco y Negro</option>
-                                <option value="colores_vibrantes">Colores Vibrantes</option>
-                                <option value="tonos_calidos">Tonos Cálidos (Naranja/Dorado)</option>
-                            </select>
+                            <label for="image-colors" class="block text-sm font-medium text-slate-300 mb-1">Paleta de Colores:</label>
+                            <input type="text" id="image-colors" class="styled-input w-full" placeholder="Ej: azul, morado, cian">
                         </div>
                     </div>
-                    <button id="generate-image-btn" class="w-full accent-bg font-bold py-3 rounded-lg transition shadow-xl btn-press-feedback">Generar Imagen</button>
-                     <div id="image-result-container" class="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700 min-h-[300px] flex items-center justify-center relative hidden">
-                        <div id="image-spinner" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 rounded-lg hidden">
-                            <svg class="spinner h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            <p class="text-cyan-300 mt-2 font-semibold">Generando imagen... (Esto puede tardar un minuto)</p>
+                    <button id="generate-image-btn" class="w-full bg-fuchsia-600 text-white font-bold py-2 rounded-lg hover:bg-fuchsia-700 transition">Generar Imagen</button>
+                    <div id="image-result-container" class="mt-4 hidden p-4 bg-slate-800 rounded-lg flex items-center justify-center relative min-h-[200px]">
+                        <div id="image-spinner" class="absolute inset-0 flex items-center justify-center hidden">
+                             <svg class="spinner h-8 w-8 text-fuchsia-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         </div>
-                        <img id="generated-image" src="" alt="Imagen generada por IA" class="max-w-full max-h-[400px] rounded-md hidden">
-                        <a id="download-image-btn" href="#" download="proyecto-zen-imagen.png" class="absolute bottom-4 right-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hidden">Descargar</a>
+                        <img id="generated-image" class="hidden rounded-lg max-w-full max-h-[400px]">
+                        <a id="download-image-btn" download="zen-ai-image.png" class="hidden absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Descargar</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Tour GUIADO PROFESIONAL -->
-    <div id="tour-overlay" class="hidden fixed inset-0 bg-black/70 transition-opacity duration-300"></div>
-    <div id="tour-tooltip" class="hidden absolute bg-slate-800 border-2 border-cyan-400 p-4 rounded-lg shadow-2xl max-w-sm">
-        <span id="tour-arrow" class="tour-arrow"></span>
-        <p id="tour-text" class="text-slate-200"></p>
-        <div class="flex justify-between items-center mt-4">
-            <span id="tour-step-counter" class="text-xs text-slate-400"></span>
-            <div class="space-x-2">
-                <button id="tour-end" class="text-sm py-1 px-3 rounded bg-red-800 hover:bg-red-700 transition">Finalizar</button>
-                <button id="tour-prev" class="text-sm py-1 px-3 rounded bg-slate-600 hover:bg-slate-500 transition">Anterior</button>
-                <button id="tour-next" class="text-sm py-1 px-3 rounded accent-bg">Siguiente</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL TIPO DE CAMBIO MANUAL -->
+    
+    <!-- Exchange Rate Modal -->
     <div id="exchangeRateModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
-        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
-            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
-                <h3 class="text-lg">Configurar Tipo de Cambio Manual</h3>
+        <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-gray-700 flex justify-between items-center">
+                <h3 class="text-lg">Configurar Tipo de Cambio (ARS)</h3>
                 <button id="close-exchange-rate-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 space-y-4">
-                <p class="text-sm text-slate-300">
-                    Introduce el valor de 1 USD en ARS que deseas utilizar para todos los cálculos. Este valor se guardará en tu navegador.
-                </p>
+                <p class="text-sm text-slate-300">Introduce el valor de 1 USD en ARS. Este tipo de cambio se usará para mostrar los precios en pesos argentinos.</p>
                 <div>
-                    <label for="exchangeRateInput" class="block text-sm font-medium text-slate-300 mb-1">1 USD = ARS:</label>
-                    <input type="number" id="exchangeRateInput" class="w-full styled-input" placeholder="Ej: 1150.50" min="0">
+                    <label for="exchangeRateInput" class="block text-sm font-medium text-slate-300 mb-1">1 USD = ??? ARS</label>
+                    <input type="number" id="exchangeRateInput" class="w-full styled-input" placeholder="Ej: 950.50" min="0">
                 </div>
                 <div class="text-right pt-2">
-                    <button id="save-exchange-rate-btn" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700 transition">
-                        Guardar Cotización
+                    <button id="save-exchange-rate-btn" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition">Guardar Cotización</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Gen Plan Modal -->
+    <div id="leadGenPlanModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+        <div class="card-bg w-full max-w-xl rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
+                <h3 class="text-lg">🚀 Generar Plan de Captación de Clientes (7 Días)</h3>
+                <button id="close-lead-gen-plan-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-sm text-slate-300">Define la estrategia para que la IA cree un plan de acción semanal para que consigas tus primeros clientes.</p>
+                <div>
+                    <label for="lead-gen-plan-service-select" class="block text-sm font-medium text-slate-300 mb-1">Servicio Principal a Promocionar:</label>
+                    <select id="lead-gen-plan-service-select" class="styled-input styled-select w-full"></select>
+                </div>
+                <div>
+                    <label for="lead-gen-plan-audience" class="block text-sm font-medium text-slate-300 mb-1">Público Objetivo:</label>
+                    <input type="text" id="lead-gen-plan-audience" class="w-full styled-input" placeholder="Ej: Fotógrafos de bodas, restaurantes locales, etc.">
+                </div>
+                <div class="text-right pt-2">
+                    <button id="generate-lead-gen-plan-pdf-btn" class="bg-green-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-green-700 transition flex justify-center items-center gap-2 btn-press-feedback">
+                        <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="btn-text">Generar Plan en PDF</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- BOTÓN FLOTANTE DE WHATSAPP -->
-    <a id="whatsapp-float-btn" href="#" target="_blank" rel="noopener noreferrer" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-[#25D366] hover:bg-[#1DAE51] text-white rounded-full p-3 sm:p-4 shadow-lg z-50 transition transform hover:scale-110">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.79.46 3.48 1.34 4.94l-1.35 4.95 5.09-1.33c1.4.81 2.97 1.24 4.58 1.24h.01c5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zM12.05 20.15c-1.48 0-2.91-.4-4.18-1.15l-.3-.18-3.11.81.83-3.03-.2-.31c-.84-1.32-1.28-2.85-1.28-4.43 0-4.54 3.69-8.23 8.24-8.23 2.23 0 4.31.86 5.82 2.38s2.38 3.6 2.38 5.82c0 4.54-3.69 8.23-8.24 8.23zm4.52-6.2c-.25-.12-1.47-.72-1.7-.81-.23-.09-.39-.12-.56.12-.17.25-.64.81-.79.97-.15.17-.29.19-.54.06-.25-.12-1.07-.39-2.04-1.26-.75-.66-1.26-1.47-1.41-1.72-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.09-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.42h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07s.88 2.4 1 2.56c.12.17 1.76 2.67 4.25 3.73.59.25 1.05.4 1.41.51.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.31z"/>
+
+    <!-- TOUR GUIADO -->
+    <div id="tour-overlay" class="hidden fixed inset-0 bg-black/70 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+    <div id="tour-tooltip" class="hidden fixed card-bg max-w-sm rounded-xl shadow-2xl p-5 border-2 border-[var(--accent-color)] opacity-0">
+        <div id="tour-arrow" class="tour-arrow"></div>
+        <p id="tour-text" class="text-slate-200"></p>
+        <div class="flex justify-between items-center mt-4">
+            <span id="tour-step-counter" class="text-xs text-slate-400"></span>
+            <div>
+                <button id="tour-prev" class="text-sm bg-slate-700 text-slate-200 py-1 px-3 rounded-md hover:bg-slate-600 transition">Anterior</button>
+                <button id="tour-next" class="text-sm accent-bg font-medium py-1 px-3 rounded-md transition">Siguiente</button>
+                <button id="tour-end" class="text-sm bg-red-600 text-white font-medium py-1 px-3 rounded-md hover:bg-red-700 transition">Finalizar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- WHATSAPP FLOAT BUTTON -->
+    <a id="whatsapp-float-btn" href="#" target="_blank" rel="noopener noreferrer" class="fixed bottom-5 right-5 z-[85000] h-14 w-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg transform transition hover:scale-110" title="Contactar a Soporte">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.487 5.235 3.487 8.413.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.447-4.435-9.884-9.888-9.884-5.448 0-9.886 4.434-9.889 9.885.002 2.135.61 4.138 1.737 5.867l-1.163 4.244 4.352-1.141z" />
         </svg>
     </a>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-    <script type="module" src="js/main.js"></script>
-
+    <!-- Carga de JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>
