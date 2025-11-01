@@ -37,6 +37,10 @@
             background-size: 200% 200%;
             animation: aurora-bg 20s ease infinite;
             color: var(--text-primary);
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
 
         .accent-color { color: var(--accent-color); }
@@ -103,7 +107,10 @@
             font-size: 0.9rem; font-weight: bold;
         }
         .custom-radio { border-radius: 50%; }
-        .item-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+        .item-card { 
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            will-change: transform, box-shadow, border-color;
+        }
         .item-card:not(.item-disabled):hover {
             border-color: var(--accent-color);
             box-shadow: 0 0 15px -5px var(--accent-color);
@@ -224,6 +231,8 @@
             display: flex; align-items: center; justify-content: center;
             background: #0F172A;
             transition: opacity 0.5s ease-out;
+            overflow-y: auto;
+            padding: 1rem;
         }
         .splash-container { text-align: center; }
         .lotus-icon {
@@ -231,7 +240,7 @@
             stroke: #22D3EE; stroke-width: 2; fill: transparent;
         }
         .splash-title {
-            font-family: 'Orbitron', sans-serif; font-size: clamp(2.8rem, 6vw, 4rem);
+            font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 8vw, 4rem);
             line-height: 1.1; text-transform: uppercase; letter-spacing: 4px;
             text-shadow: 0 0 15px rgba(34, 211, 238, 0.6);
         }
@@ -244,21 +253,28 @@
             display: inline-block;
             background: #22D3EE; color: #0F172A; font-weight: bold;
             padding: 0.75rem 1.5rem; border-radius: 0.5rem;
-            margin-top: 2rem; text-decoration: none;
+            text-decoration: none;
             transition: all 0.3s ease;
         }
         .splash-action-button:hover { background: #06B6D4; transform: translateY(-2px); }
         .splash-secondary-button {
             background: transparent; border: 1px solid #334155;
-            color: #94A3B8; margin-left: 1rem;
+            color: #94A3B8;
         }
         .splash-secondary-button:hover { background: #1E293B; border-color: #64748B; }
         .details-section {
-            max-height: 0; overflow-y: hidden; overflow-x: auto;
-            transition: max-height 0.7s ease-in-out; text-align: left;
-            max-width: 1000px; margin: 2rem auto 0; color: #CBD5E1;
+            max-height: 0;
+            overflow: hidden;
+            width: 100%;
+            transition: max-height 0.7s ease-in-out;
+            text-align: left;
+            margin: 2rem auto 0;
+            color: #CBD5E1;
         }
-        .details-section.open { max-height: 1200px; }
+        .details-section.open {
+            max-height: 2000px;
+            overflow-y: auto;
+        }
         .tts-highlight {
             background-color: rgba(34, 211, 238, 0.15);
             border-left: 3px solid var(--accent-color);
@@ -326,20 +342,20 @@
 
     <!-- SPLASH SCREEN -->
     <div id="splash-screen">
-        <div class="splash-container p-4">
+        <div class="splash-container p-4 w-full max-w-xl">
             <svg class="lotus-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <path d="M50 5 C40 35 40 65 50 95 M50 5 C60 35 60 65 50 95 M50 80 C30 60 30 40 38 15 M50 80 C70 60 70 40 62 15 M50 95 C20 80 15 50 28 40 M50 95 C80 80 85 50 72 40 M28 40 C40 60 45 75 50 80 M72 40 C60 60 55 75 50 80" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <h1 class="splash-title">Proyecto Zen</h1>
             <p class="splash-byline">by <a href="https://websoin.netlify.app/" target="_blank" rel="noopener noreferrer" class="hover:text-white transition">SO->IN</a></p>
 
-            <div>
-                <button id="start-app-btn" class="splash-action-button">Comenzar</button>
-                <button id="toggle-details-btn" class="splash-action-button splash-secondary-button">Saber más</button>
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button id="start-app-btn" class="splash-action-button w-full sm:w-auto">Comenzar</button>
+                <button id="toggle-details-btn" class="splash-action-button splash-secondary-button w-full sm:w-auto">Saber más</button>
             </div>
 
             <div id="detailsSection" class="details-section">
-                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50 space-y-4" style="min-width: 700px;">
+                <div class="p-4 border border-slate-700 rounded-lg bg-slate-800/50 space-y-4 w-full max-w-4xl mx-auto">
                     <div class="text-center">
                         <button id="read-aloud-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-6 rounded-lg transition shadow-md btn-press-feedback">
                             Leer en voz alta

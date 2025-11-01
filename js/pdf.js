@@ -1,5 +1,6 @@
 // js/pdf.js
 
+import * as dom from './dom.js';
 import { getState } from './state.js';
 import { showNotification, closePdfOptionsModal } from './modals.js';
 
@@ -15,13 +16,16 @@ export async function generatePdf(isForClient, button) {
     try {
         const { tasks, allServices, monthlyPlans, currentCurrency, usdToArsRate } = getState();
         
+        // OBTENER DATOS DE MARCA DIRECTAMENTE DEL LOCALSTORAGE
         const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
         const accentColor = brandInfo.color || '#22D3EE';
         
-        const textPrimaryColor = '#0F172A';
-        const textSecondaryColor = '#334155';
-        const textMutedColor = '#64748B';
+        // Colores de alto contraste para el PDF
+        const textPrimaryColor = '#0F172A'; // Slate 900
+        const textSecondaryColor = '#334155'; // Slate 700
+        const textMutedColor = '#64748B'; // Slate 500
 
+        // El logo ahora se obtiene siempre del almacenamiento, no del input del modal.
         const logoDataUrl = brandInfo.logo || null;
 
         const { jsPDF } = window.jspdf;
@@ -32,6 +36,7 @@ export async function generatePdf(isForClient, button) {
         const rightMargin = doc.internal.pageSize.width - 30;
         const contentWidth = rightMargin - leftMargin;
 
+        // --- HELPERS ---
         const formatPdfPrice = (usdAmount) => {
             if (currentCurrency === 'ARS' && usdToArsRate) {
                 const arsAmount = usdAmount * usdToArsRate;
@@ -76,36 +81,37 @@ export async function generatePdf(isForClient, button) {
                 try { doc.addImage(logoDataUrl, 'PNG', leftMargin, y-10, 60, 30, undefined, 'FAST'); }
                 catch (e) { console.error("Error al añadir logo:", e); }
             }
+            // OBTENER INFO DEL REVENDEDOR DESDE LOCALSTORAGE
             const resellerInfo = (brandInfo.resellerInfo || 'Datos no configurados').split('\n');
             doc.setFontSize(9);
             doc.setTextColor(textSecondaryColor);
             doc.text(resellerInfo, rightMargin, y, { align: 'right' });
-            y += 20;
-
+            
+            y += 40;
+            // OBTENER INFO DEL CLIENTE DESDE EL MODAL
+            const clientInfo = dom.pdfClientInfo.value.split('\n');
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(textPrimaryColor);
+            doc.text("Presupuesto Para:", leftMargin, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textSecondaryColor);
+            doc.text(clientInfo, leftMargin, y + 10);
+            
             const date = new Date().toLocaleDateString('es-ES');
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(textPrimaryColor);
-            doc.text("Fecha de Emisión:", rightMargin, y + 20, { align: 'right' });
+            doc.text("Fecha de Emisión:", rightMargin, y, { align: 'right' });
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(textSecondaryColor);
-            doc.text(date, rightMargin, y + 30, { align: 'right' });
+            doc.text(date, rightMargin, y + 10, { align: 'right' });
             
-            doc.setDrawColor('#E2E8F0');
-            doc.line(leftMargin, y + 50, rightMargin, y + 50);
-            y += 60;
+            y += 40;
+            doc.setDrawColor('#E2E8F0'); // Slate 200
+            doc.line(leftMargin, y, rightMargin, y);
+            y += 20;
             
             tasks.forEach((task, index) => {
-                const clientInfo = [task.clientName, task.clientCompany, task.clientEmail].filter(Boolean);
-                checkPageBreak(clientInfo.length * 10 + 20);
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(textPrimaryColor);
-                doc.text("Presupuesto Para:", leftMargin, y);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(textSecondaryColor);
-                doc.text(clientInfo, leftMargin, y + 10);
-                y += clientInfo.length * 10 + 20;
-
                 if (task.isTiered) {
                     checkPageBreak(200);
                     doc.setFontSize(16);
@@ -212,6 +218,7 @@ export async function generatePdf(isForClient, button) {
                 }
             });
             
+            // OBTENER TÉRMINOS DESDE LOCALSTORAGE
             const terms = brandInfo.terms;
             if(terms){
                 checkPageBreak(80);
@@ -255,6 +262,7 @@ export async function generatePdf(isForClient, button) {
         y += 10;
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(textSecondaryColor);
+        // OBTENER INFO DEL REVENDEDOR DESDE LOCALSTORAGE
         const resellerInfo = (brandInfo.resellerInfo || 'Datos no configurados').split('\n');
         doc.text(resellerInfo, leftMargin, y);
         y += resellerInfo.length * 10 + 10;
@@ -271,22 +279,10 @@ export async function generatePdf(isForClient, button) {
             doc.setTextColor(textPrimaryColor);
             doc.text(`Proyecto: ${task.webName}`, leftMargin, y);
             y += 15;
-
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(textPrimaryColor);
-            doc.text("Datos del Cliente Final:", leftMargin, y);
-            y += 12;
-            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
             doc.setTextColor(textSecondaryColor);
-            const clientDetails = [
-                `Contacto: ${task.clientName || 'N/A'}`,
-                `Empresa: ${task.clientCompany || 'N/A'}`,
-                `Email: ${task.clientEmail || 'N/A'}`
-            ];
-            doc.text(clientDetails, leftMargin, y);
-            y += clientDetails.length * 10 + 10;
-
+            doc.text(`Cliente Final: ${task.clientName}`, leftMargin, y);
+            y += 20;
 
             // Resumen Financiero
             doc.setFontSize(11);
