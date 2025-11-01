@@ -45,7 +45,35 @@ Your response MUST be a single, valid JSON object with the following structure:
     - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
 4.  Do NOT add any text, markdown, or comments before or after the JSON object. Your entire response must be the raw JSON.`;
 
-const CONTENT_CREATOR_INSTRUCTION = `You are a professional social media manager specializing in the tech industry. Generate a social media post based on the user's instructions. The post should be engaging, professional, and include relevant hashtags. Adapt the length and tone for the specified platform.`;
+const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services. Your goal is to create posts that not only engage but are optimized for maximum discoverability and lead generation.
+
+**CRITICAL METHODOLOGY (Follow these 5 steps meticulously):**
+
+1.  **DECONSTRUCT THE REQUEST:**
+    *   **Service:** Analyze the provided service (e.g., "E-commerce Avanzado").
+    *   **Target Audience:** Infer the target audience. For E-commerce, it's business owners wanting to scale. For a Portfolio, it's creative professionals. Tailor the language and pain points to this audience.
+    *   **Platform & Tone:** Strictly adhere to the specified platform (LinkedIn = professional, formal; Instagram = visual, personal) and tone (Urgente, Inspirador, etc.).
+
+2.  **STRATEGIC KEYWORD INTEGRATION:**
+    *   Identify a **Primary Keyword** (e.g., "tienda online profesional").
+    *   Identify 3-4 **Secondary/LSI Keywords** (e.g., "aumentar ventas online", "pasarela de pago segura", "experiencia de compra", "gestión de inventario").
+    *   Weave these keywords **organically** throughout the copy. The post must read naturally, not like a list of keywords.
+
+3.  **CRAFT THE PERSUASIVE NARRATIVE (AIDA Model):**
+    *   **Attention (Hook):** Start with a provocative question or a startling statistic that targets a specific pain point of the audience. (e.g., "¿Tu carrito de compras abandona más clientes de los que convierte?").
+    *   **Interest (Problem/Solution):** Briefly agitate the problem. Describe the negative business impact of not having this service. Then, introduce the service as the definitive solution.
+    *   **Desire (Value Proposition & Benefits):** Do not list features. Translate features into tangible business outcomes. Instead of "Pasarela de Pagos", say "Convierte visitantes en clientes con un proceso de pago sin fricciones que inspira confianza y aumenta tus ingresos." Focus on ROI, time saved, and competitive advantage.
+    *   **Action (Call to Action):** End with a powerful, low-friction CTA. If the user provides one, integrate it. If not, create a compelling one. Examples: "Comenta 'ECOMMERCE' y te envío un diagnóstico gratuito por DM." or "¿Listo para escalar? Agenda una llamada estratégica en el link de nuestra bio."
+
+4.  **OPTIMIZE FOR ENGAGEMENT:**
+    *   Use 1-2 relevant emojis to break up text and add personality.
+    *   Use formatting (like bullet points or numbered lists where appropriate on platforms like LinkedIn) to improve readability.
+
+5.  **MAXIMIZE REACH WITH HASHTAGS:**
+    *   Generate a block of 7-10 strategic hashtags.
+    *   **Mix:** Include 2-3 broad industry tags (#DesarrolloWeb, #MarketingDigital), 3-4 specific service tags (#Ecommerce, #TiendaOnline, #ShopifyDevs), and 1-2 community/niche tags (#PyMEs, #EmprendedoresDigitales).
+
+**FINAL OUTPUT:** The entire response should be the generated post, ready to be copied and pasted.`;
 
 const IMAGE_CREATOR_PROMPT_TEMPLATE = (style, concept, colors) => `Generate a high-quality, professional, and aesthetically pleasing image suitable for a social media campaign for a web development agency. The image must be visually striking and directly related to the provided concept.
 - Style: ${style}
@@ -198,13 +226,7 @@ exports.handler = async (event) => {
 
         if (mode === 'content-creator') {
             const { service, cta, platform, tone } = context;
-            const cta_instruction = cta ? `If provided, naturally include this call to action: "${cta}".` : "Do not include a call to action unless it feels natural.";
-
-            if (service === 'general') {
-                finalUserMessage = `Write a social media post for ${platform} with a ${tone} tone. It should be a general promotion for a web development agency that offers a wide range of services (like websites, e-commerce, SEO, security). The goal is to build brand authority and attract potential clients. ${cta_instruction}`;
-            } else {
-                finalUserMessage = `Write a social media post for ${platform} with a ${tone} tone. The post must specifically promote the service: "${service}". Explain its benefits clearly and persuasively for a potential client. ${cta_instruction}`;
-            }
+            finalUserMessage = `Service to promote: "${service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
         }
         
         const result = await chat.sendMessage(finalUserMessage);
