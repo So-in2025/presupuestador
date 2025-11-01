@@ -322,6 +322,8 @@ const tourSteps = [
 
 let currentStep = 0;
 let isTourActive = false;
+let tourScrollHandler = null;
+let tourResizeHandler = null;
 
 const tooltip = document.getElementById('tour-tooltip');
 const tourOverlay = document.getElementById('tour-overlay');
@@ -332,6 +334,18 @@ const nextBtn = document.getElementById('tour-next');
 const endBtn = document.getElementById('tour-end');
 const tourArrow = document.getElementById('tour-arrow');
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 function positionTooltip(targetElement) {
     if (!isTourActive || !targetElement) return;
 
@@ -339,7 +353,6 @@ function positionTooltip(targetElement) {
         tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
         
         const targetRect = targetElement.getBoundingClientRect();
-        // Recalcular las dimensiones del tooltip en cada paso por si el texto cambia
         tooltip.style.width = 'auto'; 
         const tooltipRect = tooltip.getBoundingClientRect();
         
@@ -347,37 +360,29 @@ function positionTooltip(targetElement) {
         let top, left;
         let arrowClass = 'tooltip-is-below';
 
-        // Lógica de posicionamiento vertical: Priorizar ARRIBA
         if (targetRect.top > tooltipRect.height + margin) {
             top = targetRect.top - tooltipRect.height - margin;
             arrowClass = 'tooltip-is-above';
         } else {
-            // Si no hay espacio arriba, colocar DEBAJO
             top = targetRect.bottom + margin;
             arrowClass = 'tooltip-is-below';
         }
 
-        // Lógica de posicionamiento horizontal: Centrar con el elemento
         left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
 
-        // Ajustar si se sale de los bordes de la pantalla
-        if (left < margin) {
-            left = margin;
-        }
+        if (left < margin) left = margin;
         if (left + tooltipRect.width > window.innerWidth - margin) {
             left = window.innerWidth - tooltipRect.width - margin;
         }
 
-        // Aplicar posiciones
         tooltip.style.top = `${top}px`;
         tooltip.style.left = `${left}px`;
         tooltip.classList.add(arrowClass);
 
-        // Alinear la flecha con el centro del elemento
         const targetCenterX = targetRect.left + targetRect.width / 2;
-        let arrowLeft = targetCenterX - left; // Posición de la flecha relativa al tooltip
+        let arrowLeft = targetCenterX - left;
         
-        const arrowWidth = 16; // Ancho de la base de la flecha (8px de borde * 2)
+        const arrowWidth = 16;
         if (arrowLeft < arrowWidth / 2) arrowLeft = arrowWidth / 2;
         if (arrowLeft > tooltipRect.width - arrowWidth / 2) arrowLeft = tooltipRect.width - arrowWidth / 2;
 
@@ -385,9 +390,10 @@ function positionTooltip(targetElement) {
     });
 }
 
-
 function showStep(index) {
     document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
+    if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
+    if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
 
     if (index >= tourSteps.length) {
         endTour();
@@ -407,16 +413,29 @@ function showStep(index) {
     targetElement.classList.add('tour-highlight-active');
     targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
+    const updatePosition = () => positionTooltip(targetElement);
+    tourScrollHandler = debounce(updatePosition, 15);
+    tourResizeHandler = debounce(updatePosition, 15);
+    window.addEventListener('scroll', tourScrollHandler);
+    window.addEventListener('resize', tourResizeHandler);
+
+    // Esperar a que el scroll termine para posicionar
     setTimeout(() => {
         tourText.textContent = step.text;
         stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
         tooltip.style.opacity = '1';
         tourOverlay.style.opacity = '1';
         positionTooltip(targetElement);
-    }, 350);
+    }, 400); // Aumentado para más estabilidad
 
+    // Lógica de botones corregida
     prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
-    nextBtn.textContent = index === tourSteps.length - 1 ? 'Finalizar Tour' : 'Siguiente';
+    if (index === tourSteps.length - 1) {
+        nextBtn.style.display = 'none'; // Ocultar "Siguiente"
+    } else {
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = 'Siguiente';
+    }
 }
 
 function endTour() {
@@ -425,10 +444,19 @@ function endTour() {
     document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
     tooltip.style.opacity = '0';
     tourOverlay.style.opacity = '0';
-    localStorage.setItem('zenTourCompleted', 'true');
-    window.removeEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
-}
+    
+    // Ocultar elementos después de la transición
+    setTimeout(() => {
+        tooltip.classList.add('hidden');
+        tourOverlay.classList.add('hidden');
+    }, 300);
 
+    localStorage.setItem('zenTourCompleted', 'true');
+    if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
+    if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
+    tourScrollHandler = null;
+    tourResizeHandler = null;
+}
 
 export function initializeTour() {
     if (localStorage.getItem('zenTourCompleted') === 'true') return;
@@ -449,10 +477,9 @@ export function initializeTour() {
             isTourActive = true;
             tooltip.classList.remove('hidden');
             tourOverlay.classList.remove('hidden');
-            tooltip.style.opacity = '0'; // Start hidden for fade-in
+            tooltip.style.opacity = '0';
             tourOverlay.style.opacity = '0';
             showStep(0);
-            window.addEventListener('resize', () => positionTooltip(document.querySelector('.tour-highlight-active')));
         } else {
             attempts++;
             if (attempts > maxAttempts) {
@@ -462,7 +489,6 @@ export function initializeTour() {
         }
     }, 100);
 }
-
 
 export function restartTour() {
     endTour();
