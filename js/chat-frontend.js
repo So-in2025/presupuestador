@@ -141,92 +141,96 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         let textToSpeak = message;
 
         if (sender === 'ai') {
-            if (currentAiMode === 'analyze') {
+            // --- REFACTORED LOGIC TO FIX WELCOME MESSAGE PARSING ---
+            // 1. If it's builder mode AND the message looks like JSON, try to parse it.
+            if (currentAiMode === 'builder' && message.trim().startsWith('{')) {
+                try {
+                    const jsonResponse = JSON.parse(message);
+                    if (!jsonResponse.introduction || !Array.isArray(jsonResponse.services)) {
+                        throw new Error("Invalid JSON structure for builder mode.");
+                    }
+                    
+                    let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
+                    if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
+                    if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
+                    textToSpeak = cleanText;
+                    
+                    let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
+                    
+                    const servicesByPriority = { essential: [], recommended: [], optional: [] };
+                    jsonResponse.services.forEach(service => {
+                        (servicesByPriority[service.priority] || servicesByPriority.optional).push(service);
+                    });
+
+                    const priorityConfig = {
+                        essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white border border-cyan-700' },
+                        recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white border border-purple-700' },
+                        optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white border border-slate-600' }
+                    };
+
+                    let actionsHTML = '';
+                    Object.keys(priorityConfig).forEach(priority => {
+                        if (servicesByPriority[priority].length > 0) {
+                            const config = priorityConfig[priority];
+                            let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
+                                const serviceInfo = findServiceById(serviceObject.id);
+                                if (serviceInfo) {
+                                    const displayName = serviceObject.name || serviceInfo.item.name;
+                                    const description = serviceInfo.item.description || 'Sin descripción.';
+                                    const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full";
+                                    return `
+                                        <div class="tooltip-container relative">
+                                            <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="${baseClass} ${config.btnClass}">
+                                                Añadir ${displayName}
+                                            </button>
+                                            <div class="tooltip-content">${description}</div>
+                                        </div>
+                                    `;
+                                }
+                                return `<div class="tooltip-container relative"><button class="bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed w-full" disabled>Error: "${serviceObject.name}" no encontrado</button></div>`;
+                            }).join('');
+
+                            actionsHTML += `<div class="mb-3"><p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p><div class="flex flex-wrap gap-2">${buttonsHTML}</div></div>`;
+                        }
+                    });
+                    
+                    if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
+                    finalHTML = messageText;
+                    
+                    if (actionsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">${actionsHTML}</div>`;
+
+                    if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
+                        let questionsHTML = jsonResponse.client_questions.map((question, index) => {
+                            const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                            const questionId = `question-${Date.now()}-${index}`;
+                            return `
+                                <div class="flex items-center justify-between gap-2 bg-slate-800 rounded-lg w-full p-2">
+                                    <p id="${questionId}" data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-text text-left text-sm text-slate-300 flex-grow cursor-pointer hover:text-cyan-300 transition">❔ ${question}</p>
+                                    <button data-action="copy-question" data-target-id="${questionId}" class="text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition flex-shrink-0">Copiar</button>
+                                </div>
+                            `;
+                        }).join('');
+                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2 w-full">${questionsHTML}</div></div>`;
+                    }
+                    
+                    if (jsonResponse.sales_pitch) {
+                        const pitchId = `pitch-${Date.now()}`;
+                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button data-action="copy-pitch" data-target-id="${pitchId}" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
+                    }
+
+                } catch (e) {
+                    // This catch now correctly triggers for malformed JSON, not welcome messages.
+                    finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
+                    textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
+                }
+            // 2. If it's analyze mode, format the list.
+            } else if (currentAiMode === 'analyze') {
                 finalHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
                 textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
+            // 3. Otherwise (welcome messages, objection mode), just render as plain text.
             } else {
-                 try {
-                    const jsonResponse = JSON.parse(message);
-                    if (jsonResponse.introduction && Array.isArray(jsonResponse.services)) {
-                        
-                        let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
-                        if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
-                        if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
-                        textToSpeak = cleanText;
-                        
-                        let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                        
-                        const servicesByPriority = { essential: [], recommended: [], optional: [] };
-                        jsonResponse.services.forEach(service => {
-                            (servicesByPriority[service.priority] || servicesByPriority.optional).push(service);
-                        });
-
-                        const priorityConfig = {
-                            essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white border border-cyan-700' },
-                            recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white border border-purple-700' },
-                            optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white border border-slate-600' }
-                        };
-
-                        let actionsHTML = '';
-                        Object.keys(priorityConfig).forEach(priority => {
-                            if (servicesByPriority[priority].length > 0) {
-                                const config = priorityConfig[priority];
-                                let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
-                                    // Para servicios nuevos (is_new), el `id` es el del "balde de costo",
-                                    // y el `name` es el descriptivo.
-                                    const serviceInfo = findServiceById(serviceObject.id);
-                                    if (serviceInfo) {
-                                        const displayName = serviceObject.name || serviceInfo.item.name;
-                                        const description = serviceInfo.item.description || 'Sin descripción.';
-                                        const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full";
-                                        return `
-                                            <div class="tooltip-container relative">
-                                                <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="${baseClass} ${config.btnClass}">
-                                                    Añadir ${displayName}
-                                                </button>
-                                                <div class="tooltip-content">${description}</div>
-                                            </div>
-                                        `;
-                                    }
-                                    return `<div class="tooltip-container relative"><button class="bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed w-full" disabled>Error: "${serviceObject.name}" no encontrado</button></div>`;
-                                }).join('');
-
-                                actionsHTML += `<div class="mb-3"><p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p><div class="flex flex-wrap gap-2">${buttonsHTML}</div></div>`;
-                            }
-                        });
-                        
-                        if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
-                        finalHTML = messageText;
-                        
-                        if (actionsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">${actionsHTML}</div>`;
-
-                        if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
-                            let questionsHTML = jsonResponse.client_questions.map((question, index) => {
-                                const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                const questionId = `question-${Date.now()}-${index}`;
-                                return `
-                                    <div class="flex items-center justify-between gap-2 bg-slate-800 rounded-lg w-full p-2">
-                                        <p id="${questionId}" data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-text text-left text-sm text-slate-300 flex-grow cursor-pointer hover:text-cyan-300 transition">❔ ${question}</p>
-                                        <button data-action="copy-question" data-target-id="${questionId}" class="text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition flex-shrink-0">Copiar</button>
-                                    </div>
-                                `;
-                            }).join('');
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2 w-full">${questionsHTML}</div></div>`;
-                        }
-                        
-                        if (jsonResponse.sales_pitch) {
-                            const pitchId = `pitch-${Date.now()}`;
-                            finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button data-action="copy-pitch" data-target-id="${pitchId}" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
-                        }
-                    } else {
-                         if (currentAiMode === 'builder') throw new Error("Not a valid JSON response for builder mode.");
-                    }
-                } catch (e) { 
-                    if (currentAiMode === 'builder') {
-                        finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
-                        textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
-                    }
-                }
+                finalHTML = message.replace(/\n/g, '<br>');
+                textToSpeak = message;
             }
 
             const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
@@ -245,6 +249,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         wrapper.appendChild(bubble);
         return wrapper;
     }
+
 
     function renderChatMessages() {
         chatMessagesContainer.innerHTML = '';
