@@ -1,19 +1,22 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v18 (Training Mode UI)
+ * v18 (Training Mode UI) -> Updated with TTS Voice Selector
  */
 
 import { getState } from './state.js';
 import { loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification } from './modals.js';
 
-// --- INICIO: BLOQUE TTS MODIFICADO ---
+// --- START: TTS VOICE SELECTOR BLOCK ---
 const ttsManager = {
     isPlaying: false,
     stop: function() {
-        window.speechSynthesis.cancel();
+        if (typeof window.speechSynthesis !== 'undefined') {
+            window.speechSynthesis.cancel();
+        }
         this.isPlaying = false;
+        // Reset any playing button visuals
         document.querySelectorAll('.tts-btn.playing').forEach(btn => {
             btn.innerHTML = '▶️';
             btn.classList.remove('playing');
@@ -21,12 +24,14 @@ const ttsManager = {
     },
     speak: function(text, buttonElement) {
         if (this.isPlaying) return;
+        if (typeof window.speechSynthesis === 'undefined') {
+            showNotification('error', 'No Soportado', 'Tu navegador no soporta la síntesis de voz.');
+            return;
+        }
+        
         const utterance = new SpeechSynthesisUtterance(text);
-
-        // 1. Try to use the user-selected voice first
         let voiceToUse = voices.find(v => v.voiceURI === selectedVoiceURI);
 
-        // 2. If it fails, apply the robust fallback logic to prioritize a male voice
         if (!voiceToUse && voices.length > 0) {
             voiceToUse = 
                 voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
@@ -42,6 +47,7 @@ const ttsManager = {
         utterance.lang = 'es-ES';
         utterance.rate = 1.05;
         utterance.pitch = 1;
+
         utterance.onstart = () => {
             this.isPlaying = true;
             if (buttonElement) {
@@ -49,6 +55,7 @@ const ttsManager = {
                 buttonElement.classList.add('playing');
             }
         };
+
         utterance.onend = () => {
             this.isPlaying = false;
             if (buttonElement) {
@@ -56,6 +63,7 @@ const ttsManager = {
                 buttonElement.classList.remove('playing');
             }
         };
+        
         window.speechSynthesis.speak(utterance);
     }
 };
@@ -64,7 +72,7 @@ const handleTTSButtonClick = (buttonElement) => {
     const text = buttonElement.dataset.text;
     const isCurrentlyPlayingThis = ttsManager.isPlaying && buttonElement.classList.contains('playing');
     ttsManager.stop();
-    shouldAutoplay = false;
+    shouldAutoplay = false; // User interaction stops autoplay
     if (!isCurrentlyPlayingThis) {
         ttsManager.speak(text, buttonElement);
     }
@@ -73,8 +81,8 @@ const handleTTSButtonClick = (buttonElement) => {
 let voices = [];
 let selectedVoiceURI = localStorage.getItem('zenAssistantVoiceURI');
 let shouldAutoplay = true;
+// --- END: TTS VOICE SELECTOR BLOCK ---
 
-// --- FIN: BLOQUE TTS MODIFICADO ---
 
 export function initializeChatAssistant(showApiKeyOverlay) {
     const chatMessagesContainer = document.getElementById('chat-messages');
@@ -332,14 +340,17 @@ export function initializeChatAssistant(showApiKeyOverlay) {
     }
     
     function populateVoiceList() {
+        if (typeof window.speechSynthesis === 'undefined') return;
         voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es-'));
         const voiceSelect = document.getElementById('voice-selector');
-        if (!voiceSelect || voices.length === 0) {
-            const container = document.getElementById('voice-selector-container');
-            if (container) container.remove();
+        const voiceContainer = document.getElementById('voice-selector-container');
+        
+        if (!voiceSelect || !voiceContainer || voices.length === 0) {
+            if (voiceContainer) voiceContainer.style.display = 'none';
             return;
         };
 
+        voiceContainer.style.display = 'flex';
         voiceSelect.innerHTML = '';
         voices.forEach(voice => {
             const option = document.createElement('option');
@@ -369,12 +380,13 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         if (document.getElementById('voice-selector-container')) return;
         const selectorContainer = document.createElement('div');
         selectorContainer.id = 'voice-selector-container';
-        selectorContainer.className = 'mb-2 p-2 bg-slate-800 rounded-md flex items-center gap-2';
+        selectorContainer.className = 'mb-2 p-2 bg-slate-800 rounded-md items-center gap-2';
         selectorContainer.innerHTML = `
             <label for="voice-selector" class="text-sm font-bold text-slate-300">Voz:</label>
             <select id="voice-selector" class="w-full styled-input text-sm accent-color"></select>
         `;
-        chatMessagesContainer.parentNode.insertBefore(selectorContainer, chatMessagesContainer);
+        // Insertar después del selector de modo
+        modeSelector.parentNode.insertBefore(selectorContainer, modeSelector.nextSibling);
 
         const voiceSelect = document.getElementById('voice-selector');
         voiceSelect.addEventListener('change', (e) => {
@@ -383,16 +395,6 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             ttsManager.stop();
         });
     }
-
-    if (typeof speechSynthesis !== 'undefined') {
-        createVoiceSelector();
-        populateVoiceList();
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = populateVoiceList;
-        }
-    }
-    
-    window.addEventListener('beforeunload', () => ttsManager.stop());
 
     const findServiceById = (id) => {
         const { allServices, monthlyPlans } = getState();
@@ -507,6 +509,16 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             allChatHistories = { builder: [], objection: [], analyze: [], entrenamiento: [] };
             switchMode('builder', true);
         }
+
+        if (typeof speechSynthesis !== 'undefined') {
+            createVoiceSelector();
+            populateVoiceList();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateVoiceList;
+            }
+        }
+    
+        window.addEventListener('beforeunload', () => ttsManager.stop());
 
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
