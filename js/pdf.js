@@ -15,28 +15,25 @@ export async function generatePdf(isForClient, button) {
 
     try {
         const { tasks, allServices, monthlyPlans, currentCurrency, usdToArsRate } = getState();
+        
+        // OBTENER DATOS DE MARCA DIRECTAMENTE DEL LOCALSTORAGE
         const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
         const accentColor = brandInfo.color || '#22D3EE';
+        
+        // Colores de alto contraste para el PDF
+        const textPrimaryColor = '#0F172A'; // Slate 900
+        const textSecondaryColor = '#334155'; // Slate 700
+        const textMutedColor = '#64748B'; // Slate 500
 
-        const logoFile = dom.pdfLogoInput.files[0];
-        let logoDataUrl = null;
-
-        if (logoFile) {
-            logoDataUrl = await new Promise(resolve => {
-                const reader = new FileReader();
-                reader.onload = (event) => resolve(event.target.result);
-                reader.readAsDataURL(logoFile);
-            });
-        } else {
-            logoDataUrl = brandInfo.logo || null;
-        }
+        // El logo ahora se obtiene siempre del almacenamiento, no del input del modal.
+        const logoDataUrl = brandInfo.logo || null;
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'px', format: 'a4' });
         let y = 30;
         const pageHeight = doc.internal.pageSize.height;
-        const leftMargin = 20;
-        const rightMargin = doc.internal.pageSize.width - 20;
+        const leftMargin = 30;
+        const rightMargin = doc.internal.pageSize.width - 30;
         const contentWidth = rightMargin - leftMargin;
 
         // --- HELPERS ---
@@ -52,7 +49,7 @@ export async function generatePdf(isForClient, button) {
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
                 doc.setFontSize(8);
-                doc.setTextColor('#64748B');
+                doc.setTextColor(textMutedColor);
                 doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width / 2, pageHeight - 15, { align: 'center' });
             }
         };
@@ -84,28 +81,33 @@ export async function generatePdf(isForClient, button) {
                 try { doc.addImage(logoDataUrl, 'PNG', leftMargin, y-10, 60, 30, undefined, 'FAST'); }
                 catch (e) { console.error("Error al añadir logo:", e); }
             }
-            const resellerInfo = dom.pdfResellerInfo.value.split('\n');
+            // OBTENER INFO DEL REVENDEDOR DESDE LOCALSTORAGE
+            const resellerInfo = (brandInfo.resellerInfo || 'Datos no configurados').split('\n');
             doc.setFontSize(9);
-            doc.setTextColor('#94A3B8');
+            doc.setTextColor(textSecondaryColor);
             doc.text(resellerInfo, rightMargin, y, { align: 'right' });
             
             y += 40;
+            // OBTENER INFO DEL CLIENTE DESDE EL MODAL
             const clientInfo = dom.pdfClientInfo.value.split('\n');
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor('#F8FAFC');
+            doc.setTextColor(textPrimaryColor);
             doc.text("Presupuesto Para:", leftMargin, y);
             doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textSecondaryColor);
             doc.text(clientInfo, leftMargin, y + 10);
             
             const date = new Date().toLocaleDateString('es-ES');
             doc.setFont('helvetica', 'bold');
+            doc.setTextColor(textPrimaryColor);
             doc.text("Fecha de Emisión:", rightMargin, y, { align: 'right' });
             doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textSecondaryColor);
             doc.text(date, rightMargin, y + 10, { align: 'right' });
             
             y += 40;
-            doc.setDrawColor('#334155');
+            doc.setDrawColor('#E2E8F0'); // Slate 200
             doc.line(leftMargin, y, rightMargin, y);
             y += 20;
             
@@ -125,7 +127,7 @@ export async function generatePdf(isForClient, button) {
                         const x = startX + (i * colWidth);
                         doc.setFontSize(12);
                         doc.setFont('helvetica', 'bold');
-                        doc.setTextColor('#F8FAFC');
+                        doc.setTextColor(textPrimaryColor);
                         doc.text(tier.name, x + colWidth / 2, y, { align: 'center', maxWidth: colWidth - 10 });
                     });
                     y += 20;
@@ -133,18 +135,18 @@ export async function generatePdf(isForClient, button) {
                     const allTierServices = [...new Set(task.tiers.flatMap(t => t.services.map(s => s.id)))].map(id => findServiceById(id));
                     
                     doc.setFontSize(9);
-                    doc.setDrawColor('#334155');
+                    doc.setDrawColor('#E2E8F0');
                     allTierServices.forEach(service => {
                         checkPageBreak(30);
                         doc.setFont('helvetica', 'bold');
-                        doc.setTextColor('#CBD5E1');
+                        doc.setTextColor(textSecondaryColor);
                         doc.text(service.name, leftMargin, y, {maxWidth: colWidth - 20});
                         
                         task.tiers.forEach((tier, i) => {
                             const x = startX + (i * colWidth);
                             const hasService = tier.services.some(s => s.id === service.id);
                             doc.setFont('helvetica', 'bold');
-                            doc.setTextColor(hasService ? '#4ADE80' : '#EF4444');
+                            doc.setTextColor(hasService ? '#16A34A' : '#DC2626'); // Green 600, Red 600
                             doc.text(hasService ? '✓' : '—', x + colWidth / 2, y, { align: 'center' });
                         });
                         y += 15;
@@ -174,24 +176,24 @@ export async function generatePdf(isForClient, button) {
                     if (item) {
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'bold');
-                        doc.setTextColor('#F8FAFC');
+                        doc.setTextColor(textPrimaryColor);
                         doc.text(item.name, leftMargin, y);
                         y += 10;
                         doc.setFontSize(9);
-                        doc.setTextColor('#94A3B8');
+                        doc.setTextColor(textMutedColor);
                         const descriptionLines = doc.splitTextToSize(item.description, contentWidth);
                         doc.text(descriptionLines, leftMargin, y);
                         y += descriptionLines.length * 8 + 8;
                     } else {
                         doc.setFontSize(11);
                         doc.setFont('helvetica', 'bold');
-                        doc.setTextColor('#F8FAFC');
+                        doc.setTextColor(textPrimaryColor);
                         doc.text("Desglose de Servicios:", leftMargin, y);
                         y += 12;
                         doc.setFontSize(10);
                         task.services.forEach(svc => {
                             checkPageBreak();
-                            doc.setTextColor('#CBD5E1');
+                            doc.setTextColor(textSecondaryColor);
                             doc.text(`• ${svc.name}`, leftMargin + 4, y);
                             y += 10;
                         });
@@ -199,33 +201,34 @@ export async function generatePdf(isForClient, button) {
                     }
                     
                     checkPageBreak(30);
-                    doc.setDrawColor('#334155');
+                    doc.setDrawColor('#E2E8F0');
                     doc.line(leftMargin + 160, y, rightMargin, y);
                     y += 10;
                     doc.setFontSize(14);
                     doc.setFont('helvetica', 'bold');
-                    doc.setTextColor('#4ADE80');
+                    doc.setTextColor('#16A34A');
                     doc.text("Monto Total:", rightMargin - 80, y, { align: 'right' });
                     doc.text(formatPdfPrice(task.totalClient), rightMargin, y, { align: 'right' });
                     y += 40;
                 }
 
                 if (index < tasks.length - 1) {
-                    doc.setDrawColor('#334155');
+                    doc.setDrawColor('#E2E8F0');
                     doc.line(leftMargin, y - 10, rightMargin, y - 10);
                 }
             });
             
-            const terms = dom.pdfTerms.value;
+            // OBTENER TÉRMINOS DESDE LOCALSTORAGE
+            const terms = brandInfo.terms;
             if(terms){
                 checkPageBreak(80);
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor('#F8FAFC');
+                doc.setTextColor(textPrimaryColor);
                 doc.text("Términos y Condiciones", leftMargin, y);
                 y += 10;
                 doc.setFontSize(8);
-                doc.setTextColor('#94A3B8');
+                doc.setTextColor(textMutedColor);
                 const termsLines = doc.splitTextToSize(terms, contentWidth);
                 doc.text(termsLines, leftMargin, y);
             }
@@ -239,158 +242,125 @@ export async function generatePdf(isForClient, button) {
         }
 
         // ====================================================================
-        // --- VERSIÓN 2: BRIEF DE DESARROLLO (PARA EQUIPO TÉCNICO) ---
+        // --- VERSIÓN 2: ORDEN DE TRABAJO INTERNA (PARA SO->IN) ---
         // ====================================================================
         
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(accentColor);
-        doc.text("Brief de Desarrollo - Reporte Técnico", doc.internal.pageSize.width / 2, y, { align: 'center' });
+        doc.text("Orden de Trabajo Interna (SO->IN)", doc.internal.pageSize.width / 2, y, { align: 'center' });
         y += 12;
         doc.setFontSize(10);
-        doc.setTextColor('#94A3B8');
+        doc.setTextColor(textMutedColor);
         doc.text(`Fecha de Generación: ${new Date().toLocaleString('es-ES')}`, doc.internal.pageSize.width / 2, y, { align: 'center' });
         
-        let grandTotalDev = tasks.reduce((sum, t) => {
-            if (t.isTiered) return sum; // Ignorar tiered para el total general
-            return sum + t.totalDev;
-        }, 0);
+        y += 20;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(textPrimaryColor);
+        doc.text("Generado por (Revendedor):", leftMargin, y);
+        y += 10;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(textSecondaryColor);
+        // OBTENER INFO DEL REVENDEDOR DESDE LOCALSTORAGE
+        const resellerInfo = (brandInfo.resellerInfo || 'Datos no configurados').split('\n');
+        doc.text(resellerInfo, leftMargin, y);
+        y += resellerInfo.length * 10 + 10;
 
-        tasks.forEach((task, index) => {
+        tasks.forEach((task) => {
             checkPageBreak(100);
-            y += 30;
-            doc.setDrawColor('#334155');
-            doc.line(leftMargin, y, rightMargin, y);
             y += 20;
+            doc.setDrawColor('#E2E8F0');
+            doc.line(leftMargin, y, rightMargin, y);
+            y += 15;
             
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor('#F8FAFC');
-            doc.text(`Proyecto: ${task.webName} (Cliente: ${task.clientName})`, leftMargin, y);
-            
-            const taskTotalDev = task.isTiered ? task.tiers.reduce((sum, t) => sum + t.totalDev, 0) : task.totalDev;
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor('#FBBF24');
-            doc.text(`Costo Producción: ${formatPdfPrice(taskTotalDev)}`, rightMargin, y, { align: 'right' });
-            y += 25;
+            doc.setTextColor(textPrimaryColor);
+            doc.text(`Proyecto: ${task.webName}`, leftMargin, y);
+            y += 15;
+            doc.setFontSize(10);
+            doc.setTextColor(textSecondaryColor);
+            doc.text(`Cliente Final: ${task.clientName}`, leftMargin, y);
+            y += 20;
 
-            doc.setFontSize(12);
+            // Resumen Financiero
+            doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor('#A5B4FC');
+            doc.setTextColor(textPrimaryColor);
+            doc.text("Resumen Financiero:", leftMargin, y);
+            y += 12;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textSecondaryColor);
+            const cost = task.isTiered ? task.tiers.reduce((sum, t) => sum + t.totalDev, 0) : task.totalDev;
+            const price = task.isTiered ? 'N/A (Ver desglose)' : task.totalClient;
+            const profit = task.isTiered ? 'N/A' : price - cost;
+            doc.text(`- Costo de Producción (para SO->IN):`, leftMargin + 5, y);
+            doc.text(formatPdfPrice(cost), rightMargin, y, { align: 'right' });
+            y += 10;
+            doc.text(`- Precio Final (para Cliente):`, leftMargin + 5, y);
+            doc.text(task.isTiered ? 'N/A' : formatPdfPrice(price), rightMargin, y, { align: 'right' });
+            y += 10;
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor('#16A34A');
+            doc.text(`- Margen de Ganancia (Revendedor):`, leftMargin + 5, y);
+            doc.text(task.isTiered ? 'N/A' : formatPdfPrice(profit), rightMargin, y, { align: 'right' });
+            y += 20;
+
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(textPrimaryColor);
+            doc.text("Desglose Técnico para Desarrollo:", leftMargin, y);
+            y += 12;
+
+            const renderServiceDetails = (service) => {
+                const serviceDetails = findServiceById(service.id);
+                checkPageBreak(30);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(textSecondaryColor);
+                doc.text(`• ${serviceDetails.name}`, leftMargin + 5, y);
+                y += 10;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(textMutedColor);
+                const descLines = doc.splitTextToSize(serviceDetails.description, contentWidth - 10);
+                doc.text(descLines, leftMargin + 10, y);
+                y += descLines.length * 8 + 5;
+            };
 
             if (task.isTiered) {
-                 doc.text('PROPUESTA POR NIVELES - DESGLOSE TÉCNICO:', leftMargin, y);
-                 y += 15;
                  task.tiers.forEach(tier => {
                      checkPageBreak(30);
-                     doc.setFontSize(11);
+                     doc.setFontSize(10);
                      doc.setFont('helvetica', 'bold');
-                     doc.setTextColor('#F8FAFC');
-                     doc.text(`NIVEL: ${tier.name} (${formatPdfPrice(tier.totalDev)})`, leftMargin + 5, y);
+                     doc.setTextColor(textPrimaryColor);
+                     doc.text(`NIVEL: ${tier.name} (Costo: ${formatPdfPrice(tier.totalDev)})`, leftMargin + 5, y);
                      y += 12;
-                     if (tier.services.length === 0) {
-                         doc.setFontSize(9); doc.setTextColor('#94A3B8');
-                         doc.text('No hay servicios seleccionados para este nivel.', leftMargin + 10, y);
-                         y += 10;
-                     } else {
-                         tier.services.forEach(svc => {
-                             const serviceDetails = findServiceById(svc.id);
-                             checkPageBreak(30);
-                             doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor('#CBD5E1');
-                             doc.text(`• ${serviceDetails.name} (${formatPdfPrice(serviceDetails.price)})`, leftMargin + 10, y);
-                             y += 10;
-                             doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor('#94A3B8');
-                             const descLines = doc.splitTextToSize(serviceDetails.description, contentWidth - 15);
-                             doc.text(descLines, leftMargin + 15, y);
-                             y += descLines.length * 8 + 5;
-                         });
-                     }
+                     tier.services.forEach(renderServiceDetails);
                  });
             } else if (task.package) {
-                 const pkg = findServiceById(task.package.id);
-                 doc.text(`PAQUETE SELECCIONADO: ${pkg.name}`, leftMargin, y);
-                 y += 15;
-                 doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor('#94A3B8');
-                 const descLines = doc.splitTextToSize(pkg.description, contentWidth);
-                 doc.text(descLines, leftMargin, y);
-                 y += descLines.length * 8 + 10;
+                renderServiceDetails(task.package);
             } else if (task.plan) {
                 const planDetails = monthlyPlans.find(p => p.id == task.plan.id);
-                const extraPoints = task.plan.extraPointsPurchased || 0;
-                const totalPointsInBudget = planDetails.points + extraPoints;
-                doc.text(`PLAN MENSUAL: ${planDetails.name}`, leftMargin, y);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(textPrimaryColor);
+                doc.text(`PLAN MENSUAL: ${planDetails.name}`, leftMargin + 5, y);
                 y += 12;
-                doc.setFontSize(10); doc.setTextColor('#F8FAFC');
-                doc.text(`Puntos Asignados: ${task.plan.pointsUsed} / ${totalPointsInBudget} (Base: ${planDetails.points} + Extra: ${extraPoints})`, leftMargin, y);
-                y += 10;
-                if (extraPoints > 0) {
-                     doc.text(`Costo Puntos Extra: ${formatPdfPrice(task.plan.extraPointsCost)}`, leftMargin, y);
-                     y += 15;
-                } else {
-                     y += 5;
-                }
-                doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-                doc.text('Servicios a Desarrollar en el Plan:', leftMargin, y);
-                y += 12;
-                if (task.plan.selectedServiceIds.length === 0) {
-                    doc.setFontSize(9); doc.setTextColor('#94A3B8');
-                    doc.text('No hay servicios específicos seleccionados para este plan.', leftMargin + 5, y);
-                    y += 10;
-                } else {
-                    task.plan.selectedServiceIds.forEach(serviceId => {
-                        const serviceDetails = findServiceById(serviceId);
-                        checkPageBreak(30);
-                        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor('#CBD5E1');
-                        doc.text(`• ${serviceDetails.name} (${serviceDetails.pointCost} Pts)`, leftMargin + 5, y);
-                        y += 10;
-                        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor('#94A3B8');
-                        const descLines = doc.splitTextToSize(serviceDetails.description, contentWidth - 10);
-                        doc.text(descLines, leftMargin + 10, y);
-                        y += descLines.length * 8 + 5;
-                    });
-                }
+                (task.plan.selectedServiceIds || []).forEach(id => renderServiceDetails({id}));
             } else {
-                doc.text('SERVICIOS INDIVIDUALES A DESARROLLAR:', leftMargin, y);
-                y += 15;
-                if (task.services.length === 0) {
-                    doc.setFontSize(9); doc.setTextColor('#94A3B8');
-                    doc.text('No hay servicios individuales seleccionados.', leftMargin + 5, y);
-                    y += 10;
-                } else {
-                    task.services.forEach(svc => {
-                        const serviceDetails = findServiceById(svc.id);
-                        checkPageBreak(30);
-                        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor('#CBD5E1');
-                        doc.text(`• ${serviceDetails.name}`, leftMargin + 5, y);
-                        y += 10;
-                        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor('#94A3B8');
-                        const descLines = doc.splitTextToSize(serviceDetails.description, contentWidth - 10);
-                        doc.text(descLines, leftMargin + 10, y);
-                        y += descLines.length * 8 + 5;
-                    });
-                }
+                task.services.forEach(renderServiceDetails);
             }
         });
 
-        checkPageBreak(60);
-        y+=20;
-        doc.setDrawColor('#334155');
-        doc.line(leftMargin, y, rightMargin, y);
-        y += 20;
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor('#4ADE80');
-        doc.text("COSTO PRODUCCIÓN TOTAL (PROYECTOS NO TIERED):", rightMargin, y, { align: 'right' });
-        y += 20;
-        doc.setFontSize(20);
-        doc.text(formatPdfPrice(grandTotalDev), rightMargin, y, { align: 'right' });
-
         addPageNumbers();
-        const fileName = `Brief-Desarrollo-${new Date().toISOString().slice(0,10)}.pdf`;
+        const fileName = `Orden-Trabajo-${tasks[0]?.webName || 'Proyecto'}.pdf`;
         doc.save(fileName);
-        showNotification('success', 'PDF Generado', `El brief de desarrollo '${fileName}' ha sido exportado.`);
+        showNotification('success', 'PDF Generado', `La orden de trabajo '${fileName}' ha sido exportada.`);
         closePdfOptionsModal();
+
     } catch (err) {
         console.error("Error al generar PDF:", err);
         showNotification('error', 'Error de PDF', 'No se pudo generar el documento. Revisa la consola para más detalles.');

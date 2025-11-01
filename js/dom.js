@@ -33,7 +33,4 @@ export const pdfOptionsModal = document.getElementById('pdfOptionsModal');
 // Inputs de Modales
 export const customServiceNameInput = document.getElementById('customServiceName');
 export const customServicePriceInput = document.getElementById('customServicePrice');
-export const pdfLogoInput = document.getElementById('pdfLogoInput');
-export const pdfResellerInfo = document.getElementById('pdfResellerInfo');
 export const pdfClientInfo = document.getElementById('pdfClientInfo');
-export const pdfTerms = document.getElementById('pdfTerms');

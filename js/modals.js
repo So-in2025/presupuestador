@@ -53,19 +53,26 @@ export function closeCustomServiceModal() { closeModal(dom.customServiceModal); 
 export function showPdfOptionsModal() {
     const { tasks } = getState();
     if (tasks.length === 0) {
-        document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = true);
         return showNotification('info', 'Vacío', 'No hay propuestas guardadas para exportar.');
     }
-    document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = false);
-
     
-    const brandInfo = localStorage.getItem('zenBrandInfo');
-    if(brandInfo) {
-        const { resellerInfo } = JSON.parse(brandInfo);
-        if (resellerInfo && !dom.pdfResellerInfo.value) {
-            dom.pdfResellerInfo.value = resellerInfo;
-        }
+    // CRITICAL UX CHECK: Asegurarse de que la marca esté configurada primero.
+    const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
+    if (!brandInfo.logo || !brandInfo.resellerInfo || !brandInfo.terms) {
+        showNotification(
+            'error', 
+            'Configuración Requerida', 
+            'Por favor, configura tu marca (logo, datos y términos) en "⚙️ Configuración de Marca" antes de generar documentos.'
+        );
+        showBrandingModal(); // Guía al usuario directamente a la solución.
+        return;
     }
+
+    document.querySelectorAll('#pdfOptionsModal button[id^="generate-"]').forEach(btn => btn.disabled = false);
+    
+    // Limpiar la información del cliente de la generación anterior.
+    dom.pdfClientInfo.value = '';
+    
     openModal(dom.pdfOptionsModal);
 }
 
@@ -94,6 +101,8 @@ export function removeCustomService(id) {
 export function showBrandingModal() {
     const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
     document.getElementById('brandColorInput').value = brandInfo.color || '#22D3EE';
+    document.getElementById('brandResellerInfo').value = brandInfo.resellerInfo || '';
+    document.getElementById('brandTerms').value = brandInfo.terms || '';
     openModal(document.getElementById('brandingModal'));
 }
 

@@ -676,27 +676,16 @@
         </div>
     </div>
     <div id="pdfOptionsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
-        <div class="card-bg w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
+        <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
                 <h3 class="text-lg">Generar Documentos de Propuesta</h3>
                 <button id="close-pdf-options-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
             <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
                 <div>
-                    <label for="pdfLogoInput" class="block text-sm font-medium text-slate-300 mb-1">Tu Logo (Marca Blanca):</label>
-                    <input type="file" id="pdfLogoInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800">
-                </div>
-                <div>
-                    <label for="pdfResellerInfo" class="block text-sm font-medium text-slate-300 mb-1">Tus Datos de Contacto:</label>
-                    <textarea id="pdfResellerInfo" class="w-full styled-textarea" rows="3" placeholder="Tu Nombre / Nombre de tu Agencia&#10;tupaginaweb.com&#10;tu@email.com"></textarea>
-                </div>
-                <div>
                     <label for="pdfClientInfo" class="block text-sm font-medium text-slate-300 mb-1">Datos del Cliente Final:</label>
-                    <textarea id="pdfClientInfo" class="w-full styled-textarea" rows="3" placeholder="Nombre del Contacto del Cliente&#10;Nombre de la Empresa Cliente&#10;email@cliente.com"></textarea>
-                </div>
-                <div>
-                    <label for="pdfTerms" class="block text-sm font-medium text-slate-300 mb-1">Tus Términos y Condiciones:</label>
-                    <textarea id="pdfTerms" class="w-full styled-textarea" rows="4" placeholder="Ej: Validez de la propuesta: 15 días. Condiciones de pago: 50% por adelantado para iniciar, 50% a la entrega final."></textarea>
+                    <p class="text-xs text-slate-400 mb-2">Introduce la información del cliente para esta propuesta específica.</p>
+                    <textarea id="pdfClientInfo" class="w-full styled-textarea" rows="4" placeholder="Nombre del Contacto del Cliente&#10;Nombre de la Empresa Cliente&#10;email@cliente.com"></textarea>
                 </div>
                 <div class="pt-2 space-y-3">
                     <button id="generate-client-pdf-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 btn-press-feedback" disabled>
