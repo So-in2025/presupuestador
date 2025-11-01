@@ -324,30 +324,43 @@
             padding-bottom: 0.75rem;
             margin-bottom: 1.25rem !important;
         }
-
-        /* --- NUEVO DASHBOARD DE RENDIMIENTO ESCALABLE --- */
-        .stat-card-new {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+        
+        /* --- NUEVO DASHBOARD DE RENDIMIENTO (REDISEÑADO) --- */
+        .stat-card {
             background-color: rgba(15, 23, 42, 0.6);
             border: 1px solid var(--border-color);
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 0.25rem;
         }
-        .stat-card-title-new {
-            font-size: 0.875rem; /* 14px */
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stat-card-title {
+            font-size: 0.75rem; /* 12px */
             font-weight: 600;
             color: var(--text-secondary);
-            margin-bottom: 0.125rem; /* 2px */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .stat-card-value-new {
-            font-size: 1.875rem; /* 30px */
-            font-weight: 800;
-            line-height: 1.1;
-            color: var(--text-primary);
-            word-break: break-all; /* Prevents overflow with very long numbers */
+        .stat-card-icon {
+            color: var(--text-secondary);
         }
+        .stat-card-value {
+            font-size: clamp(1.25rem, 4vw, 1.5rem); /* Responsive font size */
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap; /* Prevents number from breaking */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: right;
+        }
+
 
         /* --- ESTILOS ACORDEÓN DE SERVICIOS --- */
         .accordion-item .accordion-header {
@@ -655,46 +668,38 @@
 
                     <div id="performance-dashboard" class="card-bg p-5 rounded-xl shadow-lg">
                         <h2 class="text-2xl font-semibold text-teal-300">Dashboard de Rendimiento</h2>
-                        <div class="mt-4 flex flex-col gap-4">
+                        <div class="mt-4 grid grid-cols-2 gap-4">
                             <!-- Ventas -->
-                            <div class="stat-card-new">
-                                <div class="flex-shrink-0 bg-green-900/50 text-green-400 rounded-lg p-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <span class="stat-card-title">Ventas (Mes)</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>
                                 </div>
-                                <div>
-                                    <div class="stat-card-title-new">Ventas (Mes)</div>
-                                    <div id="sales-this-month" class="stat-card-value-new text-green-400">$0.00</div>
-                                </div>
+                                <div id="sales-this-month" class="stat-card-value text-green-400">$0.00</div>
                             </div>
                             <!-- Ganancia -->
-                            <div class="stat-card-new">
-                                <div class="flex-shrink-0 bg-yellow-900/50 text-yellow-400 rounded-lg p-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <span class="stat-card-title">Ganancia (Mes)</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 </div>
-                                <div>
-                                    <div class="stat-card-title-new">Ganancia (Mes)</div>
-                                    <div id="profit-this-month" class="stat-card-value-new text-yellow-400">$0.00</div>
-                                </div>
+                                <div id="profit-this-month" class="stat-card-value text-yellow-400">$0.00</div>
                             </div>
                             <!-- Pipeline -->
-                            <div class="stat-card-new">
-                                <div class="flex-shrink-0 bg-cyan-900/50 text-cyan-400 rounded-lg p-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <span class="stat-card-title">Pipeline Activo</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                 </div>
-                                <div>
-                                    <div class="stat-card-title-new">Pipeline Activo</div>
-                                    <div id="active-pipeline-value" class="stat-card-value-new text-cyan-400">$0.00</div>
-                                </div>
+                                <div id="active-pipeline-value" class="stat-card-value text-cyan-400">$0.00</div>
                             </div>
                             <!-- Tasa de Cierre -->
-                            <div class="stat-card-new">
-                                <div class="flex-shrink-0 bg-fuchsia-900/50 text-fuchsia-400 rounded-lg p-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            <div class="stat-card">
+                                <div class="stat-card-header">
+                                    <span class="stat-card-title">Tasa de Cierre</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 stat-card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                                 </div>
-                                <div>
-                                    <div class="stat-card-title-new">Tasa de Cierre</div>
-                                    <div id="close-rate" class="stat-card-value-new text-fuchsia-400">0%</div>
-                                </div>
+                                <div id="close-rate" class="stat-card-value text-fuchsia-400">0%</div>
                             </div>
                         </div>
                     </div>
