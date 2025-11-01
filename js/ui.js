@@ -238,9 +238,16 @@ export function saveBranding() {
     const color = document.getElementById('brandColorInput').value;
     const logoInput = document.getElementById('brandLogoInput');
     const logoFile = logoInput.files[0];
+    const resellerInfo = document.getElementById('brandResellerInfo').value;
+    const terms = document.getElementById('brandTerms').value;
     
     const currentInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
-    const newInfo = { ...currentInfo, color: color };
+    const newInfo = { 
+        ...currentInfo, 
+        color,
+        resellerInfo,
+        terms 
+    };
 
     if (logoFile) {
         const reader = new FileReader();
@@ -248,13 +255,13 @@ export function saveBranding() {
             newInfo.logo = e.target.result;
             localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
             applyBranding(newInfo.logo, newInfo.color);
-            document.getElementById('close-branding-modal-btn').click(); // Use the button to close consistently
+            document.getElementById('close-branding-modal-btn').click();
         };
         reader.readAsDataURL(logoFile);
     } else {
         localStorage.setItem('zenBrandInfo', JSON.stringify(newInfo));
         applyBranding(newInfo.logo, newInfo.color);
-        document.getElementById('close-branding-modal-btn').click(); // Use the button to close consistently
+        document.getElementById('close-branding-modal-btn').click();
     }
 }
 
