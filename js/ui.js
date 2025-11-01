@@ -510,7 +510,7 @@ export function updateWhatsAppLink() {
     const resellerName = resellerInfo.split('\n')[0].trim() || 'Afiliado Zen';
     
     const phone = '5492617145654';
-    const message = `Hola, soy el revendedor "${resellerName}". Necesito soporte/asistencia, ¿me puedes ayudar?`;
+    const message = `Hola, soy el revendedor "${resellerName}".¿podemos hablar?`;
     const encodedMessage = encodeURIComponent(message);
     
     whatsAppBtn.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
