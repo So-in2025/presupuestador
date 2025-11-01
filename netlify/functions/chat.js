@@ -139,74 +139,35 @@ exports.handler = async (event) => {
             }
             const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, finalConcept, colors);
 
-             const result = await model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json" // The model itself doesn't use this, but it's good practice
-                },
-                // This is a special configuration for image generation with this model
-                // The library might abstract this differently in future versions
-            });
-
-            // This is a placeholder for the correct way to get image data.
-            // With the current library version, image generation might be a different method.
-            // Let's assume `generateContent` with a special prompt structure returns image data.
-            // In a real scenario, you'd use a dedicated image generation method if available.
-            
-            // The following is a simulated response structure based on potential API outputs
-            // The actual structure might differ. We need to find the base64 data.
+            // CORRECTED: Single, direct call for image generation with robust error handling.
+            const result = await model.generateContent(prompt);
             const response = await result.response;
-            const imagePart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+            
+            const candidate = response.candidates?.[0];
 
-            // This part is a guess, let's try another approach for image generation
-             const imageModel = genAI.getGenerativeModel({
-                model: "gemini-pro-vision", // A model that can handle images
-                // The library might have a different way to specify image modality
-            });
-            // This is a more modern approach, let's see if the library supports it
-            const contentParts = [
-                { text: prompt },
-                // We expect an image back
-            ];
-            
-            // This is a mock-up of what an image generation call might look like
-            // The actual implementation depends heavily on the library's capabilities
-            // for image generation. The `gemini-2.5-flash-image` is not standard.
-            // Assuming the call structure is similar to text but returns different content parts.
-            
-            // Failsafe: Let's assume a hypothetical `generateImage` method for clarity
-            // Since the user's code uses `generateContent`, we'll stick to that.
-            // The user's provided code is using a custom model name 'gemini-2.5-flash-image'
-            // and `Modality.IMAGE`. This is not standard in the library.
-            // The most likely correct approach is to call the `imagen` models.
-            // But let's stick to the user's structure and see if we can make it work.
-            
-            // The user's code `ai.models.generateContent` is from the newer `@google/genai`
-            // but they are using `@google/generative-ai`. Let's correct the code for their library.
-
-            const resultImg = await model.generateContentStream([prompt]);
-            let base64Image = "";
-            for await (const chunk of resultImg.stream) {
-                // This part is tricky as stream handling for images is not standard.
-                // We will assume the API returns JSON with image data in a single response for simplicity.
+            // IMPROVED ERROR HANDLING: Check if the AI refused to generate an image.
+            if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+                const refusalText = response.text(); // The API might return a text reason for failure.
+                if (refusalText) {
+                    throw new Error(`La IA no generó una imagen. Razón: ${refusalText.substring(0, 150)}...`);
+                }
+                throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
             }
-            // Let's revert to a single response method.
 
-            const generationResult = await model.generateContent(prompt);
-            const generationResponse = await generationResult.response;
-            const candidate = generationResponse.candidates[0];
+            const imagePart = candidate.content.parts.find(p => p.inlineData && p.inlineData.data);
 
-            if (!candidate.content || !candidate.content.parts) {
-                 throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
-            }
-            const imgDataPart = candidate.content.parts.find(p => p.inlineData);
-            if (!imgDataPart) {
-                throw new Error("Respuesta de la IA no contiene datos de imagen.");
+            if (!imagePart) {
+                // IMPROVEMENT: Handle cases where the AI responds with text instead of an image.
+                const textResponse = response.text();
+                if (textResponse) {
+                     throw new Error(`La IA respondió con texto en lugar de una imagen: "${textResponse.substring(0, 100)}..."`);
+                }
+                throw new Error("La respuesta de la IA no contiene datos de imagen válidos.");
             }
             
             return {
                 statusCode: 200,
-                body: JSON.stringify({ base64Image: imgDataPart.inlineData.data })
+                body: JSON.stringify({ base64Image: imagePart.inlineData.data })
             };
         }
         
@@ -232,8 +193,9 @@ exports.handler = async (event) => {
         const result = await chat.sendMessage(finalUserMessage);
         const response = await result.response;
 
-        // CRITICAL FIX: The original code used response.text(), which is incorrect for this library version and caused the API KEY error.
-        const responseText = response.candidates?.[0]?.content?.parts?.[0]?.text;
+        // CRITICAL FIX: The original code used a property access (`response.candidates...`) which is incorrect for the @google/generative-ai library.
+        // The correct method for this library version is `response.text()`. This single change fixes the JSON parsing error in the frontend for the "Constructor" mode.
+        const responseText = response.text();
 
         if (!responseText) {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
