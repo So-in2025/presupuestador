@@ -1,14 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v36 - Lead Gen Plan
+ * Lógica de Intención: v37 - Image Prompt Generator
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
 const TEXT_MODEL_NAME = 'gemini-2.5-flash';
-const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
@@ -126,9 +125,8 @@ const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite 
     *   **Desire (Value Proposition & Benefits):** Do not list features. Translate features into tangible business outcomes. Instead of "Pasarela de Pagos", say "Convierte visitantes en clientes con un proceso de pago sin fricciones que inspira confianza y aumenta tus ingresos." Focus on ROI, time saved, and competitive advantage.
     *   **Action (Call to Action):** End with a powerful, low-friction CTA. If the user provides one, integrate it. If not, create a compelling one. Examples: "Comenta 'ECOMMERCE' y te envío un diagnóstico gratuito por DM." or "¿Listo para escalar? Agenda una llamada estratégica en el link de nuestra bio."
 
-4.  **OPTIMIZE FOR ENGAGEMENT:**
-    *   Use 1-2 relevant emojis to break up text and add personality.
-    *   Use formatting (like bullet points or numbered lists where appropriate on platforms like LinkedIn) to improve readability.
+4.  **OPTIMIZE FOR ENGAGEMENT & FORMATTING:**
+    *   **Formatting Rules:** Do NOT use markdown like \`**\` for bolding. Use line breaks to create readable paragraphs. Strategically use 2-4 relevant emojis to enhance the message and visual appeal.
 
 5.  **MAXIMIZE REACH WITH HASHTAGS:**
     *   Generate a block of 7-10 strategic hashtags.
@@ -136,12 +134,19 @@ const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite 
 
 **FINAL OUTPUT:** The entire response should be the generated post, ready to be copied and pasted.`;
 
-const IMAGE_CREATOR_PROMPT_TEMPLATE = (style, concept, colors) => `Generate a high-quality, professional, and aesthetically pleasing image suitable for a social media campaign for a web development agency. The image must be visually striking and directly related to the provided concept.
-- Style: ${style}
-- Core Concept: ${concept}
-- Color Palette: ${colors}
-Do not include any text, logos, or watermarks in the image. The image should be clean and symbolic.`;
+const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are an expert AI prompt engineer specializing in creating hyper-detailed, artistic prompts for image generation models like Midjourney or DALL-E. Your task is to analyze the provided social media post text and generate a single, concise, and powerful prompt that will create a visually stunning and conceptually relevant image.
 
+**CRITICAL INSTRUCTIONS:**
+1.  **Language:** The output prompt MUST be in English.
+2.  **Format:** Your entire response must be ONLY the prompt text. Do not include any explanation, labels, or markdown.
+3.  **Content:** The prompt should describe a scene, subject, style, lighting, and mood. Be specific. Use artistic terms.
+4.  **Example:** If the text is about a sleek e-commerce website, a good prompt would be: "A minimalist, floating e-commerce website interface on a dark background, glowing with neon blue light, product cards hovering in the air, hyper-realistic, cinematic lighting, photorealistic, 8k --style raw"
+
+**Social Media Post Text to Analyze:**
+---
+[SOCIAL MEDIA POST]
+---
+`;
 
 // --- PROMPT ENGINEERING HELPERS ---
 function getSystemInstructionForMode(mode, context = {}) {
@@ -149,6 +154,7 @@ function getSystemInstructionForMode(mode, context = {}) {
         case 'analyze': return ANALYZE_INSTRUCTION;
         case 'objection': return OBJECTION_INSTRUCTION;
         case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
+        case 'image-prompt-creator': return IMAGE_PROMPT_CREATOR_INSTRUCTION;
         case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
         case 'entrenamiento': {
             let catalogString = '';
@@ -203,42 +209,7 @@ exports.handler = async (event) => {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
         
-        // --- IMAGE GENERATION LOGIC ---
-        if (mode === 'image-creator') {
-            const model = genAI.getGenerativeModel({ model: IMAGE_MODEL_NAME });
-            const { style, concept, colors } = context;
-            let finalConcept = concept;
-            if (concept === 'general') {
-                finalConcept = "A symbolic representation of digital innovation, business growth through technology, and professional web solutions.";
-            } else {
-                finalConcept = `A symbolic, visually appealing representation of the web service: "${concept}".`;
-            }
-            const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, finalConcept, colors);
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const candidate = response.candidates?.[0];
-            if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-                const refusalText = response.text(); 
-                if (refusalText) {
-                    throw new Error(`La IA no generó una imagen. Razón: ${refusalText}`);
-                }
-                throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
-            }
-            const imagePart = candidate.content.parts.find(p => p.inlineData && p.inlineData.data);
-            if (!imagePart) {
-                const textResponse = response.text();
-                if (textResponse) {
-                     throw new Error(`La IA respondió con texto en lugar de una imagen: "${textResponse}"`);
-                }
-                throw new Error("La respuesta de la IA no contiene datos de imagen válidos.");
-            }
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ base64Image: imagePart.inlineData.data })
-            };
-        }
-        
-        // --- TEXT GENERATION LOGIC (ALL OTHER MODES) ---
+        // --- TEXT GENERATION LOGIC (ALL MODES) ---
         const model = genAI.getGenerativeModel(
             { model: TEXT_MODEL_NAME, systemInstruction: getSystemInstructionForMode(mode, context) },
         );
@@ -258,6 +229,9 @@ exports.handler = async (event) => {
         } else if (mode === 'lead-gen-plan') {
             const { service, audience } = context;
             finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
+        } else if (mode === 'image-prompt-creator') {
+            const { postText } = context;
+            finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
         }
         
         const result = await chat.sendMessage(finalUserMessage);
@@ -289,8 +263,6 @@ exports.handler = async (event) => {
             userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes. Por favor, espera un momento.";
         } else if (status >= 500) {
             userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Inténtalo de nuevo más tarde.";
-        } else if (mode === 'image-creator' && errorDetails) {
-            userFriendlyMessage = errorDetails;
         } else if (errorDetails.includes('Respuesta inválida')) {
             userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
         }

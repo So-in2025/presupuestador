@@ -311,26 +311,18 @@ export function showContentStudioModal() {
     if (!modal) return;
     
     populateServiceDropdowns('text-service-to-promote');
-    populateServiceDropdowns('image-service-to-promote');
+    
+    // Ocultar resultados anteriores al abrir
+    document.getElementById('text-result-container').classList.add('hidden');
+    document.getElementById('image-prompt-section').classList.add('hidden');
+
     openModal(modal);
 
     if (!modal.dataset.listenersAttached) {
-        const tabs = modal.querySelectorAll('.studio-tab');
-        const contents = modal.querySelectorAll('.studio-tab-content');
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                contents.forEach(c => c.classList.remove('active'));
-                document.getElementById(`${tab.dataset.tab}-content`).classList.add('active');
-            });
-        });
-        
         document.getElementById('generate-text-btn').addEventListener('click', handleGenerateText);
-        document.getElementById('generate-image-btn').addEventListener('click', handleGenerateImage);
         document.getElementById('copy-generated-text-btn').addEventListener('click', handleCopyText);
-
+        document.getElementById('generate-image-prompt-btn').addEventListener('click', handleGenerateImagePrompt);
+        document.getElementById('copy-generated-image-prompt-btn').addEventListener('click', handleCopyImagePrompt);
         modal.dataset.listenersAttached = 'true';
     }
 }
@@ -347,8 +339,10 @@ async function handleGenerateText() {
     const spinner = document.getElementById('text-spinner');
     const copyBtn = document.getElementById('copy-generated-text-btn');
     const generatedTextP = document.getElementById('generated-text');
+    const imagePromptSection = document.getElementById('image-prompt-section');
     
     resultContainer.classList.remove('hidden');
+    imagePromptSection.classList.add('hidden'); // Ocultar prompt de imagen al generar nuevo texto
     spinner.classList.remove('hidden');
     generatedTextP.textContent = '';
     copyBtn.classList.add('hidden');
@@ -387,6 +381,7 @@ async function handleGenerateText() {
         generatedTextP.textContent = data.response;
         copyBtn.textContent = 'Copiar';
         copyBtn.classList.remove('hidden');
+        imagePromptSection.classList.remove('hidden'); // Mostrar el botón para generar prompt
 
     } catch (error) {
         generatedTextP.textContent = `Error: ${error.message}`;
@@ -397,71 +392,66 @@ async function handleGenerateText() {
     }
 }
 
-async function handleGenerateImage() {
+async function handleGenerateImagePrompt() {
     if (isGenerating) return;
     isGenerating = true;
-    
-    const resultContainer = document.getElementById('image-result-container');
-    const spinner = document.getElementById('image-spinner');
-    const generatedImage = document.getElementById('generated-image');
-    const downloadBtn = document.getElementById('download-image-btn');
-    
-    let errorP = resultContainer.querySelector('.text-red-400');
-    if(errorP) errorP.remove();
 
+    const resultContainer = document.getElementById('image-prompt-result-container');
+    const spinner = document.getElementById('image-prompt-spinner');
+    const copyBtn = document.getElementById('copy-generated-image-prompt-btn');
+    const generatedPromptP = document.getElementById('generated-image-prompt');
+    
     resultContainer.classList.remove('hidden');
     spinner.classList.remove('hidden');
-    generatedImage.classList.add('hidden');
-    downloadBtn.classList.add('hidden');
+    generatedPromptP.textContent = '';
+    copyBtn.classList.add('hidden');
 
     const apiKey = getState().sessionApiKey;
     if (!apiKey) {
-        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key antes de usar el estudio de contenido.');
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key.');
         isGenerating = false;
         spinner.classList.add('hidden');
         return;
     }
-
-    const concept = document.getElementById('image-service-to-promote').value;
-    const style = document.getElementById('image-style').value;
-    const colors = document.getElementById('image-colors').value;
+    
+    const postText = document.getElementById('generated-text').textContent;
+    if (!postText) {
+        showNotification('info', 'Texto Requerido', 'Primero debes generar un texto para crear un prompt de imagen relevante.');
+        isGenerating = false;
+        spinner.classList.add('hidden');
+        return;
+    }
 
     try {
         const response = await fetch('/.netlify/functions/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userMessage: 'Generate an image based on the context.',
-                mode: 'image-creator',
-                context: { style, concept, colors },
+                userMessage: "Generate an image prompt based on the provided text.",
+                mode: 'image-prompt-creator',
+                context: { postText },
                 apiKey
             })
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Error del servidor al generar la imagen.');
+            throw new Error(errorData.message || 'Error del servidor al generar el prompt.');
         }
 
         const data = await response.json();
-        const imageUrl = `data:image/png;base64,${data.base64Image}`;
-        generatedImage.src = imageUrl;
-        downloadBtn.href = imageUrl;
-        generatedImage.classList.remove('hidden');
-        downloadBtn.classList.remove('hidden');
-        
+        generatedPromptP.textContent = data.response;
+        copyBtn.textContent = 'Copiar Prompt';
+        copyBtn.classList.remove('hidden');
+
     } catch (error) {
-        errorP = document.createElement('p');
-        errorP.className = 'text-red-400 mt-2';
-        errorP.textContent = `Error: ${error.message}`;
-        resultContainer.appendChild(errorP);
-        console.error("Error al generar imagen:", error);
+        generatedPromptP.textContent = `Error: ${error.message}`;
+        console.error("Error al generar prompt de imagen:", error);
     } finally {
         isGenerating = false;
         spinner.classList.add('hidden');
     }
 }
-
 
 function handleCopyText() {
     const text = document.getElementById('generated-text').textContent;
@@ -470,6 +460,15 @@ function handleCopyText() {
         button.textContent = '¡Copiado!';
     });
 }
+
+function handleCopyImagePrompt() {
+    const text = document.getElementById('generated-image-prompt').textContent;
+    const button = document.getElementById('copy-generated-image-prompt-btn');
+    navigator.clipboard.writeText(text).then(() => {
+        button.textContent = '¡Copiado!';
+    });
+}
+
 
 // --- NUEVO: PLAN DE CAPTACIÓN DE CLIENTES ---
 export function showLeadGenPlanModal() {
