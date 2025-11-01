@@ -899,26 +899,10 @@
                 </div>
                  <!-- Pestaña Generador de Imágenes -->
                 <div id="image-generator-content" class="studio-tab-content">
-                    <p class="text-sm text-slate-400 mb-4">Genera imágenes impactantes para tus publicaciones. Describe el concepto y la IA lo visualizará por ti.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label for="image-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Concepto Base:</label>
-                            <select id="image-service-to-promote" class="styled-input styled-select w-full"></select>
-                        </div>
-                        <div>
-                            <label for="image-style" class="block text-sm font-medium text-slate-300 mb-1">Estilo Visual:</label>
-                            <select id="image-style" class="styled-input styled-select w-full">
-                                <option value="minimalist and clean">Minimalista y Limpio</option>
-                                <option value="cyberpunk neon glow">Cyberpunk Neón</option>
-                                <option value="abstract geometric">Abstracto Geométrico</option>
-                                <option value="photorealistic and sharp">Fotorrealista</option>
-                                <option value="digital art, synthwave">Arte Digital (Synthwave)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="image-colors" class="block text-sm font-medium text-slate-300 mb-1">Paleta de Colores:</label>
-                            <input type="text" id="image-colors" class="styled-input w-full" placeholder="Ej: azul, morado, cian">
-                        </div>
+                    <p class="text-sm text-slate-400 mb-4">Genera imágenes impactantes para tus publicaciones. Elige un concepto de la galería de imágenes profesionales, libres de derechos.</p>
+                    <div class="mb-4">
+                        <label for="image-service-to-promote" class="block text-sm font-medium text-slate-300 mb-1">Concepto Base:</label>
+                        <select id="image-service-to-promote" class="styled-input styled-select w-full"></select>
                     </div>
                     <button id="generate-image-btn" class="w-full bg-fuchsia-600 text-white font-bold py-2 rounded-lg hover:bg-fuchsia-700 transition">Generar Imagen</button>
                     <div id="image-result-container" class="mt-4 hidden p-4 bg-slate-800 rounded-lg flex items-center justify-center relative min-h-[200px]">
