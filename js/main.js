@@ -3,7 +3,7 @@
 import * as dom from './dom.js';
 import * as state from './state.js';
 import { loadPricingData, loadLocalData, saveTasks } from './data.js';
-import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask } from './app.js';
+import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask, deleteLocalService } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { 
     removeCustomService, 
@@ -329,7 +329,7 @@ function initializeEventListeners() {
 
     dom.appContainer.addEventListener('click', (e) => {
         const card = e.target.closest('.item-card');
-        if (card && !e.target.matches('input')) {
+        if (card && !e.target.matches('input, button, svg, path')) {
             const input = card.querySelector('input');
             if (input && !input.disabled) {
                 input.click();
@@ -338,10 +338,12 @@ function initializeEventListeners() {
 
         const actionButton = e.target.closest('[data-action]');
         if (actionButton) {
+            e.stopPropagation(); // Prevent card click when clicking a button
             const { action, index, id } = actionButton.dataset;
             if (action === 'edit') editTask(parseInt(index));
             if (action === 'delete') deleteTask(parseInt(index));
             if (action === 'remove-custom') removeCustomService(id);
+            if (action === 'delete-local-service') deleteLocalService(id);
         }
     });
 }

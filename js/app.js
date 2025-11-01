@@ -2,7 +2,7 @@
 
 import * as dom from './dom.js';
 import * as state from './state.js';
-import { saveTasks } from './data.js';
+import { saveTasks, saveLocalServices } from './data.js';
 import { showNotification } from './modals.js';
 import { handlePlanSelection, updatePointSystemUI } from './points.js';
 
@@ -240,4 +240,35 @@ export function deleteTask(index) {
     saveTasks();
     showNotification('info', 'Propuesta Eliminada', `La propuesta ha sido eliminada.`);
     if (index === editingIndex) resetForm(); 
+}
+
+export function deleteLocalService(serviceId) {
+    if (!confirm("¿Estás seguro de que quieres eliminar este servicio personalizado permanentemente? Esta acción no se puede deshacer.")) {
+        return;
+    }
+
+    let { localServices } = state.getState();
+    const serviceToRemove = localServices.find(s => s.id === serviceId);
+
+    if (!serviceToRemove) {
+        console.error(`Servicio local con ID ${serviceId} no encontrado.`);
+        return;
+    }
+
+    const updatedServices = localServices.filter(s => s.id !== serviceId);
+    state.setLocalServices(updatedServices);
+    saveLocalServices();
+
+    const serviceElement = document.getElementById(`standard-${serviceId}`);
+    if (serviceElement) {
+        const card = serviceElement.closest('.item-card');
+        const grid = card.parentElement;
+        card.remove();
+        if (grid && grid.children.length === 0) {
+            const container = grid.closest('#local-services-container');
+            if (container) container.remove();
+        }
+    }
+    
+    showNotification('info', 'Servicio Eliminado', `El servicio "${serviceToRemove.name}" ha sido eliminado permanentemente.`);
 }

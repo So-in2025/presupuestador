@@ -26,8 +26,17 @@ export function updateCurrencyToggleButton() {
 export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey = null, showPoints = false) {
     const pointCostHTML = showPoints && svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
     const priceText = svc.price > 0 ? formatPrice(svc.price) : 'A cotizar';
+    const deleteButtonHTML = categoryKey === 'local' ? `
+        <button data-action="delete-local-service" data-id="${svc.id}" class="absolute top-1 right-1 p-1 rounded-full text-purple-300 hover:text-red-400 hover:bg-slate-700 transition-colors z-10 btn-press-feedback" title="Eliminar servicio permanentemente">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+        </button>
+    ` : '';
+
     return `
-        <div class="item-card tooltip-container flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
+        <div class="item-card tooltip-container relative flex items-center justify-between p-3 bg-slate-800 rounded-lg transition duration-150 cursor-pointer border border-slate-700">
+            ${deleteButtonHTML}
             <label class="flex-grow cursor-pointer text-sm pr-2">${svc.name}</label>
             <div class="flex items-center gap-3">
                 ${pointCostHTML}
