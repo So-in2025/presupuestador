@@ -22,13 +22,23 @@ const ttsManager = {
     speak: function(text, buttonElement) {
         if (this.isPlaying) return;
         const utterance = new SpeechSynthesisUtterance(text);
-        const selectedVoice = voices.find(v => v.voiceURI === selectedVoiceURI);
-        if (selectedVoice) {
-            utterance.voice = selectedVoice;
-        } else {
-            const fallbackVoice = voices.find(v => v.lang.startsWith('es-'));
-            if (fallbackVoice) utterance.voice = fallbackVoice;
+
+        // 1. Try to use the user-selected voice first
+        let voiceToUse = voices.find(v => v.voiceURI === selectedVoiceURI);
+
+        // 2. If it fails, apply the robust fallback logic to prioritize a male voice
+        if (!voiceToUse && voices.length > 0) {
+            voiceToUse = 
+                voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
+                voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
+                voices.find(v => v.name.toLowerCase().includes('google')) ||
+                voices[0];
         }
+
+        if (voiceToUse) {
+            utterance.voice = voiceToUse;
+        }
+        
         utterance.lang = 'es-ES';
         utterance.rate = 1.05;
         utterance.pitch = 1;
