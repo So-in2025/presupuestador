@@ -37,7 +37,7 @@ Your response MUST be a single, valid JSON object with the following structure:
 1.  For each service object, you MUST include a "priority" key.
 2.  The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
 3.  **NEW TASK: CUSTOM SERVICE SUGGESTIONS:**
-    - If the user requests a specific feature NOT in the standard catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
+    - If the user requests a specific feature NOT in the catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
     - First, ESTIMATE its complexity: 'small', 'medium', or 'large'.
     - Second, assign the corresponding ID from the 'CUSTOM TASKS' list ('custom-s', 'custom-m', 'custom-l').
     - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
@@ -139,28 +139,33 @@ exports.handler = async (event) => {
             }
             const prompt = IMAGE_CREATOR_PROMPT_TEMPLATE(style, finalConcept, colors);
 
-            // CORRECTED: Single, direct call for image generation with robust error handling.
+            // REFACTORIZADO: Se eliminó el código redundante y con errores.
+            // La versión anterior contenía múltiples intentos fallidos para generar una imagen.
+            // Esta es la llamada única, directa y correcta para la librería @google/generative-ai.
             const result = await model.generateContent(prompt);
             const response = await result.response;
             
             const candidate = response.candidates?.[0];
 
-            // IMPROVED ERROR HANDLING: Check if the AI refused to generate an image.
+            // MANEJO DE ERRORES MEJORADO:
+            // 1. Verifica si la IA devolvió una respuesta válida.
             if (!candidate || !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-                const refusalText = response.text(); // The API might return a text reason for failure.
+                // 2. Si la IA se negó (ej. por seguridad), puede devolver un texto explicativo.
+                const refusalText = response.text(); 
                 if (refusalText) {
-                    throw new Error(`La IA no generó una imagen. Razón: ${refusalText.substring(0, 150)}...`);
+                    throw new Error(`La IA no generó una imagen. Razón: ${refusalText}`);
                 }
                 throw new Error("La IA no devolvió una imagen. Intenta con una combinación de opciones diferente.");
             }
 
+            // 3. Busca la parte que contiene la imagen en Base64.
             const imagePart = candidate.content.parts.find(p => p.inlineData && p.inlineData.data);
 
             if (!imagePart) {
-                // IMPROVEMENT: Handle cases where the AI responds with text instead of an image.
+                 // 4. Si no hay imagen, puede que la IA respondiera con texto. Lo mostramos.
                 const textResponse = response.text();
                 if (textResponse) {
-                     throw new Error(`La IA respondió con texto en lugar de una imagen: "${textResponse.substring(0, 100)}..."`);
+                     throw new Error(`La IA respondió con texto en lugar de una imagen: "${textResponse}"`);
                 }
                 throw new Error("La respuesta de la IA no contiene datos de imagen válidos.");
             }
@@ -193,8 +198,9 @@ exports.handler = async (event) => {
         const result = await chat.sendMessage(finalUserMessage);
         const response = await result.response;
 
-        // CRITICAL FIX: The original code used a property access (`response.candidates...`) which is incorrect for the @google/generative-ai library.
-        // The correct method for this library version is `response.text()`. This single change fixes the JSON parsing error in the frontend for the "Constructor" mode.
+        // CORRECCIÓN CRÍTICA: La causa del error de "formato no esperado" en el modo "Constructor".
+        // La versión anterior usaba `response.candidates?.[0]...`, que es una sintaxis para OTRA librería.
+        // El método correcto para la librería que estás usando (@google/generative-ai) es `response.text()`.
         const responseText = response.text();
 
         if (!responseText) {
