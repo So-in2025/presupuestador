@@ -360,16 +360,18 @@ function positionTooltip(targetElement) {
         let top, left;
         let arrowClass = 'tooltip-is-below';
 
+        // Prioritize placing above
         if (targetRect.top > tooltipRect.height + margin) {
-            top = targetRect.top - tooltipRect.height - margin;
+            top = window.scrollY + targetRect.top - tooltipRect.height - margin;
             arrowClass = 'tooltip-is-above';
-        } else {
-            top = targetRect.bottom + margin;
+        } else { // Place below if not enough space above
+            top = window.scrollY + targetRect.bottom + margin;
             arrowClass = 'tooltip-is-below';
         }
 
-        left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+        left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
 
+        // Prevent overflow
         if (left < margin) left = margin;
         if (left + tooltipRect.width > window.innerWidth - margin) {
             left = window.innerWidth - tooltipRect.width - margin;
@@ -379,7 +381,7 @@ function positionTooltip(targetElement) {
         tooltip.style.left = `${left}px`;
         tooltip.classList.add(arrowClass);
 
-        const targetCenterX = targetRect.left + targetRect.width / 2;
+        const targetCenterX = window.scrollX + targetRect.left + targetRect.width / 2;
         let arrowLeft = targetCenterX - left;
         
         const arrowWidth = 16;
@@ -390,11 +392,14 @@ function positionTooltip(targetElement) {
     });
 }
 
+
 function showStep(index) {
+    // 1. Cleanup previous step state
     document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
     if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
     if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
 
+    // 2. Handle end of tour
     if (index >= tourSteps.length) {
         endTour();
         return;
@@ -404,39 +409,56 @@ function showStep(index) {
     const step = tourSteps[index];
     const targetElement = document.querySelector(step.el);
 
+    // 3. Validate target element
     if (!targetElement || !(targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length)) {
         console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
         endTour();
         return;
     }
 
+    // 4. Update UI elements immediately
+    tourText.textContent = step.text;
+    stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
+    tooltip.style.opacity = '0'; // Hide tooltip until it's positioned
+    tourOverlay.style.opacity = '1';
     targetElement.classList.add('tour-highlight-active');
+
+    // 5. Scroll to the element
     targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
+    // 6. ROBUST SCROLL-END DETECTION AND POSITIONING
+    let scrollEndTimer = null;
+    const scrollEndListener = () => {
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(() => {
+            window.removeEventListener('scroll', scrollEndListener); // Self-destructing listener
+            positionTooltip(targetElement);
+            tooltip.style.opacity = '1'; // Fade in the tooltip
+        }, 150); // Wait for 150ms of no scrolling to consider it "ended"
+    };
+
+    // Attach listener and fire it once to handle no-scroll case
+    window.addEventListener('scroll', scrollEndListener, { passive: true });
+    scrollEndListener(); // Initial call handles elements already in view
+
+    // 7. Re-attach generic listeners for subsequent manual adjustments by user
     const updatePosition = () => positionTooltip(targetElement);
     tourScrollHandler = debounce(updatePosition, 15);
     tourResizeHandler = debounce(updatePosition, 15);
     window.addEventListener('scroll', tourScrollHandler);
     window.addEventListener('resize', tourResizeHandler);
 
-    // Esperar a que el scroll termine para posicionar
-    setTimeout(() => {
-        tourText.textContent = step.text;
-        stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-        tooltip.style.opacity = '1';
-        tourOverlay.style.opacity = '1';
-        positionTooltip(targetElement);
-    }, 400); // Aumentado para más estabilidad
 
-    // Lógica de botones corregida
+    // 8. Update button states
     prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
     if (index === tourSteps.length - 1) {
-        nextBtn.style.display = 'none'; // Ocultar "Siguiente"
+        nextBtn.style.display = 'none';
     } else {
         nextBtn.style.display = 'inline-block';
         nextBtn.textContent = 'Siguiente';
     }
 }
+
 
 function endTour() {
     if (!isTourActive) return;
