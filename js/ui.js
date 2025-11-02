@@ -142,60 +142,107 @@ export function initializeMonthlyPlansSelection() {
         </div>`;
 }
 
+// --- NUEVA FUNCIÓN AUXILIAR ---
+export function findServiceById(id) {
+    const { allServices, monthlyPlans, localServices, customServices } = getState();
+    const allStandardServices = Object.values(allServices).flatMap(category => category.items);
+    
+    let service = allStandardServices.find(s => s.id === id) ||
+                  monthlyPlans.find(s => s.id === id) ||
+                  localServices.find(s => s.id === id) ||
+                  customServices.find(s => s.id === id);
+    
+    return service || { name: `Servicio (ID: ${id})`, description: 'Descripción no encontrada.', price: 0 };
+};
+
+// --- NUEVA FUNCIÓN PARA RENDERIZAR FICHA DE PROYECTO ---
+function createProjectCardHTML(task, index) {
+    const projectStatuses = ['En Desarrollo', 'Esperando Feedback', 'Fase de Pruebas', 'Completado'];
+    const statusOptions = projectStatuses.map(s => `<option value="${s}" ${task.projectStatus === s ? 'selected' : ''}>${s}</option>`).join('');
+
+    const deliverablesHTML = (task.deliverables || []).map(d => `
+        <div class="deliverable-item">
+            <input type="checkbox" id="deliverable-${index}-${d.id}" data-index="${index}" data-deliverable-id="${d.id}" class="custom-checkbox deliverable-checkbox" ${d.completed ? 'checked' : ''}>
+            <label for="deliverable-${index}-${d.id}" class="text-sm text-slate-300 cursor-pointer">${d.name}</label>
+        </div>
+    `).join('');
+
+    return `
+        <div class="project-card p-4 rounded-lg space-y-3">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h4 class="font-bold text-base text-white">${task.clientName} - ${task.webName}</h4>
+                    <p class="text-xs text-slate-400">ID del Proyecto: #${index}</p>
+                </div>
+                <div class="w-48">
+                     <select data-index="${index}" class="project-status-select styled-select styled-input text-xs p-1 w-full">
+                        ${statusOptions}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <h5 class="text-sm font-semibold text-slate-300 mb-2">Checklist de Entregables:</h5>
+                <div class="space-y-1">${deliverablesHTML || '<p class="text-xs text-slate-500">No hay entregables definidos.</p>'}</div>
+            </div>
+            <div>
+                <h5 class="text-sm font-semibold text-slate-300 mb-1">Notas del Proyecto:</h5>
+                <textarea data-index="${index}" class="styled-textarea w-full text-sm project-notes-textarea" rows="3" placeholder="Añadir notas...">${task.notes || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+
 export function renderTasksDashboard() {
     const dashboard = dom.tasksDashboardDiv;
     dashboard.style.opacity = '0';
     
-    const statuses = ['Propuesta Guardada', 'Enviada', 'En Negociación', 'Ganada', 'Perdida'];
+    const pipelineStatuses = ['Propuesta Guardada', 'Enviada', 'En Negociación', 'Perdida'];
+    const projectStatuses = ['Ganada'];
 
     setTimeout(() => {
-        const { tasks, monthlyPlans } = getState();
-        dashboard.innerHTML = tasks.length === 0
-            ? '<p class="text-slate-400">No hay propuestas guardadas.</p>'
-            : tasks.map((task, index) => {
-                const statusOptions = statuses.map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${s}</option>`).join('');
-                const statusSelectHTML = `
-                    <select data-index="${index}" class="task-status-select styled-select styled-input text-xs p-1 w-full mt-2">
-                        ${statusOptions}
-                    </select>`;
+        const { tasks } = getState();
+        const pipelineTasks = tasks.filter(t => pipelineStatuses.includes(t.status));
+        const projectTasks = tasks.filter(t => projectStatuses.includes(t.status));
 
-                let serviceList = '';
-                let icon = '';
-                const isUrgent = task.isUrgent;
+        // --- RENDERIZAR PIPELINE ---
+        const pipelineHTML = pipelineTasks.length > 0
+            ? pipelineTasks.map((task, index) => {
+                const originalIndex = tasks.findIndex(t => t === task); // Importante para mantener el índice correcto
+                const statusOptions = pipelineStatuses.map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${s}</option>`).join('');
+                const statusSelectHTML = `<select data-index="${originalIndex}" class="task-status-select styled-select styled-input text-xs p-1 w-full mt-2">${statusOptions}</select>`;
+                let icon = task.isTiered ? '📊' : (task.package ? '📦' : (task.plan ? '📅' : '🧩'));
+                const urgentLabelHTML = task.isUrgent ? '<span class="ml-2 text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">URGENTE</span>' : '';
 
-                const urgentLabelHTML = isUrgent ? '<span class="ml-2 text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">URGENTE</span>' : '';
-
-                if (task.isTiered) {
-                    icon = '📊';
-                    serviceList = `<span class="text-sm text-indigo-300 font-medium">Propuesta por Niveles: ${task.tiers.map(t => t.name).join(' / ')}</span>`;
-                } else if (task.package) {
-                    icon = '📦';
-                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Paquete: ${task.package.name}</span>`;
-                } else if (task.plan) {
-                    icon = '📅';
-                    const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
-                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>`;
-                } else {
-                    icon = '🧩';
-                    serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
-                }
-
-                return `
-                    <div class="p-3 border ${isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
-                        <div class="flex justify-between items-start mb-1">
-                            <div>
-                                <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
-                                ${serviceList}
-                                ${urgentLabelHTML}
-                            </div>
-                            <div class="flex gap-2">
-                                <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button rounded-md transition">Editar</button>
-                                <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
-                            </div>
+                return `<div class="p-3 border ${task.isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
+                    <div class="flex justify-between items-start mb-1">
+                        <div>
+                            <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName} - ${task.webName}</h4>
+                            <span class="text-sm text-cyan-300 font-medium">${task.isTiered ? 'Propuesta por Niveles' : (task.package?.name || task.plan?.name || `${task.services.length} ítems`)}</span>
+                            ${urgentLabelHTML}
                         </div>
-                        ${statusSelectHTML}
-                    </div>`;
-            }).join('');
+                        <div class="flex gap-2">
+                            <button data-action="edit" data-index="${originalIndex}" class="text-blue-400 hover:text-blue-300 text-sm action-button rounded-md transition">Editar</button>
+                            <button data-action="delete" data-index="${originalIndex}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
+                        </div>
+                    </div>
+                    ${statusSelectHTML}
+                </div>`;
+            }).join('')
+            : '<p class="text-slate-400 text-sm text-center py-4">No hay propuestas activas en el pipeline.</p>';
+        
+        // --- RENDERIZAR PROYECTOS ---
+        const projectsHTML = projectTasks.length > 0
+            ? projectTasks.map((task, index) => {
+                const originalIndex = tasks.findIndex(t => t === task);
+                return createProjectCardHTML(task, originalIndex);
+              }).join('')
+            : '<p class="text-slate-400 text-sm text-center py-4">No hay proyectos activos. ¡Gana una propuesta para empezar!</p>';
+
+        dashboard.innerHTML = `
+            <div id="dashboard-pipeline-content" class="dashboard-tab-content space-y-4">${pipelineHTML}</div>
+            <div id="dashboard-projects-content" class="dashboard-tab-content space-y-4" style="display: none;">${projectsHTML}</div>
+        `;
 
         dom.exportPdfBtn.disabled = tasks.length === 0;
         dom.clearAllTasksBtn.disabled = tasks.length === 0;
@@ -203,8 +250,9 @@ export function renderTasksDashboard() {
         updatePerformanceDashboard();
         
         dashboard.style.opacity = '1';
-    }, 300); // Coincide con la duración de la transición
+    }, 300);
 }
+
 
 export function updatePerformanceDashboard() {
     const { tasks } = getState();
@@ -219,8 +267,15 @@ export function updatePerformanceDashboard() {
     const salesThisMonth = wonThisMonth.reduce((sum, t) => sum + (t.totalClient || 0), 0);
     const profitThisMonth = wonThisMonth.reduce((sum, t) => sum + ((t.totalClient || 0) - (t.totalDev || 0)), 0);
     
-    const activePipelineTasks = tasks.filter(t => t.status !== 'Ganada' && t.status !== 'Perdida');
-    const activePipelineValue = activePipelineTasks.reduce((sum, t) => sum + (t.totalClient || 0), 0);
+    const activePipelineTasks = tasks.filter(t => t.status !== 'Ganada' && t.status !== 'Perdida' && t.status !== 'Completado');
+    const activePipelineValue = activePipelineTasks.reduce((sum, t) => {
+        if (t.isTiered) {
+            const recommendedTier = t.tiers[1] || t.tiers[0];
+            const clientPrice = t.margin < 1 ? recommendedTier.totalDev / (1 - t.margin) : recommendedTier.totalDev * (1 + t.margin);
+            return sum + clientPrice;
+        }
+        return sum + (t.totalClient || 0);
+    }, 0);
 
     const closedTasks = tasks.filter(t => t.status === 'Ganada' || t.status === 'Perdida');
     const wonTasksCount = tasks.filter(t => t.status === 'Ganada').length;
