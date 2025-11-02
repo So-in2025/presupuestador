@@ -310,8 +310,12 @@
         .btn-press-feedback { transition: transform 0.1s ease-out; }
         .btn-press-feedback:active:not(:disabled) { transform: scale(0.97); }
         
-        /* --- ESTILOS ESTUDIO DE CONTENIDO --- */
-        .studio-tab { border-bottom: 3px solid transparent; transition: all 0.2s; }
+        /* --- ESTILOS PESTAÑAS --- */
+        .studio-tab { 
+            padding: 8px 16px; border: none; background: transparent; 
+            color: var(--text-secondary); font-weight: 600; cursor: pointer; 
+            transition: all 0.3s; border-bottom: 3px solid transparent; 
+        }
         .studio-tab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
         .studio-tab-content { display: none; }
         .studio-tab-content.active { display: block; }
@@ -973,57 +977,130 @@
         </div>
     </div>
 
-    <!-- Sales Channels Modal -->
+    <!-- Sales Channels Modal (ADVANCED VERSION) -->
     <div id="salesChannelsModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
-        <div class="card-bg w-full max-w-2xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+        <div class="card-bg w-full max-w-5xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-800 flex justify-between items-center flex-shrink-0">
-                <h3 class="text-lg">🌐 Canales de Venta Recomendados</h3>
+                <h3 class="text-lg">🌐 Canales de Venta Estratégicos</h3>
                 <button id="close-sales-channels-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
             </div>
-            <div class="p-6 flex-grow overflow-y-auto space-y-6">
-                <div class="text-center mb-4">
-                    <button id="sales-channels-tts-btn" class="inline-flex items-center justify-center gap-2 text-sm bg-blue-700 text-blue-200 hover:bg-blue-500 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback" aria-label="Escuchar explicación de la herramienta">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z"></path>
-                            <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z"></path>
-                        </svg>
-                        <span class="tts-button-text">Escuchar Explicación</span>
-                    </button>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold text-cyan-400 mb-2">Plataformas Freelance</h4>
-                    <ul class="list-disc list-inside space-y-2 text-slate-300 text-sm">
-                        <li><b>Upwork:</b> Ideal para proyectos de alto valor y clientes internacionales. Requiere un perfil muy profesional en inglés.</li>
-                        <li><b>Workana & Freelancer.com:</b> Excelentes para empezar y conseguir proyectos en el mercado de habla hispana.</li>
-                        <li><b>Fiverr:</b> Enfocado en "gigs" o servicios empaquetados. Perfecto para ofrecer servicios específicos como "Landing Page en 7 días".</li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold text-cyan-400 mb-2">Grupos de Facebook Estratégicos (Ejemplos)</h4>
-                    <p class="text-xs text-slate-400 mb-3 italic">Importante: Antes de publicar, lee las reglas de cada grupo. La clave es aportar valor, no solo vender.</p>
-                    <ul class="list-disc list-inside space-y-3 text-slate-300 text-sm">
-                        <li>
-                            <b>Grupos de Emprendedores y PyMEs:</b>
-                            <ul class="list-disc list-inside ml-4 text-slate-400">
-                                <li>Busca términos como "Emprendedores [Tu País]", "Marketing para PyMEs", "Negocios Online".</li>
-                                <li>Aporta valor respondiendo dudas sobre tecnología, webs, etc. y luego ofrece tus servicios.</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <b>Grupos de Nicho Específico:</b>
-                            <ul class="list-disc list-inside ml-4 text-slate-400">
-                                <li>¿Tu cliente ideal son los fotógrafos? Únete a "Fotógrafos Profesionales [Tu Ciudad]".</li>
-                                <li>¿Restaurantes? Busca "Dueños de Restaurantes y Bares". Sé el experto en tecnología dentro de su comunidad.</li>
-                            </ul>
-                        </li>
-                         <li>
-                            <b>Grupos de Agencias y Freelancers (Networking):</b>
-                             <ul class="list-disc list-inside ml-4 text-slate-400">
-                                <li>Busca "Agencias de Marketing Digital", "Diseñadores Web Freelance".</li>
-                                <li>Aquí puedes encontrar colaboraciones y subcontrataciones. A menudo una agencia de marketing necesita un desarrollador de confianza.</li>
-                             </ul>
-                        </li>
-                    </ul>
+            <div class="flex-grow overflow-y-auto">
+                <div class="p-6">
+                    <div class="text-center mb-6">
+                        <button id="sales-channels-tts-btn" class="inline-flex items-center justify-center gap-2 text-sm bg-blue-700 text-blue-200 hover:bg-blue-500 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback" aria-label="Escuchar explicación de la herramienta">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z"></path>
+                                <path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z"></path>
+                            </svg>
+                            <span class="tts-button-text">Escuchar Explicación</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Tab Navigation -->
+                    <div id="sales-channels-tabs" class="border-b border-slate-700 mb-6 flex justify-center gap-4">
+                        <button class="studio-tab active" data-tab="freelance">Plataformas Freelance</button>
+                        <button class="studio-tab" data-tab="social">Redes Sociales</button>
+                        <button class="studio-tab" data-tab="proactive">Estrategias Proactivas</button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div id="sales-channels-content">
+                        <!-- Freelance Platforms -->
+                        <div id="tab-content-freelance" class="studio-tab-content active space-y-6">
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300 flex items-center gap-3">
+                                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M18.525 1.475H5.475A4.004 4.004 0 0 0 1.475 5.475v13.05A4.004 4.004 0 0 0 5.475 22.525h13.05A4.004 4.004 0 0 0 22.525 18.525V5.475A4.004 4.004 0 0 0 18.525 1.475ZM9.43 18.525H5.475V9.45h3.955Zm-1.977-10.55A2.32 2.32 0 1 1 9.773 5.66a2.32 2.32 0 0 1-2.32 2.315Zm11.072 10.55h-3.955v-4.57c0-1.09-.02-2.49-1.515-2.49-1.515 0-1.745 1.185-1.745 2.41v4.65H7.45V9.45h3.795v1.74h.055a4.15 4.15 0 0 1 3.74-2.065c4.005 0 4.745 2.635 4.745 6.065v6.39Z"/></svg>
+                                        LinkedIn
+                                    </h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Posicionarte como un experto en B2B. No es para buscar "ofertas de trabajo", sino para conectar con dueños de PyMEs, gerentes de marketing y CTOs.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b class="text-green-400">Ventaja:</b> Clientes de mayor calidad y proyectos más grandes.</li>
+                                        <li><b class="text-red-400">Desventaja:</b> Requiere crear contenido de valor (artículos, posts) para construir autoridad. Es una maratón, no un sprint.</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Optimiza tu titular para que diga "Ayudo a [tu nicho] a [lograr X] con sitios web de alto rendimiento". Envía invitaciones a conectar personalizadas mencionando algo sobre su empresa.</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300 flex items-center gap-3">
+                                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12.333 4.833c-3.25 0-6 2.167-6 5.833 0 2.25 1.5 3.75 3 4.5v3.333h6V15.25c1.5-.75 3-2.333 3-4.583 0-3.666-2.75-5.833-6-5.833zm-4.166 12h8.333v1.667h-8.333V16.833zM18.667 3.167h-2.5V1.5h-1.667v1.667H9.5V1.5H7.833v1.667h-2.5C4.25 3.167 3.5 3.833 3.5 4.75v14.5c0 .917.75 1.583 1.667 1.583h13.667c.916 0 1.666-.666 1.666-1.583V4.75c0-.917-.75-1.583-1.667-1.583z"/></svg>
+                                        Upwork
+                                    </h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Apuntar a proyectos internacionales de alto valor. Requiere un perfil excelente en inglés y propuestas muy personalizadas.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b class="text-green-400">Ventaja:</b> Potencial de ingresos muy alto y clientes serios.</li>
+                                        <li><b class="text-red-400">Desventaja:</b> Alta competencia y comisiones de la plataforma (hasta 20% al inicio).</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Graba un video de 1 minuto (Loom) analizando el sitio actual del cliente y adjúntalo a tu propuesta. El 99% de los freelancers no lo hace.</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300">Workana / Freelancer.com</h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Ideal para el mercado hispanohablante y para construir un portafolio inicial. La clave es conseguir las primeras 5 estrellas.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b class="text-green-400">Ventaja:</b> Barrera de entrada más baja y comunicación en tu idioma.</li>
+                                        <li><b class="text-red-400">Desventaja:</b> Abundancia de clientes que buscan el precio más bajo. Hay que filtrar mucho.</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Ofrece un pequeño servicio "extra" gratuito en tu propuesta (ej: "Además, optimizaré el SEO básico de tu página de inicio") para diferenciarte.</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300">Fiverr</h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Vender servicios empaquetados ("Gigs"). En lugar de esperar propuestas, los clientes te encuentran a ti.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b class="text-green-400">Ventaja:</b> Flujo de clientes pasivo una vez que tu Gig está bien posicionado.</li>
+                                        <li><b class="text-red-400">Desventaja:</b> Se basa en volumen. Puede ser difícil destacar al principio.</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Crea Gigs muy específicos basados en tu catálogo: "Diseñaré tu Landing Page de Conversión en 7 días", "Crearé tu Portfolio de Alto Impacto". Ofrece 3 niveles (Básico, Estándar, Premium) para maximizar el valor de cada venta.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Social Media -->
+                        <div id="tab-content-social" class="studio-tab-content space-y-6">
+                            <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                <h4 class="text-lg font-bold text-cyan-300 flex items-center gap-3">
+                                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+                                    Grupos de Facebook Estratégicos
+                                </h4>
+                                <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> No vender, sino aportar valor. Únete a grupos de emprendedores, PyMEs o de nichos específicos (ej: "Dueños de Restaurantes").</p>
+                                <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                    <li><b>Paso 1:</b> Busca y únete a 5-10 grupos relevantes.</li>
+                                    <li><b>Paso 2:</b> Durante una semana, solo responde dudas. Si alguien pregunta sobre "cómo mejorar mi web", dale 2-3 consejos prácticos públicamente.</li>
+                                    <li><b>Paso 3:</b> Después de aportar valor, contacta a esa persona por mensaje privado: "Hola [Nombre], vi tu duda en el grupo. Si necesitas una revisión más a fondo, ofrezco auditorías gratuitas".</li>
+                                    <li><b class="accent-color">Tip Pro:</b> Crea un post de valor, no de venta. Ej: "Los 5 errores que veo en el 90% de las webs de restaurantes (y cómo solucionarlos)". Al final, ofrece ayuda por privado.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Proactive Strategies -->
+                        <div id="tab-content-proactive" class="studio-tab-content space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300 flex items-center gap-3">
+                                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
+                                        Email en Frío (Con Valor)
+                                    </h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Personalización extrema. No es spam masivo. Es un mensaje artesanal para un cliente potencial que has investigado.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b>Paso 1:</b> Elige un nicho (ej: estudios de abogados). Encuentra 10 webs de ese nicho que tengan un problema obvio (no es responsive, tarda en cargar, diseño anticuado).</li>
+                                        <li><b>Paso 2:</b> Escribe un email corto. Asunto: "Pregunta rápida sobre la web de [Nombre de la Empresa]".</li>
+                                        <li><b>Paso 3:</b> Cuerpo: "Hola [Nombre], soy [Tu Nombre]. Noté que su sitio web no se ve del todo bien en móviles. Esto podría estar costándoles clientes. ¿Estarían abiertos a que les envíe un video de 2 minutos mostrando cómo solucionarlo?".</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Usa herramientas como "Hunter.io" para encontrar el email del responsable (CEO, socio, etc.), no el email genérico de "contacto@".</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                                    <h4 class="text-lg font-bold text-cyan-300 flex items-center gap-3">
+                                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                                        Alianzas Estratégicas
+                                    </h4>
+                                    <p class="text-sm text-slate-400 mt-2"><b>Estrategia Clave:</b> Busca otros profesionales que sirvan a tus mismos clientes pero que no ofrezcan tus servicios. Conviértelos en tu equipo de ventas.</p>
+                                    <ul class="text-xs text-slate-300 list-disc list-inside mt-3 space-y-1">
+                                        <li><b>Socios Ideales:</b> Agencias de marketing, consultores SEO, copywriters, community managers, fotógrafos corporativos.</li>
+                                        <li><b>La Oferta:</b> "Hola [Nombre Agencia], veo que hacen un trabajo excelente en [su especialidad]. No ofrezco esos servicios, me especializo 100% en desarrollo web. Me encantaría enviarles clientes que necesiten [su servicio] y viceversa. ¿Les interesaría tener un socio de desarrollo de confianza?".</li>
+                                        <li><b class="accent-color">Tip Pro:</b> Ofrece una comisión por referido (ej: 10% del valor del proyecto). Es un incentivo poderoso y alinea los intereses de ambos.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

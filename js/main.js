@@ -394,6 +394,27 @@ function initializeEventListeners() {
         });
     }
 
+    // --- NEW: Sales Channels Tab Logic ---
+    const salesChannelsTabsContainer = document.getElementById('sales-channels-tabs');
+    if (salesChannelsTabsContainer) {
+        salesChannelsTabsContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('.studio-tab');
+            if (!button) return;
+
+            const tabId = button.dataset.tab;
+            
+            // Update buttons
+            salesChannelsTabsContainer.querySelectorAll('.studio-tab').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('#sales-channels-content .studio-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`tab-content-${tabId}`).classList.add('active');
+        });
+    }
+
     // Event Delegation
     dom.appContainer.addEventListener('change', (e) => {
         const target = e.target;
