@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v38 - Optimized Image Prompt Generator
+ * Lógica de Intención: v39 - Opportunity Radar Outreach Generator
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -13,6 +13,25 @@ const TEXT_MODEL_NAME = 'gemini-2.5-flash';
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+
+const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services. Your task is to write a short, friendly, and value-driven outreach email.
+
+**CONTEXT:**
+- The email is from: a web development affiliate.
+- The email is to: [BUSINESS_NAME].
+- The AI has detected the following issues on their website: [PAIN_POINTS].
+
+**YOUR DIRECTIVES:**
+1.  **Goal:** Secure a 15-minute discovery call. Do NOT try to sell the entire project in this email.
+2.  **Tone:** Professional, but approachable and helpful. Not robotic or spammy.
+3.  **Structure:**
+    - **Subject:** Something concise and personalized. e.g., "Pregunta rápida sobre la web de [BUSINESS_NAME]".
+    - **Opening:** Briefly introduce yourself and state that you noticed specific issues (mention 1 or 2 from the list).
+    - **Value Proposition:** Explain the *negative business impact* of these issues (e.g., "Esto podría estar afectando su ranking en Google y la confianza de sus visitantes.").
+    - **Call to Action (CTA):** Offer a low-commitment next step. e.g., "¿Estarían abiertos a una llamada rápida de 15 minutos la próxima semana para mostrarles cómo se podría mejorar?".
+4.  **Language:** Write in clear, concise Spanish. Avoid overly technical jargon.
+5.  **Output:** Your entire response MUST be ONLY the generated email text. Do not add any greetings, explanations, or titles like "Asunto:" or "Cuerpo:". Just the raw text of the email, ready to be copied.`;
+
 
 const LEAD_GEN_PLAN_INSTRUCTION = `You are a "Marketing & Sales Strategist" AI. Your one and only mission is to empower a web development affiliate/reseller to get their first high-quality client within 7 days. You will create a detailed, actionable 7-day plan.
 
@@ -173,6 +192,7 @@ function getSystemInstructionForMode(mode, context = {}) {
         case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
         case 'image-prompt-creator': return IMAGE_PROMPT_CREATOR_INSTRUCTION;
         case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
+        case 'outreach-generator': return OUTREACH_GENERATOR_INSTRUCTION;
         case 'entrenamiento': {
             let catalogString = '';
             Object.values(pricingData.allServices).forEach(category => {
@@ -249,6 +269,9 @@ exports.handler = async (event) => {
         } else if (mode === 'image-prompt-creator') {
             const { postText } = context;
             finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
+        } else if (mode === 'outreach-generator') {
+            const { businessName, painPoints } = context;
+            finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's pain points are "[PAIN_POINTS]: ${painPoints}".`;
         }
         
         const result = await chat.sendMessage(finalUserMessage);

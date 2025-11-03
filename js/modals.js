@@ -2,7 +2,7 @@
 
 import * as dom from './dom.js';
 import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
-import { updateSelectedItems, handleAddTask } from './app.js';
+import { updateSelectedItems, handleAddTask, resetForm } from './app.js';
 import { rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
 import { generateActionPlanPdf } from './pdf.js';
@@ -573,4 +573,265 @@ export function closeSalesChannelsModal() {
     if (modal) {
         closeModal(modal);
     }
+}
+
+// --- NUEVO: RADAR DE OPORTUNIDADES ---
+let isScanning = false;
+let currentOpportunities = [];
+
+function getSelectedPainPointFilters() {
+    const filters = {};
+    document.querySelectorAll('#opportunityRadarModal input[type="checkbox"][data-filter]').forEach(cb => {
+        filters[cb.dataset.filter] = cb.checked;
+    });
+    return filters;
+}
+
+async function handleStartScan() {
+    if (isScanning) return;
+    isScanning = true;
+
+    const button = document.getElementById('radar-start-scan-btn');
+    const spinner = button.querySelector('.spinner');
+    const btnText = button.querySelector('.btn-text');
+    const originalText = btnText.textContent;
+    
+    spinner.classList.remove('hidden');
+    btnText.textContent = 'Escaneando...';
+    button.disabled = true;
+
+    const resultsContainer = document.getElementById('radar-results');
+    resultsContainer.innerHTML = '<p class="text-center text-slate-400">Buscando clientes potenciales...</p>';
+    
+    const dossierView = document.getElementById('radar-dossier-view');
+    dossierView.innerHTML = `
+        <div class="lg:col-span-2 card-bg bg-slate-900/50 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+            <svg class="spinner h-12 w-12 text-orange-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <h4 class="text-xl font-bold text-slate-300">Analizando la Web...</h4>
+            <p class="text-slate-400 mt-1">Esto puede tardar un momento mientras la IA evalúa cada sitio.</p>
+        </div>`;
+
+
+    const businessType = document.getElementById('radar-business-type').value;
+    const location = document.getElementById('radar-location').value;
+    const filters = getSelectedPainPointFilters();
+
+    if (!businessType || !location) {
+        showNotification('error', 'Datos Requeridos', 'Por favor, especifica el tipo de negocio y la ubicación.');
+        isScanning = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+        return;
+    }
+
+    try {
+        // Simulación de llamada a la API. En un caso real, esto iría a una Netlify function.
+        // const response = await fetch('/.netlify/functions/radar', { ... });
+        // const data = await response.json();
+        
+        // --- SIMULACIÓN DE RESPUESTA ---
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Simular latencia de red
+        const mockData = {
+            opportunities: [
+                { id: 1, name: "Café del Barrio", address: "Calle Falsa 123", painScore: 85, painPoints: { slow: true, mobile: true, ssl: true, seo: false } },
+                { id: 2, name: "Estudio Jurídico Pérez", address: "Av. Siempreviva 742", painScore: 60, painPoints: { slow: false, mobile: true, ssl: true, seo: false } },
+                { id: 3, name: "Gimnasio FuerteFit", address: "Plaza Mayor 5", painScore: 25, painPoints: { slow: false, mobile: false, ssl: false, seo: true } },
+                 { id: 4, name: "Florería El Jardín", address: "Rivadavia 345", painScore: 95, painPoints: { slow: true, mobile: true, ssl: true, seo: true } },
+            ]
+        };
+        currentOpportunities = mockData.opportunities;
+        renderRadarResults(currentOpportunities);
+
+    } catch (error) {
+        showNotification('error', 'Error de Escaneo', `No se pudo completar el escaneo: ${error.message}`);
+        resultsContainer.innerHTML = `<p class="text-center text-red-400">Error al escanear. Inténtalo de nuevo.</p>`;
+    } finally {
+        isScanning = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+function renderRadarResults(opportunities) {
+    const resultsContainer = document.getElementById('radar-results');
+    if (opportunities.length === 0) {
+        resultsContainer.innerHTML = '<p class="text-center text-slate-400">No se encontraron oportunidades con esos criterios.</p>';
+        return;
+    }
+    
+    resultsContainer.innerHTML = opportunities.map(opp => {
+        const painTags = Object.entries(opp.painPoints)
+            .filter(([, value]) => value)
+            .map(([key]) => {
+                const tagMap = { slow: 'LENTO', mobile: 'NO MÓVIL', ssl: 'INSEGURO', seo: 'SEO POBRE' };
+                return `<span class="text-xs font-bold bg-red-800 text-red-200 px-2 py-0.5 rounded-full">${tagMap[key]}</span>`;
+            }).join(' ');
+
+        return `
+            <div class="card-bg p-3 rounded-lg border border-slate-700 hover:border-orange-500 cursor-pointer transition" data-action="view-dossier" data-id="${opp.id}">
+                <h5 class="font-bold text-white">${opp.name}</h5>
+                <p class="text-xs text-slate-400 mb-2">${opp.address}</p>
+                <div class="w-full bg-slate-700 rounded-full h-2.5">
+                    <div class="radar-pain-score-bar h-2.5 rounded-full" style="width: ${opp.painScore}%"></div>
+                </div>
+                <div class="flex flex-wrap gap-1 mt-2">${painTags}</div>
+            </div>`;
+    }).join('');
+}
+
+function renderDossierView(opportunity) {
+    const dossierView = document.getElementById('radar-dossier-view');
+    const painPointsText = Object.entries(opportunity.painPoints)
+        .filter(([, value]) => value)
+        .map(([key]) => {
+            const textMap = { slow: 'Sitio web lento', mobile: 'No adaptado a móviles', ssl: 'Sin certificado SSL', seo: 'SEO básico deficiente' };
+            return `<li>${textMap[key]}</li>`;
+        }).join('');
+        
+    dossierView.innerHTML = `
+        <div class="w-full h-full flex flex-col">
+            <h4 class="text-xl font-bold text-orange-400 mb-2">${opportunity.name}</h4>
+            <div class="flex-grow space-y-4 overflow-y-auto p-2 text-left">
+                <div>
+                    <h5 class="font-semibold text-slate-200">Diagnóstico Rápido:</h5>
+                    <ul class="list-disc list-inside text-sm text-slate-300 mt-1">${painPointsText}</ul>
+                </div>
+                <div>
+                     <h5 class="font-semibold text-slate-200">Asistente de Contacto IA:</h5>
+                     <div id="outreach-assistant-container" class="mt-1 p-3 bg-slate-800 rounded-lg relative">
+                        <div id="outreach-spinner" class="absolute inset-0 flex items-center justify-center hidden">
+                            <svg class="spinner h-8 w-8 text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        </div>
+                        <p id="generated-outreach-text" class="text-slate-200 text-sm whitespace-pre-wrap"></p>
+                        <button id="copy-outreach-btn" class="hidden absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-shrink-0 pt-4 mt-auto">
+                <button class="w-full accent-bg font-bold py-2 rounded-lg transition btn-press-feedback" data-action="create-proposal-from-radar" data-id="${opportunity.id}">
+                    Crear Propuesta con IA
+                </button>
+            </div>
+        </div>
+    `;
+
+    generateOutreachEmail(opportunity);
+}
+
+
+async function generateOutreachEmail(opportunity) {
+    const container = document.getElementById('outreach-assistant-container');
+    const spinner = document.getElementById('outreach-spinner');
+    const copyBtn = document.getElementById('copy-outreach-btn');
+    const textField = document.getElementById('generated-outreach-text');
+
+    spinner.classList.remove('hidden');
+    textField.textContent = '';
+    copyBtn.classList.add('hidden');
+    
+    const apiKey = getState().sessionApiKey;
+    if (!apiKey) {
+        textField.textContent = 'Error: API Key no configurada.';
+        spinner.classList.add('hidden');
+        return;
+    }
+    
+    const painPoints = Object.entries(opportunity.painPoints)
+        .filter(([, value]) => value)
+        .map(([key]) => key).join(', ');
+
+    try {
+        const response = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userMessage: "Generate outreach email.",
+                mode: 'outreach-generator',
+                context: { businessName: opportunity.name, painPoints },
+                apiKey
+            })
+        });
+        if (!response.ok) throw new Error('Failed to generate outreach email.');
+        const data = await response.json();
+        textField.textContent = data.response;
+        copyBtn.textContent = 'Copiar';
+        copyBtn.classList.remove('hidden');
+    } catch (e) {
+        textField.textContent = 'Error al generar el borrador del email.';
+    } finally {
+        spinner.classList.add('hidden');
+    }
+}
+
+function handleCreateProposalFromRadar(opportunityId) {
+    const opportunity = currentOpportunities.find(o => o.id == opportunityId);
+    if (!opportunity) return;
+    
+    resetForm();
+    
+    dom.clientNameInput.value = ''; // No podemos saber el nombre de contacto
+    dom.clientCompanyInput.value = opportunity.name;
+    dom.webNameInput.value = `Nuevo Sitio Web para ${opportunity.name}`;
+
+    const painPointsDescription = Object.entries(opportunity.painPoints)
+        .filter(([, value]) => value)
+        .map(([key]) => {
+            const textMap = { slow: 'El sitio web es lento.', mobile: 'El sitio no funciona bien en móviles.', ssl: 'Falta un certificado de seguridad SSL.', seo: 'Tiene un SEO básico deficiente.' };
+            return textMap[key];
+        }).join(' ');
+
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    
+    // Simular que la IA analiza los puntos de dolor
+    chatInput.value = `Cliente con los siguientes problemas: ${painPointsDescription}. Sugiere los servicios necesarios para solucionarlos.`;
+    
+    closeOpportunityRadarModal();
+    
+    // Pequeño delay para que el usuario vea el cambio
+    setTimeout(() => {
+        sendBtn.click();
+        showNotification('info', 'Asistente Activado', `La IA está creando una propuesta para ${opportunity.name} basada en los problemas detectados.`);
+    }, 500);
+}
+
+
+export function showOpportunityRadarModal() {
+    const modal = document.getElementById('opportunityRadarModal');
+    if (!modal) return;
+    openModal(modal);
+    
+    if (!modal.dataset.listenersAttached) {
+        document.getElementById('close-opportunity-radar-modal-btn').addEventListener('click', closeOpportunityRadarModal);
+        document.getElementById('radar-start-scan-btn').addEventListener('click', handleStartScan);
+        
+        const mainContent = document.getElementById('radar-main-content');
+        mainContent.addEventListener('click', (e) => {
+            const dossierBtn = e.target.closest('[data-action="view-dossier"]');
+            if (dossierBtn) {
+                const opp = currentOpportunities.find(o => o.id == dossierBtn.dataset.id);
+                if (opp) renderDossierView(opp);
+            }
+
+            const createProposalBtn = e.target.closest('[data-action="create-proposal-from-radar"]');
+            if (createProposalBtn) {
+                handleCreateProposalFromRadar(createProposalBtn.dataset.id);
+            }
+            
+            const copyBtn = e.target.closest('#copy-outreach-btn');
+            if (copyBtn) {
+                const text = document.getElementById('generated-outreach-text').textContent;
+                navigator.clipboard.writeText(text);
+                copyBtn.textContent = '¡Copiado!';
+            }
+        });
+
+        modal.dataset.listenersAttached = 'true';
+    }
+}
+
+export function closeOpportunityRadarModal() {
+    closeModal(document.getElementById('opportunityRadarModal'));
 }

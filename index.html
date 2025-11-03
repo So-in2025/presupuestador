@@ -378,29 +378,9 @@
             transform: rotate(180deg);
         }
 
-        /* --- ESTILOS MÓDULO DE GESTIÓN DE PROYECTOS --- */
-        .project-card {
-            background-color: rgba(30, 41, 59, 0.5);
-            border: 1px solid var(--border-color);
-            border-left: 4px solid var(--accent-color);
-        }
-        .deliverable-item {
-            display: flex; align-items: center; gap: 0.75rem;
-            padding: 0.5rem; border-radius: 0.375rem;
-            transition: background-color 0.2s;
-        }
-        .deliverable-item:hover { background-color: rgba(51, 65, 85, 0.3); }
-        .deliverable-item input:checked + label {
-            text-decoration: line-through;
-            color: var(--text-secondary);
-        }
-        .project-notes-textarea {
-            background-color: rgba(15, 23, 42, 0.5);
-            border-color: #334155;
-            min-height: 60px;
-        }
-        .project-notes-textarea:focus {
-            background-color: rgba(15, 23, 42, 0.8);
+        /* NUEVO: ESTILOS RADAR DE OPORTUNIDADES */
+        .radar-pain-score-bar {
+            background-image: linear-gradient(to right, #22c55e, #f97316, #dc2626);
         }
     </style>
 </head>
@@ -506,6 +486,10 @@
                 </div>
                 <p class="text-slate-400 mt-2">Crea, gestiona y exporta propuestas de alto impacto.</p>
                  <div class="mt-4 flex flex-wrap justify-center gap-3">
+                     <button id="show-opportunity-radar-btn" class="text-sm bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 3.5a1.5 1.5 0 011.5 1.5v.582a4.956 4.956 0 013.352 1.253 1.5 1.5 0 01-1.22 2.53 2.956 2.956 0 00-2.132-.915V11.5a1.5 1.5 0 01-3 0V8.45a2.956 2.956 0 00-2.132.915 1.5 1.5 0 01-1.22-2.53A4.957 4.957 0 018.5 5.582V5A1.5 1.5 0 0110 3.5zM5.11 8.84A6.452 6.452 0 0110 6.5a6.452 6.452 0 014.89 2.34 1.5 1.5 0 01-.84 2.59A3.457 3.457 0 0010 10.5a3.457 3.457 0 00-4.05 1.23 1.5 1.5 0 01-.84-2.59zM10 13.5a1.5 1.5 0 011.5 1.5v.993c.474.08.93.225 1.355.422a1.5 1.5 0 01-.71 2.898A4.951 4.951 0 0110 18.5a4.951 4.951 0 01-2.145-.487 1.5 1.5 0 01-.71-2.898c.425-.197.881-.342 1.355-.422V15a1.5 1.5 0 011.5-1.5z"/></svg>
+                        Radar de Oportunidades
+                    </button>
                     <button id="show-branding-modal-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         ⚙️ Configuración de Marca
                     </button>
@@ -707,18 +691,8 @@
                     </div>
 
                     <div id="saved-proposals-container" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold text-pink-400">4. Gestión de Propuestas y Proyectos</h2>
-                        
-                        <!-- PESTAÑAS DE GESTIÓN -->
-                        <div id="management-tabs" class="border-b border-slate-700 mb-4 flex justify-start gap-2">
-                            <button class="studio-tab active" data-tab="pipeline">Pipeline</button>
-                            <button class="studio-tab" data-tab="projects">Proyectos Activos</button>
-                        </div>
-
-                        <div id="tasksDashboard" class="space-y-4 min-h-[100px]">
-                            <p class="text-slate-400">Aún no hay propuestas guardadas.</p>
-                        </div>
-
+                        <h2 class="text-2xl font-semibold text-pink-400">4. Pipeline de Ventas</h2>
+                        <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
                         <div class="mt-4 flex gap-2">
                             <button id="exportPdfBtn" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
                             <button id="clearAllTasksBtn" class="flex-grow bg-red-800 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition shadow-lg action-button btn-press-feedback">Limpiar Todo</button>
@@ -1136,6 +1110,62 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NUEVO: RADAR DE OPORTUNIDADES MODAL -->
+    <div id="opportunityRadarModal" class="hidden fixed inset-0 flex items-center justify-center modal-overlay opacity-0">
+        <div class="card-bg w-full max-w-7xl h-full max-h-[95vh] rounded-xl shadow-2xl transform scale-95 flex flex-col" role="dialog" aria-modal="true">
+            <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-orange-600 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 3.5a1.5 1.5 0 011.5 1.5v.582a4.956 4.956 0 013.352 1.253 1.5 1.5 0 01-1.22 2.53 2.956 2.956 0 00-2.132-.915V11.5a1.5 1.5 0 01-3 0V8.45a2.956 2.956 0 00-2.132.915 1.5 1.5 0 01-1.22-2.53A4.957 4.957 0 018.5 5.582V5A1.5 1.5 0 0110 3.5zM5.11 8.84A6.452 6.452 0 0110 6.5a6.452 6.452 0 014.89 2.34 1.5 1.5 0 01-.84 2.59A3.457 3.457 0 0010 10.5a3.457 3.457 0 00-4.05 1.23 1.5 1.5 0 01-.84-2.59zM10 13.5a1.5 1.5 0 011.5 1.5v.993c.474.08.93.225 1.355.422a1.5 1.5 0 01-.71 2.898A4.951 4.951 0 0110 18.5a4.951 4.951 0 01-2.145-.487 1.5 1.5 0 01-.71-2.898c.425-.197.881-.342 1.355-.422V15a1.5 1.5 0 011.5-1.5z"/></svg>
+                    Radar de Oportunidades IA
+                </h3>
+                <button id="close-opportunity-radar-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+            </div>
+            <div id="radar-main-content" class="p-5 flex-grow overflow-y-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Columna de Configuración y Resultados -->
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <div class="card-bg border-orange-500/50 p-4 rounded-lg">
+                        <h4 class="font-bold text-lg text-orange-400 mb-3">1. Configurar Misión</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label for="radar-business-type" class="text-sm font-medium">Tipo de Negocio:</label>
+                                <input type="text" id="radar-business-type" class="styled-input w-full mt-1" placeholder="Ej: Restaurantes, Gimnasios">
+                            </div>
+                            <div>
+                                <label for="radar-location" class="text-sm font-medium">Ubicación:</label>
+                                <input type="text" id="radar-location" class="styled-input w-full mt-1" placeholder="Ej: Buenos Aires, Argentina">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-bg border-orange-500/50 p-4 rounded-lg">
+                        <h4 class="font-bold text-lg text-orange-400 mb-3">2. Filtros de "Puntos de Dolor"</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" data-filter="slow" class="custom-checkbox" checked> <span class="text-sm">Sitio Web Lento</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" data-filter="mobile" class="custom-checkbox" checked> <span class="text-sm">No Adaptado a Móviles</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" data-filter="ssl" class="custom-checkbox" checked> <span class="text-sm">Sin Certificado SSL</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" data-filter="seo" class="custom-checkbox"> <span class="text-sm">SEO Básico Deficiente</span></label>
+                        </div>
+                    </div>
+                     <button id="radar-start-scan-btn" class="w-full accent-bg bg-orange-600 hover:bg-orange-700 font-bold py-3 mt-2 rounded-lg transition shadow-xl btn-press-feedback flex items-center justify-center gap-2">
+                        <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="btn-text">Iniciar Escaneo</span>
+                     </button>
+                    <div id="radar-results" class="flex-grow space-y-3 overflow-y-auto p-1">
+                        <!-- Las tarjetas de oportunidad aparecerán aquí -->
+                    </div>
+                </div>
+
+                <!-- Columna de Dossier de Inteligencia -->
+                <div id="radar-dossier-view" class="lg:col-span-2 card-bg bg-slate-900/50 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
+                    </svg>
+                    <h4 class="text-xl font-bold text-slate-300">Selecciona una Oportunidad</h4>
+                    <p class="text-slate-400 mt-1">Elige un resultado del escaneo para ver el dossier de inteligencia y el asistente de contacto.</p>
                 </div>
             </div>
         </div>
