@@ -3,7 +3,7 @@
 import * as dom from './dom.js';
 import * as state from './state.js';
 import { loadPricingData, loadLocalData, saveTasks } from './data.js';
-import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask, deleteLocalService, updateTaskStatus, updateProjectDetails } from './app.js';
+import { resetForm, handleAddTask, clearAllSelections, toggleSelectionMode, updateSelectedItems, deleteTask, editTask, deleteLocalService, updateTaskStatus } from './app.js';
 import { handleServiceSelection, handlePlanSelection } from './points.js';
 import { 
     removeCustomService, 
@@ -29,7 +29,8 @@ import {
     closeContentStudioModal,
     showLeadGenPlanModal,
     showSalesChannelsModal,
-    closeSalesChannelsModal
+    closeSalesChannelsModal,
+    showOpportunityRadarModal
 } from './modals.js';
 import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
@@ -328,6 +329,7 @@ function initializeEventListeners() {
     document.getElementById('generate-lead-gen-plan-btn')?.addEventListener('click', showLeadGenPlanModal);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
     document.getElementById('show-sales-channels-btn')?.addEventListener('click', showSalesChannelsModal);
+    document.getElementById('show-opportunity-radar-btn')?.addEventListener('click', showOpportunityRadarModal);
     document.getElementById('tieredBuilderBtn')?.addEventListener('click', () => showTieredBuilderModal());
     document.getElementById('configure-rate-btn')?.addEventListener('click', showExchangeRateModal);
     document.getElementById('add-custom-service-modal-btn')?.addEventListener('click', showCustomServiceModal);
@@ -414,27 +416,6 @@ function initializeEventListeners() {
             document.getElementById(`tab-content-${tabId}`).classList.add('active');
         });
     }
-    
-    // --- NEW: Management Dashboard Tab Logic ---
-    const managementTabsContainer = document.getElementById('management-tabs');
-    if (managementTabsContainer) {
-        managementTabsContainer.addEventListener('click', (e) => {
-            const button = e.target.closest('.studio-tab');
-            if (!button) return;
-
-            const tabId = button.dataset.tab;
-            
-            managementTabsContainer.querySelectorAll('.studio-tab').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-
-            document.querySelectorAll('.dashboard-tab-content').forEach(content => {
-                content.style.display = 'none';
-            });
-            const activeContent = document.getElementById(`dashboard-${tabId}-content`);
-            if (activeContent) activeContent.style.display = 'block';
-        });
-    }
-
 
     // Event Delegation
     dom.appContainer.addEventListener('change', (e) => {
@@ -462,20 +443,6 @@ function initializeEventListeners() {
             handleServiceSelection(target, target.checked);
         } else if (target.matches('.task-status-select')) {
             updateTaskStatus(parseInt(target.dataset.index), target.value);
-        } else if (target.matches('.project-status-select')) {
-            updateProjectDetails(parseInt(target.dataset.index), { projectStatus: target.value });
-        } else if (target.matches('.deliverable-checkbox')) {
-            updateProjectDetails(parseInt(target.dataset.index), { deliverableId: target.dataset.deliverableId, isCompleted: target.checked });
-        }
-    });
-
-    let debounceTimer;
-    dom.appContainer.addEventListener('input', (e) => {
-        if (e.target.matches('.project-notes-textarea')) {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                updateProjectDetails(parseInt(e.target.dataset.index), { notes: e.target.value });
-            }, 500); // Guardar notas 500ms después de que el usuario deje de escribir
         }
     });
 
