@@ -1,89 +1,105 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades
- * NOTA: Esta es una simulación. Una implementación real requeriría una API externa
- * para scraping de Google (ej: SerpApi, ScraperAPI) y herramientas de análisis web.
- * La lógica aquí replica el *resultado* de ese proceso.
+ * Backend para Radar de Oportunidades v2.0 - Implementación Real (Simulada)
+ * Esta función está ahora estructurada para reflejar un flujo de trabajo de producción
+ * que llamaría a APIs externas. Devuelve un conjunto de datos más rico y realista.
  */
 
+// --- DATOS SIMULADOS PARA GENERACIÓN DINÁMICA ---
+const namePrefixes = ["Innovador", "Digital", "Global", "NextGen", "Pro", "Quantum", "Synergy", "Zenith"];
+const nameSuffixes = ["Solutions", "Group", "Creative", "Tech", "Works", "Dynamics", "Labs", "Studio"];
+const streetNames = ["Av. Principal", "Calle del Sol", "Plaza Mayor", "Paseo de la Luna", "Ruta 42", "Boulevard de los Sueños"];
+const techStacks = [
+    { name: 'WordPress', icon: 'wordpress' },
+    { name: 'Shopify', icon: 'shopify' },
+    { name: 'React', icon: 'react' },
+    { name: 'Wix', icon: 'wix' },
+    { name: 'HTML/CSS Básico', icon: 'html5' }
+];
+
+// --- FUNCIÓN PRINCIPAL DE LA API ---
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
         return { statusCode: 405, body: "Method Not Allowed" };
     }
 
     try {
-        // En una implementación real, aquí se recibirían los parámetros:
-        // const { businessType, location, filters } = JSON.parse(event.body);
+        const { businessType, location, filters } = JSON.parse(event.body);
 
-        // 1. (SIMULADO) Llamada a una API externa para buscar negocios
-        // ej: const searchResults = await externalSearchApi.search(`${businessType} in ${location}`);
-        
-        // 2. (SIMULADO) Iterar y analizar cada sitio web
-        // for (const business of searchResults) { ... }
+        // ===================================================================
+        // PASO 1: LLAMADA A GOOGLE PLACES API (SIMULADO)
+        // En una implementación real, aquí se llamaría a Google Places para obtener
+        // una lista de negocios con sus URLs de sitios web.
+        // ===================================================================
+        const numberOfResults = Math.floor(Math.random() * 4) + 5;
+        const potentialLeads = Array.from({ length: numberOfResults }, (_, i) => {
+            const prefix = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
+            const suffix = nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)];
+            const useTypeInName = Math.random() > 0.5;
+            const businessName = useTypeInName ? `${businessType} ${prefix} de ${location}` : `${prefix} ${businessType} ${suffix}`;
+            return {
+                id: Date.now() + i,
+                name: businessName,
+                address: `${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 500) + 1}, ${location}`,
+                website: `https://www.${businessName.toLowerCase().replace(/\s/g, '')}.com`,
+            };
+        });
 
-        // 3. Devolver datos simulados para la demostración
-        await new Promise(resolve => setTimeout(resolve, 2500)); // Simular latencia
+        // Simular latencia de red para el análisis de cada sitio
+        await new Promise(resolve => setTimeout(resolve, 2500));
 
-        const mockData = {
-            opportunities: [
-                {
-                    id: 1,
-                    name: "Café del Barrio",
-                    address: "Calle Falsa 123, Springfield",
-                    website: "http://cafedelbarrio-inseguro.com",
-                    painScore: 85,
-                    painPoints: {
-                        slow: true,
-                        mobile: true,
-                        ssl: true,
-                        seo: false
-                    }
-                },
-                {
-                    id: 2,
-                    name: "Estudio Jurídico Pérez",
-                    address: "Av. Siempreviva 742, Springfield",
-                    website: "https://perezabogados.com",
-                    painScore: 60,
-                    painPoints: {
-                        slow: false,
-                        mobile: true,
-                        ssl: false, // Suponiendo que el análisis detecta que sí tiene, pero la simulación muestra un punto de dolor
-                        seo: true
-                    }
-                },
-                {
-                    id: 3,
-                    name: "Gimnasio FuerteFit",
-                    address: "Plaza Mayor 5, Springfield",
-                    website: "https://fuertefit.com",
-                    painScore: 25,
-                    painPoints: {
-                        slow: false,
-                        mobile: false,
-                        ssl: false,
-                        seo: true
-                    }
-                },
-                {
-                    id: 4,
-                    name: "Florería El Jardín",
-                    address: "Rivadavia 345, Shelbyville",
-                    website: "http://floreriaeljardin-lenta.com",
-                    painScore: 95,
-                    painPoints: {
-                        slow: true,
-                        mobile: true,
-                        ssl: true,
-                        seo: true
-                    }
-                }
-            ]
-        };
+        // ===================================================================
+        // PASO 2: ANÁLISIS DE CADA SITIO (SIMULADO)
+        // En producción, este bloque iteraría sobre `potentialLeads` y para cada uno:
+        // 1. Llamaría a Google PageSpeed Insights API.
+        // 2. Realizaría una verificación de SSL (fetch a https).
+        // 3. Usaría una librería como Wappalyzer para detectar el stack.
+        // ===================================================================
+        const analyzedOpportunities = potentialLeads.map(lead => {
+            // Simulación de datos de PageSpeed Insights y SSL
+            const performanceScore = Math.floor(Math.random() * 70) + 30; // 30-100
+            const mobileFriendly = Math.random() > 0.3; // 70% chance
+            const hasSSL = Math.random() > 0.5; // 50% chance
+            const seoScore = Math.floor(Math.random() * 60) + 40; // 40-100
+
+            const painPoints = {
+                slow: performanceScore < 50,
+                mobile: !mobileFriendly,
+                ssl: !hasSSL,
+                seo: seoScore < 70,
+            };
+
+            // Algoritmo de puntuación de dolor mejorado
+            let painScore = 0;
+            if (painPoints.slow) painScore += (100 - performanceScore) / 2; // Más impacto si es más lento
+            if (painPoints.mobile) painScore += 30;
+            if (painPoints.ssl) painScore += 25;
+            if (painPoints.seo) painScore += (90 - seoScore) / 3;
+            
+            painScore = Math.min(100, Math.round(painScore));
+            if (painScore < 15) painScore = 15;
+
+            return {
+                ...lead,
+                painScore,
+                painPoints,
+                // Datos enriquecidos (Fase 3 simulada)
+                techStack: techStacks[Math.floor(Math.random() * techStacks.length)],
+                hasAnalytics: Math.random() > 0.5,
+                hasPixel: Math.random() > 0.7
+            };
+        });
+
+        // Filtrar resultados basados en los checkboxes del frontend
+        const filteredOpportunities = analyzedOpportunities.filter(opp => {
+            return Object.keys(filters).every(key => {
+                return !filters[key] || opp.painPoints[key];
+            });
+        });
 
         return {
             statusCode: 200,
-            body: JSON.stringify(mockData)
+            body: JSON.stringify({ opportunities: filteredOpportunities })
         };
 
     } catch (err) {

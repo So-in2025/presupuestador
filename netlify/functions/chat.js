@@ -1,9 +1,9 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v39 - Opportunity Radar Outreach Generator
+ * Lógica de Intención: v40 - Modern Gemini SDK Initialization
  */
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
@@ -244,19 +244,12 @@ exports.handler = async (event) => {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const ai = new GoogleGenAI({apiKey});
         
-        // --- TEXT GENERATION LOGIC (ALL MODES) ---
-        const model = genAI.getGenerativeModel(
-            { model: TEXT_MODEL_NAME, systemInstruction: getSystemInstructionForMode(mode, context) },
-        );
-        
-        const chat = model.startChat({
-            history: historyFromClient || [],
-            generationConfig: {
-                ...((mode === 'builder' || mode === 'lead-gen-plan') && { responseMimeType: "application/json" })
-            }
-        });
+        const generationConfig = {
+            ...((mode === 'builder' || mode === 'lead-gen-plan') && { responseMimeType: "application/json" })
+        };
+        const systemInstruction = getSystemInstructionForMode(mode, context);
 
         let finalUserMessage = userMessage;
 
@@ -274,14 +267,22 @@ exports.handler = async (event) => {
             finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's pain points are "[PAIN_POINTS]: ${painPoints}".`;
         }
         
-        const result = await chat.sendMessage(finalUserMessage);
-        const response = await result.response;
-        const responseText = response.text();
+        const chat = ai.chats.create({
+            model: TEXT_MODEL_NAME,
+            history: historyFromClient || [],
+            config: {
+                systemInstruction: systemInstruction,
+                ...generationConfig,
+            },
+        });
+        
+        const response = await chat.sendMessage({ message: finalUserMessage });
 
-        if (!responseText) {
+        if (!response || !response.text) {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
         }
         
+        const responseText = response.text;
         const finalHistory = [...(historyFromClient || []), { role: 'user', parts: [{ text: userMessage }] }, { role: 'model', parts: [{ text: responseText }] }];
 
         return {

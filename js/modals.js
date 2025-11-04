@@ -622,26 +622,41 @@ async function handleStartScan() {
         spinner.classList.add('hidden');
         btnText.textContent = originalText;
         button.disabled = false;
+        resultsContainer.innerHTML = '';
+        dossierView.innerHTML = `
+            <div class="lg:col-span-2 card-bg bg-slate-900/50 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
+                </svg>
+                <h4 class="text-xl font-bold text-slate-300">Selecciona una Oportunidad</h4>
+                <p class="text-slate-400 mt-1">Elige un resultado del escaneo para ver el dossier de inteligencia y el asistente de contacto.</p>
+            </div>`;
         return;
     }
 
     try {
-        // Simulación de llamada a la API. En un caso real, esto iría a una Netlify function.
-        // const response = await fetch('/.netlify/functions/radar', { ... });
-        // const data = await response.json();
+        const response = await fetch('/.netlify/functions/radar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ businessType, location, filters })
+        });
         
-        // --- SIMULACIÓN DE RESPUESTA ---
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Simular latencia de red
-        const mockData = {
-            opportunities: [
-                { id: 1, name: "Café del Barrio", address: "Calle Falsa 123", painScore: 85, painPoints: { slow: true, mobile: true, ssl: true, seo: false } },
-                { id: 2, name: "Estudio Jurídico Pérez", address: "Av. Siempreviva 742", painScore: 60, painPoints: { slow: false, mobile: true, ssl: true, seo: false } },
-                { id: 3, name: "Gimnasio FuerteFit", address: "Plaza Mayor 5", painScore: 25, painPoints: { slow: false, mobile: false, ssl: false, seo: true } },
-                 { id: 4, name: "Florería El Jardín", address: "Rivadavia 345", painScore: 95, painPoints: { slow: true, mobile: true, ssl: true, seo: true } },
-            ]
-        };
-        currentOpportunities = mockData.opportunities;
+        if (!response.ok) {
+            throw new Error(`El servidor respondió con un error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentOpportunities = data.opportunities;
         renderRadarResults(currentOpportunities);
+
+        dossierView.innerHTML = `
+            <div class="lg:col-span-2 card-bg bg-slate-900/50 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
+                </svg>
+                <h4 class="text-xl font-bold text-slate-300">Selecciona una Oportunidad</h4>
+                <p class="text-slate-400 mt-1">Elige un resultado del escaneo para ver el dossier de inteligencia y el asistente de contacto.</p>
+            </div>`;
 
     } catch (error) {
         showNotification('error', 'Error de Escaneo', `No se pudo completar el escaneo: ${error.message}`);
@@ -654,9 +669,10 @@ async function handleStartScan() {
     }
 }
 
+
 function renderRadarResults(opportunities) {
     const resultsContainer = document.getElementById('radar-results');
-    if (opportunities.length === 0) {
+    if (!opportunities || opportunities.length === 0) {
         resultsContainer.innerHTML = '<p class="text-center text-slate-400">No se encontraron oportunidades con esos criterios.</p>';
         return;
     }
