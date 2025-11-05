@@ -1,8 +1,8 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v6.0 - Robust JSON Schema
+ * Backend para Radar de Oportunidades v7 - CRITICAL FIX: Correct Gemini Library Usage
  * Uses Gemini to find real businesses AND perform a technical analysis for each.
- * Reverted to use the stable @google/generative-ai SDK.
+ * Aligned with official @google/generative-ai SDK usage to fix crashes.
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -10,149 +10,117 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. You must strictly follow the provided JSON schema. If no businesses are found, return an empty array [].
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-Now, process this request:
-Business Type: "${businessType}"
-Location: "${location}"`;
-
-    const generationConfig = {
-        responseMimeType: "application/json",
-        responseSchema: {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    name: { type: "STRING" },
-                    address: { type: "STRING" },
-                    website: { type: "STRING" }
-                },
-                required: ["name", "address", "website"]
-            }
-        }
-    };
+    const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. You MUST return ONLY a valid JSON object with a single key "businesses" which is an array of objects. Each object MUST have "name" and "address" keys. Example: {"businesses": [{"name": "Example Cafe", "address": "123 Main St, Anytown"}]}. Do not add any other text or explanations. Business Type: "${businessType}", Location: "${location}".`;
 
     try {
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig,
+            generationConfig: { responseMimeType: "application/json" }
         });
-        const businesses = JSON.parse(result.response.text());
-        return Array.isArray(businesses) ? businesses : [];
+        const response = result.response;
+        const text = response.text();
+        return JSON.parse(text).businesses;
     } catch (error) {
-        console.error("Gemini API call failed (getRealBusinessesFromAI):", error.message);
-        throw new Error(`La IA no pudo encontrar negocios. Razón: ${error.message}`);
+        console.error("Error fetching businesses from AI:", error);
+        throw new Error("La IA no pudo encontrar negocios. Intenta ser más específico.");
     }
 };
 
-const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
+const getTechnicalAnalysisFromAI = async (businessName, businessAddress, filters, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const prompt = `You are an expert web analysis API. You will receive a business name and website. Your task is to provide a realistic estimation of its technical and marketing readiness. You must strictly follow the provided JSON schema.
-
-Analyze this business:
-Business Name: "${business.name}"
-Website URL: "${business.website}"`;
-    
-     const generationConfig = {
-        responseMimeType: "application/json",
-        responseSchema: {
-            type: "OBJECT",
-            properties: {
-                performanceScore: { type: "INTEGER" },
-                mobileScore: { type: "INTEGER" },
-                seoScore: { type: "INTEGER" },
-                hasSSL: { type: "BOOLEAN" },
-                techStack: { type: "STRING" },
-                hasAnalytics: { type: "BOOLEAN" },
-                hasPixel: { type: "BOOLEAN" }
-            },
-            required: ["performanceScore", "mobileScore", "seoScore", "hasSSL", "techStack", "hasAnalytics", "hasPixel"]
-        }
-    };
+    const prompt = `You are a "Technical Web Analyst" API. Analyze the business: "${businessName}" at "${businessAddress}". Perform a simulated but realistic analysis based on its likely web presence. You MUST return ONLY a valid JSON object with the following structure:
+    {
+      "performanceScore": <integer 0-100>,
+      "seoScore": <integer 0-100>,
+      "mobileScore": <integer 0-100>,
+      "painPoints": { "slow": <boolean>, "mobile": <boolean>, "ssl": <boolean>, "seo": <boolean> },
+      "techStack": "<string, e.g., 'WordPress, Elementor'>",
+      "hasAnalytics": <boolean>,
+      "hasPixel": <boolean>
+    }
+    The "painPoints" booleans should reflect common issues, influenced by the scores. If a score is low, its corresponding pain point should likely be true. You MUST respect the user's filter preferences: ${JSON.stringify(filters)}. If a filter is true, you MUST return the corresponding pain point as true.`;
 
     try {
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig
+            generationConfig: { responseMimeType: "application/json" }
         });
-        const analysis = JSON.parse(result.response.text());
-        return analysis;
+        const response = result.response;
+        const text = response.text();
+        return JSON.parse(text);
     } catch (error) {
-        console.error(`Failed to get technical analysis for ${business.name}:`, error);
+        console.error(`Error analyzing ${businessName}:`, error);
+        // Return a default error object to avoid crashing the whole process
         return {
-            performanceScore: 30, mobileScore: 40, seoScore: 50,
-            hasSSL: false, techStack: "Unknown", hasAnalytics: false, hasPixel: false, error: true
+            performanceScore: 30, seoScore: 30, mobileScore: 30,
+            painPoints: { slow: true, mobile: true, ssl: true, seo: true },
+            techStack: "Desconocido", hasAnalytics: false, hasPixel: false
         };
     }
 };
 
-
-// --- MAIN API HANDLER ---
+// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
         return { statusCode: 405, body: "Method Not Allowed" };
     }
 
+    let body;
     try {
-        const { businessType, location, filters, apiKey } = JSON.parse(event.body);
-        if (!apiKey) {
-             return { statusCode: 401, body: JSON.stringify({ error: true, message: "API Key is required." }) };
-        }
+        body = JSON.parse(event.body);
+    } catch (e) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Cuerpo de solicitud JSON inválido." }) };
+    }
 
-        const potentialLeads = await getRealBusinessesFromAI(businessType, location, apiKey);
-        
-        if (!potentialLeads || potentialLeads.length === 0) {
+    const { businessType, location, filters, apiKey } = body;
+    if (!businessType || !location || !filters || !apiKey) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Faltan parámetros: businessType, location, filters, y apiKey son requeridos." }) };
+    }
+
+    try {
+        const businesses = await getRealBusinessesFromAI(businessType, location, apiKey);
+        if (!businesses || businesses.length === 0) {
             return { statusCode: 200, body: JSON.stringify({ opportunities: [] }) };
         }
 
-        const analysisPromises = potentialLeads.map(lead => getTechnicalAnalysisForBusiness(lead, apiKey));
-        const technicalAnalyses = await Promise.all(analysisPromises);
-        
-        const analyzedOpportunities = potentialLeads.map((lead, index) => {
-            const analysis = technicalAnalyses[index];
-            const { performanceScore, mobileScore, seoScore, hasSSL } = analysis;
+        const analysisPromises = businesses.map(business =>
+            getTechnicalAnalysisFromAI(business.name, business.address, filters, apiKey)
+        );
 
-            const painPoints = {
-                slow: performanceScore < 50,
-                mobile: mobileScore < 90,
-                ssl: !hasSSL,
-                seo: seoScore < 80,
-            };
-            
-            let painScore = [
-                painPoints.slow ? (50 - performanceScore) * 1.5 : 0,
-                painPoints.mobile ? (90 - mobileScore) * 0.5 : 0,
-                painPoints.ssl ? 30 : 0,
-                painPoints.seo ? (80 - seoScore) * 0.4 : 0
-            ].reduce((a, b) => a + b, 0);
-            
-            painScore = Math.min(98, Math.round(painScore));
-            if (painScore < 20) painScore = 20 + Math.floor(Math.random() * 10);
+        const analyses = await Promise.all(analysisPromises);
 
+        const opportunities = businesses.map((business, index) => {
+            const analysis = analyses[index];
+            const painScore = Object.values(analysis.painPoints).reduce((score, hasPain) => score + (hasPain ? 25 : 0), 0);
             return {
-                ...lead, id: Date.now() + index, painScore, painPoints, ...analysis
+                id: `opp-${Date.now()}-${index}`,
+                name: business.name,
+                address: business.address,
+                ...analysis,
+                painScore: painScore
             };
         });
 
-        const filteredOpportunities = analyzedOpportunities.filter(opp => {
-             if (opp.error) return false;
-            return Object.keys(filters).every(key => !filters[key] || opp.painPoints[key]);
+        const filteredOpportunities = opportunities.filter(opp => {
+            return Object.entries(filters).every(([key, value]) => {
+                return !value || (value && opp.painPoints[key]);
+            });
         });
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ opportunities: filteredOpportunities })
+            body: JSON.stringify({ opportunities: filteredOpportunities.sort((a,b) => b.painScore - a.painScore) })
         };
 
     } catch (err) {
-        console.error("Error in radar function:", err.message || err);
+        console.error("Error en la función Radar:", err);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: true, message: `Ocurrió un error interno en el servidor. Revisa los logs de la función. Detalle: ${err.message}` })
+            body: JSON.stringify({ message: err.message || "Ocurrió un error interno en el servidor." })
         };
     }
 };

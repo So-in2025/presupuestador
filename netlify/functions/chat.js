@@ -1,20 +1,20 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v78 - Robust Prompt Refactor
- * This version refactors the builder prompt to separate the system instructions (behavior)
- * from the user prompt context (service catalog). This prevents potential token limit
- * issues with the systemInstruction field and provides a clearer, more robust prompt
- * structure for the model, definitively fixing intermittent JSON generation failures.
+ * Lógica de Intención: v79 - CRITICAL FIX: Correct Gemini Library Usage
+ * This version corrects the fatal `TypeError: GoogleGenAI is not a constructor` error
+ * by using the correct `GoogleGenerativeAI` class name and refactoring the API call
+ * to the official, stable `getGenerativeModel().generateContent()` pattern.
+ * This aligns the code with the installed library version and resolves the root cause of the crashes.
  */
-const { GoogleGenAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 exports.handler = async (event) => {
     // --- START OF INLINE PROMPT TEMPLATES (Original Robust Structure) ---
 
-    // This function encapsulates the complex builder prompt, as it was in the original version.
+    // This function encapsulates the complex builder prompt.
     const getBuilderPrompt = (userMessage, context) => {
         const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
         const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
@@ -24,7 +24,6 @@ exports.handler = async (event) => {
             ? `ADDITIONAL CONTEXT: The reseller has already pre-selected the following services: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Do not suggest these items again and base your recommendations on complementing this selection.`
             : '';
 
-        // NEW, shorter system instruction focusing on behavior and format.
         const systemInstruction = `You are an elite "Solution Architect" and sales assistant. Your only mission is to act as a strict JSON API. You will analyze a reseller's request for a web project and build the perfect solution using EXCLUSIVELY the provided service catalog. You must be proactive in identifying 'upsell' and 'cross-sell' opportunities.
 
 **CRITICAL, UNBREAKABLE INSTRUCTIONS:**
@@ -41,7 +40,6 @@ exports.handler = async (event) => {
 4.  **HANDLING CUSTOM TASKS:** If the user requests functionality NOT in the catalog (e.g., 'Calendly integration'), you MUST assign the corresponding 'CUSTOM TASKS' ID ('custom-s', 'custom-m', 'custom-l'), provide a descriptive 'name', and include \`"is_new": true\`.
 5.  **DO NOT INVENT SERVICES:** Only use IDs from the provided catalog.`;
         
-        // NEW, prompt that combines catalog and user message into the main content.
         const fullPromptForUser = `
 --- SERVICE CATALOG (YOUR ONLY SOURCE OF TRUTH) ---
 ${serviceList}
@@ -176,7 +174,6 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
     
     // --- END OF INLINE PROMPT TEMPLATES ---
 
-
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
     let body;
@@ -189,7 +186,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
     }
 
     try {
-        const ai = new GoogleGenAI({apiKey});
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         let systemInstruction;
         let finalUserMessage = userMessage;
@@ -201,25 +198,28 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         } else if (mode === 'entrenamiento') {
             systemInstruction = getTrainingPrompt();
         } else {
-            // All other modes are handled here, using a single function.
             systemInstruction = getOtherModePrompt(mode, context);
         }
+
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: { role: 'model', parts: [{ text: systemInstruction }] }
+        });
 
         const contentsForApi = [
             ...(historyFromClient || []),
             { role: "user", parts: [{ text: finalUserMessage }] },
         ];
         
-        const result = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const result = await model.generateContent({
             contents: contentsForApi,
-            config: {
-                systemInstruction: systemInstruction,
-                ...(mode === 'builder' || mode === 'lead-gen-plan' ? { responseMimeType: "application/json" } : {})
+            generationConfig: {
+                responseMimeType: (mode === 'builder' || mode === 'lead-gen-plan') ? "application/json" : "text/plain",
             }
         });
         
-        const responseText = result.text;
+        const response = result.response;
+        const responseText = response.text();
         let responsePayload;
         
         if (mode === 'builder' || mode === 'lead-gen-plan') {
