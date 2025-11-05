@@ -1,14 +1,14 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v60 - REVERTED to pre-refactor structure. Monolithic, but robust.
+ * Lógica de Intención: v56 - Re-implemented robust, strict JSON schema validation.
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 exports.handler = async (event) => {
-    // --- PROMPT TEMPLATES (All in one place for stability, pre-refactor style) ---
+    // --- PROMPT TEMPLATES (All in one place for stability) ---
     const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
     const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
@@ -168,6 +168,30 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
                     topK: 1,
                     topP: 1,
                     maxOutputTokens: 2048,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            introduction: { type: "STRING" },
+                            services: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        id: { type: "STRING" },
+                                        name: { type: "STRING" },
+                                        priority: { type: "STRING", enum: ["essential", "recommended", "optional"] },
+                                        is_new: { type: "BOOLEAN" }
+                                    },
+                                    required: ["id", "name", "priority"]
+                                }
+                            },
+                            closing: { type: "STRING" },
+                            client_questions: { type: "ARRAY", items: { type: "STRING" } },
+                            sales_pitch: { type: "STRING" }
+                        },
+                        required: ["introduction", "services", "closing", "client_questions", "sales_pitch"]
+                    },
                 };
                 const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
                 const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
@@ -183,32 +207,7 @@ ${planList}
 --- CUSTOM TASKS (Use these for requests not in the catalog) ---
 ${customTaskList}
 
-Your response MUST be a single, valid JSON object. Do NOT add any text, markdown, or any other characters before or after the JSON object.
-
-**THE JSON STRUCTURE MUST BE:**
-{
-  "introduction": "A brief, friendly opening.",
-  "services": [
-    {
-      "id": "p2",
-      "name": "Sitio Web Presencial",
-      "priority": "essential",
-      "is_new": false
-    },
-    {
-      "id": "custom-m",
-      "name": "Integración con Calendly",
-      "priority": "recommended",
-      "is_new": true
-    }
-  ],
-  "closing": "A concise closing statement.",
-  "client_questions": [
-    "A relevant question to ask the client.",
-    "Another relevant question."
-  ],
-  "sales_pitch": "A short, powerful sales pitch for the proposed solution."
-}
+Your response MUST be a single, valid JSON object that strictly follows the provided schema. Do NOT add any text, markdown, or any other characters before or after the JSON object.
 
 **CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
 1. For each service object, you MUST include a "priority" key.
@@ -305,33 +304,18 @@ Now, answer the affiliate's question based on this information.`;
         }
         
         let responseText = result.response.text();
-        let responsePayload = responseText;
 
-        if (mode === 'builder' || mode === 'lead-gen-plan') {
-             try {
-                // Robust JSON extractor: finds a JSON block even if it's wrapped in markdown or has leading/trailing text.
-                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|({[\s\S]*})/);
-                if (!jsonMatch) {
-                    throw new Error("No se encontró un bloque JSON en la respuesta de la IA.");
-                }
-                const jsonString = jsonMatch[1] || jsonMatch[2];
-                JSON.parse(jsonString); // This is just to validate. If it fails, it throws.
-                responsePayload = jsonString; // Use the cleaned, valid JSON string for the response.
-            } catch (e) {
-                console.error("AI response contained a JSON-like block that was invalid.", e);
-                throw new Error(`La IA devolvió un JSON malformado.`);
-            }
-        }
+        // No JSON parsing needed for builder mode, as the response is already validated by the API schema.
         
         const finalHistoryForClient = [
             ...(historyFromClient || []),
             { role: 'user', parts: [{ text: userMessage }] }, // Use original user message for history
-            { role: 'model', parts: [{ text: responsePayload }] }
+            { role: 'model', parts: [{ text: responseText }] }
         ];
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ response: responsePayload, history: finalHistoryForClient })
+            body: JSON.stringify({ response: responseText, history: finalHistoryForClient })
         };
 
     } catch (err) {
@@ -352,8 +336,6 @@ Now, answer the affiliate's question based on this information.`;
             userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
         } else if (errorDetails.includes('400 Bad Request') || errorDetails.includes('is not found for API version')) {
              userFriendlyMessage = "la solicitud fue mal formada. Esto puede ser un problema con la API Key o la configuración del proyecto. Asegúrate que la API de Gemini está habilitada en tu proyecto de Google Cloud."
-        } else if (errorDetails.includes('JSON malformado')) {
-            userFriendlyMessage = "la IA devolvió una respuesta con un formato incorrecto que no se pudo procesar."
         }
 
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
