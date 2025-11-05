@@ -1,13 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v45 - Model Fix
+ * Lógica de Intención: v50 - startChat Revert
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const TEXT_MODEL_NAME = 'gemini-2.5-flash'; // Corrected model based on user feedback.
+const TEXT_MODEL_NAME = 'gemini-2.5-flash'; // Correct model requested by user.
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
@@ -187,14 +187,13 @@ const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and
 
 // --- PROMPT ENGINEERING HELPERS ---
 function getSystemInstructionForMode(mode, context = {}) {
-    let instruction = '';
     switch (mode) {
-        case 'analyze': instruction = ANALYZE_INSTRUCTION; break;
-        case 'objection': instruction = OBJECTION_INSTRUCTION; break;
-        case 'content-creator': instruction = CONTENT_CREATOR_INSTRUCTION; break;
-        case 'image-prompt-creator': instruction = IMAGE_PROMPT_CREATOR_INSTRUCTION; break;
-        case 'lead-gen-plan': instruction = LEAD_GEN_PLAN_INSTRUCTION; break;
-        case 'outreach-generator': instruction = OUTREACH_GENERATOR_INSTRUCTION; break;
+        case 'analyze': return ANALYZE_INSTRUCTION;
+        case 'objection': return OBJECTION_INSTRUCTION;
+        case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
+        case 'image-prompt-creator': return IMAGE_PROMPT_CREATOR_INSTRUCTION;
+        case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
+        case 'outreach-generator': return OUTREACH_GENERATOR_INSTRUCTION;
         case 'entrenamiento': {
             let catalogString = '';
             Object.values(pricingData.allServices).forEach(category => {
@@ -207,8 +206,7 @@ function getSystemInstructionForMode(mode, context = {}) {
             pricingData.monthlyPlans.forEach(plan => {
                  catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
             });
-            instruction = ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
-            break;
+            return ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
         }
         case 'builder':
         default:
@@ -218,14 +216,8 @@ function getSystemInstructionForMode(mode, context = {}) {
             const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
                 ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
                 : '';
-            instruction = BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
-            break;
+            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
     }
-    // For the older SDK, system instructions are part of the history.
-    return [
-        { role: "user", parts: [{ text: instruction }] },
-        { role: "model", parts: [{ text: "Understood. I will follow all directives." }] }
-    ];
 }
 
 
@@ -239,7 +231,7 @@ function createErrorJsonResponse(introduction, closing) {
 }
 
 
-// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
+// --- NETLIFY SERVERLESS FUNCTION HANDLER (REVERTED TO STABLE STARTCHAT LOGIC) ---
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
     if (!pricingData) return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
@@ -264,7 +256,16 @@ exports.handler = async (event) => {
             maxOutputTokens: 2048,
         };
         
-        const systemInstructionHistory = getSystemInstructionForMode(mode, context);
+        const systemInstruction = getSystemInstructionForMode(mode, context);
+
+        const chat = model.startChat({
+            generationConfig,
+            history: [
+                { role: "user", parts: [{ text: systemInstruction }] },
+                { role: "model", parts: [{ text: "Understood. I will follow all directives." }] },
+                ...(historyFromClient || [])
+            ]
+        });
 
         let finalUserMessage = userMessage;
 
@@ -281,17 +282,8 @@ exports.handler = async (event) => {
             const { businessName, painPointsDetails, marketingIntel } = context;
             finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
         }
-        
-        const fullHistoryForAPI = [
-            ...systemInstructionHistory,
-            ...(historyFromClient || []),
-            { role: 'user', parts: [{ text: finalUserMessage }] }
-        ];
 
-        const result = await model.generateContent({
-            contents: fullHistoryForAPI,
-            generationConfig
-        });
+        const result = await chat.sendMessage(finalUserMessage);
         
         if (!result || !result.response || typeof result.response.text !== 'function') {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
