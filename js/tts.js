@@ -101,8 +101,6 @@ class TTSManager {
             this.isPlaying = false;
             this._resetUI();
             // Ya no mostramos el cartel rojo por pedido del usuario.
-            // const { showNotification } = await import('./modals.js');
-            // showNotification('error', 'Error de Voz', `No se pudo reproducir el audio: ${event.error}`);
         };
 
         window.speechSynthesis.speak(this.currentUtterance);

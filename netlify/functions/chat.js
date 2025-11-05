@@ -1,13 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v53 - Reverted to stable startChat logic
+ * Lógica de Intención: v54 - Reverted to ORIGINAL stable startChat logic for gemini-2.5-flash compatibility
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const TEXT_MODEL_NAME = 'gemini-pro'; // Stable model compatible with the older SDK version.
+const TEXT_MODEL_NAME = 'gemini-2.5-flash'; // Correct model as requested by user.
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
