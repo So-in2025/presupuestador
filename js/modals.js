@@ -3,7 +3,7 @@
 import * as dom from './dom.js';
 import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
 import { updateSelectedItems, handleAddTask, resetForm } from './app.js';
-import { rerenderAllPrices, saveBranding, showBrandingModal } from './ui.js';
+import { rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
 import { generateActionPlanPdf } from './pdf.js';
 import { toggleButtonLoading } from './ui-helpers.js';
@@ -95,6 +95,19 @@ export function removeCustomService(id) {
     setCustomServices(newCustomServices);
     updateSelectedItems();
 }
+
+export function showBrandingModal() {
+    const brandInfo = JSON.parse(localStorage.getItem('zenBrandInfo') || '{}');
+    document.getElementById('brandColorInput').value = brandInfo.color || '#22D3EE';
+    document.getElementById('brandResellerInfo').value = brandInfo.resellerInfo || '';
+    document.getElementById('brandTerms').value = brandInfo.terms || '';
+    openModal(document.getElementById('brandingModal'));
+}
+
+export function closeBrandingModal() {
+    closeModal(document.getElementById('brandingModal'));
+}
+
 
 export function showTieredBuilderModal(taskToEdit = null) {
     const { allServices } = getState();
