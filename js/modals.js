@@ -552,6 +552,11 @@ function getSelectedPainPointFilters() {
 
 async function handleStartScan(event) {
     const button = event.currentTarget;
+    const apiKey = getState().sessionApiKey;
+    if (!apiKey) {
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key para usar el Radar.');
+        return;
+    }
     toggleButtonLoading(button, true, 'Escaneando...');
 
     const resultsContainer = document.getElementById('radar-results');
@@ -563,13 +568,7 @@ async function handleStartScan(event) {
     const businessType = document.getElementById('radar-business-type').value;
     const location = document.getElementById('radar-location').value;
     const filters = getSelectedPainPointFilters();
-    const apiKey = getState().sessionApiKey;
-
-    if (!apiKey) {
-        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key para usar el Radar.');
-        toggleButtonLoading(button, false);
-        return;
-    }
+    
 
     if (!businessType || !location) {
         showNotification('error', 'Datos Requeridos', 'Por favor, especifica el tipo de negocio y la ubicación.');
