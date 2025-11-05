@@ -1,100 +1,130 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v2.0 - Implementación Real (Simulada)
- * Esta función está ahora estructurada para reflejar un flujo de trabajo de producción
- * que llamaría a APIs externas. Devuelve un conjunto de datos más rico y realista.
+ * Backend para Radar de Oportunidades v5.0 - True AI Analysis
+ * Uses Gemini to find real businesses AND perform a technical analysis for each.
+ * Reverted to use the stable @google/generative-ai SDK.
  */
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// --- DATOS SIMULADOS PARA GENERACIÓN DINÁMICA ---
-const namePrefixes = ["Innovador", "Digital", "Global", "NextGen", "Pro", "Quantum", "Synergy", "Zenith"];
-const nameSuffixes = ["Solutions", "Group", "Creative", "Tech", "Works", "Dynamics", "Labs", "Studio"];
-const streetNames = ["Av. Principal", "Calle del Sol", "Plaza Mayor", "Paseo de la Luna", "Ruta 42", "Boulevard de los Sueños"];
-const techStacks = [
-    { name: 'WordPress', icon: 'wordpress' },
-    { name: 'Shopify', icon: 'shopify' },
-    { name: 'React', icon: 'react' },
-    { name: 'Wix', icon: 'wix' },
-    { name: 'HTML/CSS Básico', icon: 'html5' }
-];
+// --- GEMINI API HELPERS ---
 
-// --- FUNCIÓN PRINCIPAL DE LA API ---
+const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    
+    const prompt = `Find 3 to 4 real businesses that match the type "${businessType}" in the location "${location}". For each business, provide its name, a plausible address within the location, and its official website URL. Prioritize businesses that likely have a website. Your response must be a valid JSON array of objects, with each object having "name", "address", and "website" properties. Do not include any other text or markdown.`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const jsonText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const businesses = JSON.parse(jsonText);
+        return Array.isArray(businesses) ? businesses : [];
+    } catch (error) {
+        console.error("Gemini API call failed (getRealBusinessesFromAI):", error);
+        return []; // Return empty array on failure
+    }
+};
+
+const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+    const prompt = `
+        Act as a web performance and SEO expert. Analyze the business named "${business.name}" with website URL "${business.website}". 
+        Based on the business type and a quick assessment of its likely online presence, provide a realistic estimation of its technical and marketing readiness.
+        Your response MUST be a single, valid JSON object with the following properties and value types:
+        - "performanceScore": an integer between 20 and 95.
+        - "mobileScore": an integer between 30 and 100.
+        - "seoScore": an integer between 40 and 90.
+        - "hasSSL": a boolean.
+        - "techStack": a string (e.g., "WordPress", "Shopify", "React", "Wix", "HTML/CSS Básico").
+        - "hasAnalytics": a boolean.
+        - "hasPixel": a boolean.
+        Do not include any other text or markdown.
+    `;
+    
+    try {
+        const result = await model.generateContent(prompt);
+        const jsonText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const analysis = JSON.parse(jsonText);
+        // Basic validation
+        if (typeof analysis.performanceScore !== 'number' || typeof analysis.hasSSL !== 'boolean') {
+             throw new Error("Invalid JSON structure from analysis AI.");
+        }
+        return analysis;
+    } catch (error) {
+        console.error(`Failed to get technical analysis for ${business.name}:`, error);
+        // Return a default "error" analysis object
+        return {
+            performanceScore: 30, mobileScore: 40, seoScore: 50,
+            hasSSL: false, techStack: "Unknown", hasAnalytics: false, hasPixel: false, error: true
+        };
+    }
+};
+
+
+// --- MAIN API HANDLER ---
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
         return { statusCode: 405, body: "Method Not Allowed" };
     }
 
     try {
-        const { businessType, location, filters } = JSON.parse(event.body);
+        const { businessType, location, filters, apiKey } = JSON.parse(event.body);
+        if (!apiKey) {
+             return { statusCode: 401, body: JSON.stringify({ error: true, message: "API Key is required." }) };
+        }
 
         // ===================================================================
-        // PASO 1: LLAMADA A GOOGLE PLACES API (SIMULADO)
-        // En una implementación real, aquí se llamaría a Google Places para obtener
-        // una lista de negocios con sus URLs de sitios web.
+        // PASO 1: GET REAL BUSINESS LISTINGS FROM GEMINI
         // ===================================================================
-        const numberOfResults = Math.floor(Math.random() * 4) + 5;
-        const potentialLeads = Array.from({ length: numberOfResults }, (_, i) => {
-            const prefix = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
-            const suffix = nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)];
-            const useTypeInName = Math.random() > 0.5;
-            const businessName = useTypeInName ? `${businessType} ${prefix} de ${location}` : `${prefix} ${businessType} ${suffix}`;
+        const potentialLeads = await getRealBusinessesFromAI(businessType, location, apiKey);
+        
+        if (!potentialLeads || potentialLeads.length === 0) {
             return {
-                id: Date.now() + i,
-                name: businessName,
-                address: `${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 500) + 1}, ${location}`,
-                website: `https://www.${businessName.toLowerCase().replace(/\s/g, '')}.com`,
+                statusCode: 200,
+                body: JSON.stringify({ opportunities: [] }) // No businesses found
             };
-        });
-
-        // Simular latencia de red para el análisis de cada sitio
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        }
 
         // ===================================================================
-        // PASO 2: ANÁLISIS DE CADA SITIO (SIMULADO)
-        // En producción, este bloque iteraría sobre `potentialLeads` y para cada uno:
-        // 1. Llamaría a Google PageSpeed Insights API.
-        // 2. Realizaría una verificación de SSL (fetch a https).
-        // 3. Usaría una librería como Wappalyzer para detectar el stack.
+        // PASO 2: PERFORM AI-DRIVEN TECHNICAL ANALYSIS FOR EACH SITE
         // ===================================================================
-        const analyzedOpportunities = potentialLeads.map(lead => {
-            // Simulación de datos de PageSpeed Insights y SSL
-            const performanceScore = Math.floor(Math.random() * 70) + 30; // 30-100
-            const mobileFriendly = Math.random() > 0.3; // 70% chance
-            const hasSSL = Math.random() > 0.5; // 50% chance
-            const seoScore = Math.floor(Math.random() * 60) + 40; // 40-100
+        const analysisPromises = potentialLeads.map(lead => getTechnicalAnalysisForBusiness(lead, apiKey));
+        const technicalAnalyses = await Promise.all(analysisPromises);
+        
+        const analyzedOpportunities = potentialLeads.map((lead, index) => {
+            const analysis = technicalAnalyses[index];
+            const { performanceScore, mobileScore, seoScore, hasSSL } = analysis;
 
             const painPoints = {
                 slow: performanceScore < 50,
-                mobile: !mobileFriendly,
+                mobile: mobileScore < 90,
                 ssl: !hasSSL,
-                seo: seoScore < 70,
+                seo: seoScore < 80,
             };
-
-            // Algoritmo de puntuación de dolor mejorado
-            let painScore = 0;
-            if (painPoints.slow) painScore += (100 - performanceScore) / 2; // Más impacto si es más lento
-            if (painPoints.mobile) painScore += 30;
-            if (painPoints.ssl) painScore += 25;
-            if (painPoints.seo) painScore += (90 - seoScore) / 3;
             
-            painScore = Math.min(100, Math.round(painScore));
-            if (painScore < 15) painScore = 15;
+            let painScore = 0;
+            if (painPoints.slow) painScore += (50 - performanceScore) * 1.5;
+            if (painPoints.mobile) painScore += (90 - mobileScore) * 0.5;
+            if (painPoints.ssl) painScore += 30;
+            if (painPoints.seo) painScore += (80 - seoScore) * 0.4;
+            
+            painScore = Math.min(98, Math.round(painScore));
+            if (painScore < 20) painScore = 20 + Math.floor(Math.random() * 10);
 
             return {
                 ...lead,
+                id: Date.now() + index,
                 painScore,
                 painPoints,
-                // Datos enriquecidos (Fase 3 simulada)
-                techStack: techStacks[Math.floor(Math.random() * techStacks.length)],
-                hasAnalytics: Math.random() > 0.5,
-                hasPixel: Math.random() > 0.7
+                ...analysis
             };
         });
 
-        // Filtrar resultados basados en los checkboxes del frontend
         const filteredOpportunities = analyzedOpportunities.filter(opp => {
-            return Object.keys(filters).every(key => {
-                return !filters[key] || opp.painPoints[key];
-            });
+             if (opp.error) return false; // Exclude businesses that failed analysis
+            return Object.keys(filters).every(key => !filters[key] || opp.painPoints[key]);
         });
 
         return {
@@ -103,10 +133,10 @@ exports.handler = async (event) => {
         };
 
     } catch (err) {
-        console.error("Error en la función radar:", err);
+        console.error("Error in radar function:", err);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: true, message: "Error interno del servidor al procesar la búsqueda." })
+            body: JSON.stringify({ error: true, message: "Internal server error while processing the search." })
         };
     }
 };

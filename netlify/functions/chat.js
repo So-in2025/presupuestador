@@ -1,35 +1,36 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v40 - Modern Gemini SDK Initialization
+ * Lógica de Intención: v43 - Revert to stable SDK & Real Radar Intel
  */
-const { GoogleGenAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const TEXT_MODEL_NAME = 'gemini-2.5-flash';
+const TEXT_MODEL_NAME = 'gemini-1.5-flash-latest'; // Using a stable, known model.
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
 const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
 
-const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services. Your task is to write a short, friendly, and value-driven outreach email.
+const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services. Your task is to write a short, friendly, and value-driven outreach email based on specific intelligence gathered by an AI radar.
 
-**CONTEXT:**
-- The email is from: a web development affiliate.
-- The email is to: [BUSINESS_NAME].
-- The AI has detected the following issues on their website: [PAIN_POINTS].
+**INTELLIGENCE BRIEFING:**
+- **Recipient:** [BUSINESS_NAME]
+- **Key Technical Issues:** [PAIN_POINTS_DETAILS]
+- **Key Marketing Intelligence:** [MARKETING_INTEL]
 
 **YOUR DIRECTIVES:**
 1.  **Goal:** Secure a 15-minute discovery call. Do NOT try to sell the entire project in this email.
 2.  **Tone:** Professional, but approachable and helpful. Not robotic or spammy.
-3.  **Structure:**
+3.  **Structure & Content:**
     - **Subject:** Something concise and personalized. e.g., "Pregunta rápida sobre la web de [BUSINESS_NAME]".
-    - **Opening:** Briefly introduce yourself and state that you noticed specific issues (mention 1 or 2 from the list).
-    - **Value Proposition:** Explain the *negative business impact* of these issues (e.g., "Esto podría estar afectando su ranking en Google y la confianza de sus visitantes.").
-    - **Call to Action (CTA):** Offer a low-commitment next step. e.g., "¿Estarían abiertos a una llamada rápida de 15 minutos la próxima semana para mostrarles cómo se podría mejorar?".
-4.  **Language:** Write in clear, concise Spanish. Avoid overly technical jargon.
+    - **Opening:** Briefly introduce yourself. Immediately mention one or two of the *most critical* technical issues (e.g., "Noté que su sitio web tiene una puntuación de rendimiento de 35/100...").
+    - **Value Proposition (Technical):** Explain the *business impact* of these technical issues (e.g., "...lo que puede estar afectando su visibilidad en Google y la experiencia de sus visitantes.").
+    - **Value Proposition (Marketing - CRITICAL):** If the Marketing Intelligence indicates missing tools (like Google Analytics or Meta Pixel), you MUST add a line about it. Frame it as a lost opportunity. Example: "Adicionalmente, observé que el sitio no parece contar con herramientas de analítica. Esto significa que podría estar perdiendo datos cruciales sobre cómo sus clientes lo encuentran y qué es lo que más les interesa."
+    - **Call to Action (CTA):** Offer a low-commitment next step. e.g., "¿Estarían abiertos a una llamada rápida de 15 minutos la próxima semana para explorar cómo se podría mejorar?".
+4.  **Language:** Write in clear, concise Spanish. Use specific data (like performance scores) to build credibility but explain its impact in business terms.
 5.  **Output:** Your entire response MUST be ONLY the generated email text. Do not add any greetings, explanations, or titles like "Asunto:" or "Cuerpo:". Just the raw text of the email, ready to be copied.`;
 
 
@@ -186,13 +187,14 @@ const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and
 
 // --- PROMPT ENGINEERING HELPERS ---
 function getSystemInstructionForMode(mode, context = {}) {
+    let instruction = '';
     switch (mode) {
-        case 'analyze': return ANALYZE_INSTRUCTION;
-        case 'objection': return OBJECTION_INSTRUCTION;
-        case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
-        case 'image-prompt-creator': return IMAGE_PROMPT_CREATOR_INSTRUCTION;
-        case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
-        case 'outreach-generator': return OUTREACH_GENERATOR_INSTRUCTION;
+        case 'analyze': instruction = ANALYZE_INSTRUCTION; break;
+        case 'objection': instruction = OBJECTION_INSTRUCTION; break;
+        case 'content-creator': instruction = CONTENT_CREATOR_INSTRUCTION; break;
+        case 'image-prompt-creator': instruction = IMAGE_PROMPT_CREATOR_INSTRUCTION; break;
+        case 'lead-gen-plan': instruction = LEAD_GEN_PLAN_INSTRUCTION; break;
+        case 'outreach-generator': instruction = OUTREACH_GENERATOR_INSTRUCTION; break;
         case 'entrenamiento': {
             let catalogString = '';
             Object.values(pricingData.allServices).forEach(category => {
@@ -205,7 +207,8 @@ function getSystemInstructionForMode(mode, context = {}) {
             pricingData.monthlyPlans.forEach(plan => {
                  catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
             });
-            return ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
+            instruction = ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
+            break;
         }
         case 'builder':
         default:
@@ -215,9 +218,16 @@ function getSystemInstructionForMode(mode, context = {}) {
             const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
                 ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
                 : '';
-            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
+            instruction = BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
+            break;
     }
+    // For the older SDK, system instructions are part of the history.
+    return [
+        { role: "user", parts: [{ text: instruction }] },
+        { role: "model", parts: [{ text: "Understood. I will follow all directives." }] }
+    ];
 }
+
 
 // --- INTELLIGENCE HELPERS ---
 function createErrorJsonResponse(introduction, closing) {
@@ -244,12 +254,17 @@ exports.handler = async (event) => {
     }
 
     try {
-        const ai = new GoogleGenAI({apiKey});
-        
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: TEXT_MODEL_NAME });
+
         const generationConfig = {
-            ...((mode === 'builder' || mode === 'lead-gen-plan') && { responseMimeType: "application/json" })
+            temperature: 0.2,
+            topK: 1,
+            topP: 1,
+            maxOutputTokens: 2048,
         };
-        const systemInstruction = getSystemInstructionForMode(mode, context);
+        
+        const systemInstructionHistory = getSystemInstructionForMode(mode, context);
 
         let finalUserMessage = userMessage;
 
@@ -263,27 +278,23 @@ exports.handler = async (event) => {
             const { postText } = context;
             finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
         } else if (mode === 'outreach-generator') {
-            const { businessName, painPoints } = context;
-            finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's pain points are "[PAIN_POINTS]: ${painPoints}".`;
+            const { businessName, painPointsDetails, marketingIntel } = context;
+            finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
         }
         
-        const chat = ai.chats.create({
-            model: TEXT_MODEL_NAME,
-            history: historyFromClient || [],
-            config: {
-                systemInstruction: systemInstruction,
-                ...generationConfig,
-            },
+        const chat = model.startChat({
+            history: [...systemInstructionHistory, ...(historyFromClient || [])],
+            generationConfig,
         });
         
-        const response = await chat.sendMessage({ message: finalUserMessage });
-
-        if (!response || !response.text) {
+        const result = await chat.sendMessage(finalUserMessage);
+        
+        if (!result || !result.response || typeof result.response.text !== 'function') {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
         }
         
-        const responseText = response.text;
-        const finalHistory = [...(historyFromClient || []), { role: 'user', parts: [{ text: userMessage }] }, { role: 'model', parts: [{ text: responseText }] }];
+        const responseText = result.response.text();
+        const finalHistory = await chat.getHistory(); // Get updated history from the chat instance
 
         return {
             statusCode: 200,
@@ -306,6 +317,8 @@ exports.handler = async (event) => {
             userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Inténtalo de nuevo más tarde.";
         } else if (errorDetails.includes('Respuesta inválida')) {
             userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
+        } else if (errorDetails.includes('400 Bad Request')) {
+             userFriendlyMessage = "la solicitud fue mal formada. Esto puede ser un problema con la API Key o la configuración del proyecto. Asegúrate que la API de Gemini está habilitada en tu proyecto de Google Cloud."
         }
 
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;

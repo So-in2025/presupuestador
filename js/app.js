@@ -5,7 +5,6 @@ import * as state from './state.js';
 import { saveTasks, saveLocalServices } from './data.js';
 import { showNotification } from './modals.js';
 import { handlePlanSelection, updatePointSystemUI } from './points.js';
-import { findServiceById } from './ui.js';
 
 export function updateSummary() {
     let totalDevCost = 0;
@@ -118,17 +117,18 @@ export function toggleSelectionMode(mode) {
 
 export function handleAddTask(taskData = null) {
     const isTiered = taskData && taskData.isTiered;
+    const isProspect = taskData && taskData.isProspect;
     const { selectedServices, editingIndex } = state.getState();
     
-    if (!isTiered && selectedServices.length === 0) {
+    if (!isTiered && !isProspect && selectedServices.length === 0) {
         return showNotification('error', 'Error', 'Debes seleccionar al menos un servicio.');
     }
 
     let newTask;
-    if (isTiered) {
+    if (isTiered || isProspect) {
         newTask = {
             ...taskData,
-            status: 'Propuesta Guardada',
+            status: isProspect ? 'Prospecto' : 'Propuesta Guardada',
             dateUpdated: new Date().toISOString()
         };
     } else {
@@ -171,6 +171,7 @@ export function handleAddTask(taskData = null) {
             services: individualItems,
             type: dom.serviceTypeSelect.value,
             isTiered: false,
+            isProspect: false, // Se convierte de prospecto a propuesta completa
             isUrgent: isUrgent,
             status: 'Propuesta Guardada',
             dateUpdated: new Date().toISOString()
@@ -179,15 +180,24 @@ export function handleAddTask(taskData = null) {
 
     let { tasks } = state.getState();
     if (editingIndex !== -1) {
-        // Al editar, mantener el status original si no se provee uno nuevo, y actualizar la fecha.
         const originalTask = tasks[editingIndex];
-        tasks[editingIndex] = { ...newTask, status: originalTask.status, dateUpdated: new Date().toISOString() };
+        // Si la tarea original era un prospecto y la nueva no lo es, cambia el estado
+        const newStatus = originalTask.isProspect && !newTask.isProspect ? 'Propuesta Guardada' : originalTask.status;
+        tasks[editingIndex] = { ...newTask, status: newStatus, dateUpdated: new Date().toISOString(), radarData: originalTask.radarData };
+        if (!isProspect) {
+             showNotification('success', 'Propuesta Actualizada', `La propuesta para ${newTask.webName} ha sido actualizada.`);
+        }
     } else {
         tasks.push(newTask);
+        if (!isProspect) {
+            showNotification('success', 'Propuesta Guardada', `La propuesta para ${newTask.webName} ha sido guardada.`);
+        }
     }
     state.setTasks(tasks);
-    showNotification('success', 'Propuesta Guardada', `La propuesta para ${newTask.webName} ha sido guardada.`);
-    resetForm();
+    
+    if (!isProspect) {
+        resetForm();
+    }
     saveTasks();
 }
 
@@ -213,13 +223,18 @@ export function editTask(index) {
     dom.clientCompanyInput.value = task.clientCompany || '';
     dom.clientEmailInput.value = task.clientEmail || '';
     dom.webNameInput.value = task.webName;
-    dom.marginPercentageInput.value = (task.margin * 100).toFixed(0);
+    dom.marginPercentageInput.value = task.margin !== undefined ? (task.margin * 100).toFixed(0) : '60';
     document.getElementById('isUrgentCheckbox').checked = task.isUrgent || false;
     
     if (task.isTiered) {
         showNotification('info', 'Editando Propuesta por Niveles', 'Abre el constructor de propuestas por niveles para editar los detalles.');
-        // Opcional: abrir el modal directamente.
-        // showTieredBuilderModal(task);
+        return;
+    }
+    
+    if (task.isProspect) {
+        showNotification('info', 'Convirtiendo Prospecto', 'El formulario ha sido rellenado. Ahora, construye la propuesta y guárdala.');
+        clearAllSelections();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
 
@@ -262,69 +277,11 @@ export function updateTaskStatus(index, newStatus) {
     if (tasks[index]) {
         tasks[index].status = newStatus;
         tasks[index].dateUpdated = new Date().toISOString();
-        
-        // --- INICIO: LÓGICA DE GESTIÓN DE PROYECTOS ---
-        // Si el estado es "Ganada" y no ha sido inicializado como proyecto, lo hacemos.
-        if (newStatus === 'Ganada' && !tasks[index].projectStatus) {
-            tasks[index].projectStatus = 'En Desarrollo';
-            tasks[index].notes = '';
-            
-            let allSoldServices = [];
-            const task = tasks[index];
-            if (task.package) {
-                allSoldServices.push(findServiceById(task.package.id));
-            } else if (task.plan && task.plan.selectedServiceIds) {
-                task.plan.selectedServiceIds.forEach(id => {
-                    const service = findServiceById(id);
-                    if (service) allSoldServices.push(service);
-                });
-            } else if (task.services) {
-                task.services.forEach(s => {
-                    const service = findServiceById(s.id);
-                    if(service) allSoldServices.push(service);
-                });
-            }
-            
-            tasks[index].deliverables = allSoldServices.map(s => ({
-                id: s.id,
-                name: s.name,
-                completed: false
-            }));
-        }
-        // --- FIN: LÓGICA DE GESTIÓN DE PROYECTOS ---
-
         state.setTasks(tasks);
         saveTasks();
         showNotification('info', 'Estado Actualizado', `El estado de la propuesta para "${tasks[index].webName}" es ahora "${newStatus}".`);
     }
 }
-
-// --- NUEVA FUNCIÓN PARA ACTUALIZAR DETALLES DEL PROYECTO ---
-export function updateProjectDetails(index, details) {
-    let { tasks } = state.getState();
-    const task = tasks[index];
-    if (!task) return;
-
-    if(details.projectStatus) {
-        task.projectStatus = details.projectStatus;
-        if(details.projectStatus === 'Completado') {
-             task.status = 'Completado'; // Opcional: cambiar el estado general también
-             showNotification('success', 'Proyecto Completado', `El proyecto para "${task.webName}" ha sido marcado como completado y será archivado.`);
-        }
-    }
-    if(details.deliverableId) {
-        const deliverable = task.deliverables.find(d => d.id === details.deliverableId);
-        if(deliverable) deliverable.completed = details.isCompleted;
-    }
-    if(details.notes !== undefined) {
-        task.notes = details.notes;
-    }
-
-    task.dateUpdated = new Date().toISOString();
-    state.setTasks(tasks);
-    saveTasks();
-}
-
 
 export function deleteLocalService(serviceId) {
     if (!confirm("¿Estás seguro de que quieres eliminar este servicio personalizado permanentemente? Esta acción no se puede deshacer.")) {

@@ -378,9 +378,69 @@
             transform: rotate(180deg);
         }
 
-        /* NUEVO: ESTILOS RADAR DE OPORTUNIDADES */
+        /* --- RADAR DE OPORTUNIDADES --- */
         .radar-pain-score-bar {
             background-image: linear-gradient(to right, #22c55e, #f97316, #dc2626);
+        }
+        
+        /* Dossier del Radar */
+        .dossier-metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .dossier-score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .score-red { color: #f87171; }
+        .score-yellow { color: #facc15; }
+        .score-green { color: #4ade80; }
+
+        .tech-stack-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tech-stack-item svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        
+        .marketing-intel-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+        }
+        .intel-detected {
+            background-color: rgba(34, 197, 94, 0.1); /* green-500/10 */
+            color: #a7f3d0; /* green-200 */
+        }
+        .intel-not-detected {
+            background-color: rgba(239, 68, 68, 0.1); /* red-500/10 */
+            color: #fecaca; /* red-200 */
+        }
+        .marketing-intel-item svg {
+            width: 1.5rem;
+            height: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        /* --- PROSPECT CARDS --- */
+        .prospect-card .pain-score-display {
+            background-image: linear-gradient(to right, #22c55e, #f97316, #dc2626);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
         }
     </style>
 </head>
@@ -914,7 +974,7 @@
                     <!-- NUEVO: SECCIÓN PARA GENERAR PROMPT DE IMAGEN -->
                     <div id="image-prompt-section" class="mt-4 pt-4 border-t border-slate-700 hidden">
                         <button id="generate-image-prompt-btn" class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center gap-2 btn-press-feedback">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.122 2.122a.75.75 0 01-1.06 0L9.47 8.28a.75.75 0 00-1.06 0L6.22 10.47a.75.75 0 01-1.06 0l-2.41-2.41zM16.75 5H3.25a.75.75 0 00-.75.75v.04l2.439 2.44a.75.75 0 001.06 0l2.122-2.122a.75.75 0 011.06 0l2.12 2.12a.75.75 0 001.06 0l2.44-2.44V5.75a.75.75 0 00-.75-.75z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.122 2.122a.75.75 0 01-1.06 0L9.47 8.28a.75.75 0 00-1.06 0l-2.122 2.122a.75.75 0 01-1.06 0l-2.41-2.41zM16.75 5H3.25a.75.75 0 00-.75.75v.04l2.439 2.44a.75.75 0 001.06 0l2.122-2.122a.75.75 0 011.06 0l2.12 2.12a.75.75 0 001.06 0l2.44-2.44V5.75a.75.75 0 00-.75-.75z" clip-rule="evenodd" /></svg>
                             <span>¿Deseas un prompt para generar la imagen ideal?</span>
                         </button>
                         <div id="image-prompt-result-container" class="mt-4 hidden p-4 bg-slate-900 rounded-lg relative">
@@ -1154,6 +1214,12 @@
                         <svg class="spinner h-5 w-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span class="btn-text">Iniciar Escaneo</span>
                      </button>
+                     <p class="text-xs text-slate-500 mt-2 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        Los listados de empresas son reales (vía IA). El análisis técnico es una simulación realista.
+                    </p>
                     <div id="radar-results" class="flex-grow space-y-3 overflow-y-auto p-1">
                         <!-- Las tarjetas de oportunidad aparecerán aquí -->
                     </div>

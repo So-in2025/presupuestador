@@ -1,7 +1,7 @@
 // js/modals.js
 
 import * as dom from './dom.js';
-import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate } from './state.js';
+import { getState, setCustomServices, setTieredBuilderActive, formatPrice, setExtraPointsPurchased, setExtraPointsCost, setUsdToArsRate, saveTasks } from './state.js';
 import { updateSelectedItems, handleAddTask, resetForm } from './app.js';
 import { rerenderAllPrices } from './ui.js';
 import { updatePointSystemUI } from './points.js';
@@ -615,6 +615,7 @@ async function handleStartScan() {
     const businessType = document.getElementById('radar-business-type').value;
     const location = document.getElementById('radar-location').value;
     const filters = getSelectedPainPointFilters();
+    const apiKey = getState().sessionApiKey;
 
     if (!businessType || !location) {
         showNotification('error', 'Datos Requeridos', 'Por favor, especifica el tipo de negocio y la ubicación.');
@@ -633,12 +634,21 @@ async function handleStartScan() {
             </div>`;
         return;
     }
+    
+    if (!apiKey) {
+        showNotification('error', 'API Key Requerida', 'Por favor, configura tu API Key para usar el Radar de Oportunidades.');
+        isScanning = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = originalText;
+        button.disabled = false;
+        return;
+    }
 
     try {
         const response = await fetch('/.netlify/functions/radar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ businessType, location, filters })
+            body: JSON.stringify({ businessType, location, filters, apiKey })
         });
         
         if (!response.ok) {
@@ -697,25 +707,98 @@ function renderRadarResults(opportunities) {
     }).join('');
 }
 
+function getTechStackIcon(techName) {
+    const icons = {
+        'WordPress': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.94 13.94c-.36.36-1.02.5-1.59.5-1.12 0-2.34-.69-2.34-2.22v-3.33h-1.67v3.33c0 1.95 1.58 2.92 3.22 2.92.79 0 1.49-.22 2.03-.69l.35-.35v-1.16zm-5.06-4.59c.72 0 1.25-.56 1.25-1.22 0-.69-.53-1.25-1.25-1.25s-1.25.56-1.25 1.25c0 .66.53 1.22 1.25 1.22zm-3.69 4.59c-.36.36-1.02.5-1.59.5-1.12 0-2.34-.69-2.34-2.22v-3.33H5v3.33c0 1.95 1.58 2.92 3.22 2.92.79 0 1.49-.22 2.03-.69l.35-.35v-1.16z"/></svg>`,
+        'Shopify': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.88 7.28c-.4-.25-.92-.25-1.32 0L12 10.59l-5.56-3.3c-.4-.25-.92-.25-1.32 0-.4.25-.63.73-.63 1.22v6.25c0 .49.23.97.63 1.22.2.13.43.19.66.19s.46-.06.66-.19L12 13.41l5.56 3.3c.2.13.43.19.66.19s.46-.06.66-.19c.4-.25.63-.73.63-1.22V8.5c0-.49-.23-.97-.63-1.22zM12 12.16L6.84 9.11 12 5.84l5.16 3.27L12 12.16z"/></svg>`,
+        'React': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2.88-5.33l-1.76-1.02c-.17-.1-.28-.29-.28-.5v-2.1c0-.35.37-.58.68-.43l1.8.78c.2.09.32.29.32.51v1.76zm6.06-2.58l-1.8-.78c-.31-.14-.68.08-.68.43v2.1c0 .21.11.4.28.5l1.76 1.02c.31.18.68-.05.68-.4V9.41c0-.36-.37-.6-.68-.42zm-2.9-4.13c-.31.18-.68-.05-.68-.4v-1.76l-1.76-1.02c-.17-.1-.28-.29-.28-.5V3.7c0-.35.37-.58.68-.43l1.8.78c.2.09.32.29.32.51v2.11z"/></svg>`,
+        'Wix': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 2h-15C3.12 2 2 3.12 2 4.5v15C2 20.88 3.12 22 4.5 22h15c1.38 0 2.5-1.12 2.5-2.5v-15C22 3.12 20.88 2 19.5 2zm-12.2 14.65l1.35-4.1-1.35-4.1h2.25l.55 2.15.5-2.15h2.2l.5 2.15.55-2.15h2.2l-1.35 4.1 1.35 4.1h-2.25l-.55-2.15-.5 2.15h-2.2l-.5-2.15-.55 2.15H7.3z"/></svg>`,
+        'HTML/CSS Básico': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9v-2h2v2zm0-4H9V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z"/></svg>`
+    };
+    return icons[techName] || icons['HTML/CSS Básico'];
+}
+
 function renderDossierView(opportunity) {
     const dossierView = document.getElementById('radar-dossier-view');
-    const painPointsText = Object.entries(opportunity.painPoints)
-        .filter(([, value]) => value)
-        .map(([key]) => {
-            const textMap = { slow: 'Sitio web lento', mobile: 'No adaptado a móviles', ssl: 'Sin certificado SSL', seo: 'SEO básico deficiente' };
-            return `<li>${textMap[key]}</li>`;
-        }).join('');
-        
+    const { performanceScore, seoScore, mobileScore, painPoints, techStack, hasAnalytics, hasPixel } = opportunity;
+    
+    const { tasks } = getState();
+    const isInPipeline = tasks.some(task => task.isProspect && task.radarData && task.radarData.id === opportunity.id);
+
+    const getScoreClass = (score) => {
+        if (score < 50) return 'score-red';
+        if (score < 90) return 'score-yellow';
+        return 'score-green';
+    };
+
+    const actionButtonsHTML = `
+        <div class="flex-shrink-0 pt-4 mt-auto w-full space-y-2">
+            <button class="w-full bg-slate-600 text-white font-bold py-2 rounded-lg transition btn-press-feedback ${isInPipeline ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-500'}" 
+                    data-action="add-prospect" data-id="${opportunity.id}" ${isInPipeline ? 'disabled' : ''}>
+                ${isInPipeline ? 'En Pipeline ✔️' : 'Añadir al Pipeline'}
+            </button>
+            <button class="w-full accent-bg font-bold py-2 rounded-lg transition btn-press-feedback" 
+                    data-action="create-proposal-from-radar" data-id="${opportunity.id}">
+                Crear Propuesta con IA
+            </button>
+        </div>`;
+
     dossierView.innerHTML = `
         <div class="w-full h-full flex flex-col">
-            <h4 class="text-xl font-bold text-orange-400 mb-2">${opportunity.name}</h4>
-            <div class="flex-grow space-y-4 overflow-y-auto p-2 text-left">
-                <div>
-                    <h5 class="font-semibold text-slate-200">Diagnóstico Rápido:</h5>
-                    <ul class="list-disc list-inside text-sm text-slate-300 mt-1">${painPointsText}</ul>
+            <h4 class="text-xl font-bold text-orange-400 mb-1">${opportunity.name}</h4>
+            <p class="text-xs text-slate-400 mb-4">${opportunity.address}</p>
+            
+            <div class="flex-grow space-y-4 overflow-y-auto p-1 text-left">
+                <!-- VITALES WEB -->
+                <div class="card-bg p-3 rounded-lg border border-slate-700">
+                    <h5 class="font-semibold text-slate-200 mb-3 text-center">Diagnóstico Técnico</h5>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="dossier-metric">
+                            <span class="dossier-score ${getScoreClass(performanceScore)}">${performanceScore}</span>
+                            <span class="text-xs text-slate-400 mt-1">Rendimiento</span>
+                        </div>
+                        <div class="dossier-metric">
+                            <span class="dossier-score ${getScoreClass(seoScore)}">${seoScore}</span>
+                            <span class="text-xs text-slate-400 mt-1">SEO</span>
+                        </div>
+                         <div class="dossier-metric">
+                            <span class="dossier-score ${getScoreClass(mobileScore)}">${mobileScore}</span>
+                            <span class="text-xs text-slate-400 mt-1">Móvil</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span class="font-semibold text-slate-200 text-sm">Stack:</span>
+                        <div class="tech-stack-item mt-1">
+                            ${getTechStackIcon(techStack.name)}
+                            <span>${techStack.name}</span>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                     <h5 class="font-semibold text-slate-200">Asistente de Contacto IA:</h5>
+
+                <!-- INTELIGENCIA DE MARKETING -->
+                <div class="card-bg p-3 rounded-lg border border-slate-700">
+                    <h5 class="font-semibold text-slate-200 mb-3">Inteligencia de Marketing</h5>
+                    <div class="space-y-2">
+                        <div class="marketing-intel-item ${hasAnalytics ? 'intel-detected' : 'intel-not-detected'}">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9v-2h2v2zm0-4H9V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z"/></svg>
+                             <div>
+                                <p class="font-bold text-sm">${hasAnalytics ? 'Google Analytics Detectado' : 'Google Analytics No Detectado'}</p>
+                                <p class="text-xs ${hasAnalytics ? 'text-green-300' : 'text-red-300'}">${hasAnalytics ? 'Mide activamente su tráfico.' : 'Oportunidad: No mide su tráfico.'}</p>
+                             </div>
+                        </div>
+                        <div class="marketing-intel-item ${hasPixel ? 'intel-detected' : 'intel-not-detected'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+                             <div>
+                                <p class="font-bold text-sm">${hasPixel ? 'Píxel de Meta Detectado' : 'Píxel de Meta No Detectado'}</p>
+                                <p class="text-xs ${hasPixel ? 'text-green-300' : 'text-red-300'}">${hasPixel ? 'Puede hacer retargeting.' : 'Oportunidad: No puede hacer retargeting.'}</p>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ASISTENTE DE CONTACTO -->
+                 <div>
+                     <h5 class="font-semibold text-slate-200 mb-2">Asistente de Contacto IA</h5>
                      <div id="outreach-assistant-container" class="mt-1 p-3 bg-slate-800 rounded-lg relative">
                         <div id="outreach-spinner" class="absolute inset-0 flex items-center justify-center hidden">
                             <svg class="spinner h-8 w-8 text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -725,17 +808,11 @@ function renderDossierView(opportunity) {
                     </div>
                 </div>
             </div>
-            <div class="flex-shrink-0 pt-4 mt-auto">
-                <button class="w-full accent-bg font-bold py-2 rounded-lg transition btn-press-feedback" data-action="create-proposal-from-radar" data-id="${opportunity.id}">
-                    Crear Propuesta con IA
-                </button>
-            </div>
+            ${actionButtonsHTML}
         </div>
     `;
-
     generateOutreachEmail(opportunity);
 }
-
 
 async function generateOutreachEmail(opportunity) {
     const container = document.getElementById('outreach-assistant-container');
@@ -754,9 +831,21 @@ async function generateOutreachEmail(opportunity) {
         return;
     }
     
-    const painPoints = Object.entries(opportunity.painPoints)
+    const painPointsDetails = Object.entries(opportunity.painPoints)
         .filter(([, value]) => value)
-        .map(([key]) => key).join(', ');
+        .map(([key]) => {
+            const textMap = {
+                slow: `Puntuación de Rendimiento: ${opportunity.performanceScore}/100 (Lento)`,
+                mobile: `Puntuación Móvil: ${opportunity.mobileScore}/100 (No optimizado)`,
+                ssl: 'Falta de Certificado SSL',
+                seo: `Puntuación SEO: ${opportunity.seoScore}/100 (Potencial de mejora)`
+            };
+            return textMap[key];
+        }).join(', ');
+        
+    const marketingIntel = [];
+    if (!opportunity.hasAnalytics) marketingIntel.push('No tiene Google Analytics instalado');
+    if (!opportunity.hasPixel) marketingIntel.push('No tiene Píxel de Meta instalado');
 
     try {
         const response = await fetch('/.netlify/functions/chat', {
@@ -765,7 +854,11 @@ async function generateOutreachEmail(opportunity) {
             body: JSON.stringify({
                 userMessage: "Generate outreach email.",
                 mode: 'outreach-generator',
-                context: { businessName: opportunity.name, painPoints },
+                context: { 
+                    businessName: opportunity.name, 
+                    painPointsDetails,
+                    marketingIntel: marketingIntel.join(', ') || 'N/A'
+                },
                 apiKey
             })
         });
@@ -781,32 +874,65 @@ async function generateOutreachEmail(opportunity) {
     }
 }
 
+function handleAddProspectToPipeline(opportunityId) {
+    const opportunity = currentOpportunities.find(o => o.id == opportunityId);
+    if (!opportunity) return;
+    
+    const prospectData = {
+        clientName: '',
+        clientCompany: opportunity.name,
+        clientEmail: '',
+        webName: `Prospecto: ${opportunity.name}`,
+        isProspect: true,
+        radarData: opportunity // Guardar toda la inteligencia
+    };
+    
+    handleAddTask(prospectData);
+    showNotification('success', 'Prospecto Añadido', `"${opportunity.name}" ha sido añadido a tu pipeline.`);
+    
+    // Re-render dossier para actualizar el estado del botón
+    renderDossierView(opportunity);
+}
+
+
 function handleCreateProposalFromRadar(opportunityId) {
     const opportunity = currentOpportunities.find(o => o.id == opportunityId);
     if (!opportunity) return;
     
-    resetForm();
+    // 1. Añadir al pipeline si no está ya
+    const { tasks } = getState();
+    const isInPipeline = tasks.some(task => task.isProspect && task.radarData && task.radarData.id === opportunity.id);
+    if (!isInPipeline) {
+        handleAddProspectToPipeline(opportunityId);
+    }
     
-    dom.clientNameInput.value = ''; // No podemos saber el nombre de contacto
+    // 2. Resetear formulario y pre-rellenar
+    resetForm();
     dom.clientCompanyInput.value = opportunity.name;
     dom.webNameInput.value = `Nuevo Sitio Web para ${opportunity.name}`;
 
-    const painPointsDescription = Object.entries(opportunity.painPoints)
+    let painPointsDescription = Object.entries(opportunity.painPoints)
         .filter(([, value]) => value)
         .map(([key]) => {
-            const textMap = { slow: 'El sitio web es lento.', mobile: 'El sitio no funciona bien en móviles.', ssl: 'Falta un certificado de seguridad SSL.', seo: 'Tiene un SEO básico deficiente.' };
+             const textMap = {
+                slow: `El sitio web es lento (Rendimiento: ${opportunity.performanceScore}/100).`,
+                mobile: `El sitio no funciona bien en móviles (Puntuación Móvil: ${opportunity.mobileScore}/100).`,
+                ssl: 'Falta un certificado de seguridad SSL.',
+                seo: `Tiene un SEO básico deficiente (Puntuación SEO: ${opportunity.seoScore}/100).`
+            };
             return textMap[key];
         }).join(' ');
 
+    if (!opportunity.hasAnalytics) painPointsDescription += " Además, no tiene Google Analytics instalado.";
+    if (!opportunity.hasPixel) painPointsDescription += " Tampoco tiene el Píxel de Meta para retargeting.";
+    
+    // 3. Activar la IA
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-send-btn');
-    
-    // Simular que la IA analiza los puntos de dolor
-    chatInput.value = `Cliente con los siguientes problemas: ${painPointsDescription}. Sugiere los servicios necesarios para solucionarlos.`;
+    chatInput.value = `Cliente con sitio en ${opportunity.techStack.name}. Problemas detectados: ${painPointsDescription.trim()} Sugiere los servicios necesarios para solucionarlos.`;
     
     closeOpportunityRadarModal();
     
-    // Pequeño delay para que el usuario vea el cambio
     setTimeout(() => {
         sendBtn.click();
         showNotification('info', 'Asistente Activado', `La IA está creando una propuesta para ${opportunity.name} basada en los problemas detectados.`);
@@ -825,22 +951,29 @@ export function showOpportunityRadarModal() {
         
         const mainContent = document.getElementById('radar-main-content');
         mainContent.addEventListener('click', (e) => {
-            const dossierBtn = e.target.closest('[data-action="view-dossier"]');
-            if (dossierBtn) {
-                const opp = currentOpportunities.find(o => o.id == dossierBtn.dataset.id);
-                if (opp) renderDossierView(opp);
-            }
+            const actionTarget = e.target.closest('[data-action]');
+            if (!actionTarget) return;
 
-            const createProposalBtn = e.target.closest('[data-action="create-proposal-from-radar"]');
-            if (createProposalBtn) {
-                handleCreateProposalFromRadar(createProposalBtn.dataset.id);
-            }
+            const { action, id } = actionTarget.dataset;
             
-            const copyBtn = e.target.closest('#copy-outreach-btn');
-            if (copyBtn) {
-                const text = document.getElementById('generated-outreach-text').textContent;
-                navigator.clipboard.writeText(text);
-                copyBtn.textContent = '¡Copiado!';
+            switch (action) {
+                case 'view-dossier': {
+                    const opp = currentOpportunities.find(o => o.id == id);
+                    if (opp) renderDossierView(opp);
+                    break;
+                }
+                case 'add-prospect':
+                    handleAddProspectToPipeline(id);
+                    break;
+                case 'create-proposal-from-radar':
+                    handleCreateProposalFromRadar(id);
+                    break;
+                case 'copy-outreach': {
+                    const text = document.getElementById('generated-outreach-text').textContent;
+                    navigator.clipboard.writeText(text);
+                    actionTarget.textContent = '¡Copiado!';
+                    break;
+                }
             }
         });
 
