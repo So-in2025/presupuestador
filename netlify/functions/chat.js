@@ -253,7 +253,7 @@ exports.handler = async (event) => {
         // Build systemInstruction + mode-specific tweaks
         switch (mode) {
             case 'builder': {
-        model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const contextText = (context && context.selectedServicesContext && context.selectedServicesContext.length > 0)
             ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
@@ -297,7 +297,7 @@ exports.handler = async (event) => {
                         break;
                     }
                 default: {
-                    model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+                    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
                     switch (mode) {
                         case 'analyze':
                             systemInstruction = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
