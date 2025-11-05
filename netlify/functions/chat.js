@@ -261,24 +261,36 @@ exports.handler = async (event) => {
                 // FORCE JSON in system prompt plus a short enforcement note
                 systemInstruction = `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
---- AVAILABLE CATALOG ---
-${serviceList}
-${planList}
---- CUSTOM TASKS (Use these for requests not in the catalog) ---
-${customTaskList}
+                --- AVAILABLE CATALOG ---
+                ${serviceList}
+                ${planList}
+                --- CUSTOM TASKS (Use these for requests not in the catalog) ---
+                ${customTaskList}
 
-Your response MUST be a single, valid JSON object. 
-Do NOT add any text, markdown, explanations, greetings or any characters before or after the JSON object.
+                Your response MUST be a single, valid JSON object.
 
-If the user request is very short (e.g. “necesito una página web”, “quiero una web”, “una página simple”, “una web para mi empresa”),
-you MUST still return ONLY the JSON object, even if you need to infer missing details.
+                You MUST ALWAYS return ALL the mandatory fields exactly as follows:
+                "introduction", "services", "closing", "client_questions", "sales_pitch".
 
-If something is unclear or missing, DO NOT ask questions outside of the JSON.
-Instead, include any needed questions INSIDE the "client_questions" field.
+                Do NOT omit any field.
+                Do NOT rename fields.
+                Do NOT invent new fields.
+                Do NOT modify structure or data types.
+                Do NOT reorder the top-level fields.
 
-If you cannot produce exactly valid JSON, return an empty JSON object: {}. 
-Return strictly JSON only.
-`;
+                If the user request is very short (e.g. “necesito una web”, “quiero una página”, “una web para mi cafetería”),
+                you MUST still return the complete JSON structure with all required fields, even if values must be inferred or minimal.
+
+                If something is unclear, include questions ONLY inside the "client_questions" array.
+
+                RETURN ONLY the JSON object.
+                NO markdown.
+                NO explanations.
+                NO greetings.
+                NO commentary.
+                NO text before or after the JSON.
+                Strict JSON only.
+                `;
                 break;
             }
             default: {
