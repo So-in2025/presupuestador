@@ -267,10 +267,18 @@ ${planList}
 --- CUSTOM TASKS (Use these for requests not in the catalog) ---
 ${customTaskList}
 
-Your response MUST be a single, valid JSON object. Do NOT add any text, markdown, or any other characters before or after the JSON object.
-If you need to clarify missing information, return a JSON object with empty or optional fields and include "client_questions" requesting the missing data.
-Do NOT provide explanatory text. Return strictly JSON only.`;
+Your response MUST be a single, valid JSON object. 
+Do NOT add any text, markdown, explanations, greetings or any characters before or after the JSON object.
 
+If the user request is very short (e.g. “necesito una página web”, “quiero una web”, “una página simple”, “una web para mi empresa”),
+you MUST still return ONLY the JSON object, even if you need to infer missing details.
+
+If something is unclear or missing, DO NOT ask questions outside of the JSON.
+Instead, include any needed questions INSIDE the "client_questions" field.
+
+If you cannot produce exactly valid JSON, return an empty JSON object: {}. 
+Return strictly JSON only.
+`;
                 break;
             }
             default: {
