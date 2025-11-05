@@ -92,13 +92,13 @@ class TTSManager {
 
         this.currentUtterance.onerror = (event) => {
             // Silencia los errores de cancelación, que son normales cuando el usuario detiene el audio.
-            if (event.error === 'interrupted' || event.error === 'canceled') {
-                // No hacer nada, es una cancelación intencional.
-            } else {
+            // NO se muestra ninguna notificación de error al usuario, como fue solicitado.
+            if (event.error !== 'interrupted' && event.error !== 'canceled') {
                 console.error('Error en la síntesis de voz:', event.error);
             }
             this.isPlaying = false;
             this._resetUI();
+            this.currentUtterance = null;
         };
 
         window.speechSynthesis.speak(this.currentUtterance);
@@ -112,6 +112,7 @@ class TTSManager {
         }
         this.isPlaying = false;
         this._resetUI();
+        this.currentUtterance = null;
     }
     
     speakQueue(elements, button) {
@@ -137,7 +138,7 @@ class TTSManager {
     _playNextInQueue() {
         if (this.currentHighlightElement) this.currentHighlightElement.classList.remove('tts-highlight');
         
-        if (this.ttsQueue.length === 0) {
+        if (this.ttsQueue.length === 0 || this.wasManuallyStopped) {
             this.isPlaying = false;
             this._resetUI();
             return;
@@ -161,12 +162,12 @@ class TTSManager {
         };
         
         this.currentUtterance.onerror = (e) => {
-             if (e.error === 'interrupted' || e.error === 'canceled') {
-                // No hacer nada si fue cancelado
-            } else {
+             if (e.error !== 'interrupted' && e.error !== 'canceled') {
                 console.error("Error en cola TTS:", e.error);
-                if (!this.wasManuallyStopped) this._playNextInQueue(); // Try to continue
-            }
+             }
+             // No intentes continuar la cola si hubo un error o fue cancelada, para evitar loops.
+             this.isPlaying = false;
+             this._resetUI();
         };
 
         window.speechSynthesis.speak(this.currentUtterance);

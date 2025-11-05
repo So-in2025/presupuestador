@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v60 - REVERTED to pre-refactor structure. Monolithic, but robust.
+ * Lógica de Intención: v61 - Robust JSON Schema for Builder Mode
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -154,28 +154,20 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        
-        let model;
-        let generationConfig;
-        let systemInstruction;
-        let finalUserMessage = userMessage;
+        let responsePayload;
 
-        switch (mode) {
-            case 'builder': {
-                 model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-                 generationConfig = {
-                    temperature: 0.2,
-                    topK: 1,
-                    topP: 1,
-                    maxOutputTokens: 2048,
-                };
-                const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
-                const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
-                const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
-                const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
-                    ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
-                    : '';
-                systemInstruction = `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
+        if (mode === 'builder') {
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            
+            const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
+            const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
+            const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
+            
+            const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
+                ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
+                : '';
+                
+            const prompt = `Act as a JSON API. Analyze the user's request for a web project: "${userMessage}". Build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
 --- AVAILABLE CATALOG ---
 ${serviceList}
@@ -183,95 +175,92 @@ ${planList}
 --- CUSTOM TASKS (Use these for requests not in the catalog) ---
 ${customTaskList}
 
-Your response MUST be a single, valid JSON object. Do NOT add any text, markdown, or any other characters before or after the JSON object.
+**CRITICAL INSTRUCTIONS:**
+1. Your entire response MUST be a single, valid JSON object that strictly adheres to the schema provided.
+2. For 'priority', you MUST use one of these three strings: "essential", "recommended", or "optional".
+3. If the user requests a feature NOT in the catalog (e.g., 'integration with Calendly'), you MUST:
+   - Estimate its complexity ('small', 'medium', or 'large').
+   - Assign the corresponding ID from 'CUSTOM TASKS' ('custom-s', 'custom-m', 'custom-l').
+   - Provide a descriptive 'name' for the task.
+   - Include the property '"is_new": true'.`;
 
-**THE JSON STRUCTURE MUST BE:**
-{
-  "introduction": "A brief, friendly opening.",
-  "services": [
-    {
-      "id": "p2",
-      "name": "Sitio Web Presencial",
-      "priority": "essential",
-      "is_new": false
-    },
-    {
-      "id": "custom-m",
-      "name": "Integración con Calendly",
-      "priority": "recommended",
-      "is_new": true
-    }
-  ],
-  "closing": "A concise closing statement.",
-  "client_questions": [
-    "A relevant question to ask the client.",
-    "Another relevant question."
-  ],
-  "sales_pitch": "A short, powerful sales pitch for the proposed solution."
-}
+            const generationConfig = {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        introduction: { type: "STRING" },
+                        services: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    id: { type: "STRING" },
+                                    name: { type: "STRING" },
+                                    priority: { type: "STRING" },
+                                    is_new: { type: "BOOLEAN" }
+                                },
+                                required: ["id", "name", "priority", "is_new"]
+                            }
+                        },
+                        closing: { type: "STRING" },
+                        client_questions: { type: "ARRAY", items: { type: "STRING" } },
+                        sales_pitch: { type: "STRING" }
+                    },
+                    required: ["introduction", "services", "closing", "client_questions", "sales_pitch"]
+                },
+                temperature: 0.2
+            };
 
-**CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
-1. For each service object, you MUST include a "priority" key.
-2. The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
-3. **NEW TASK: CUSTOM SERVICE SUGGESTIONS:**
-   - If the user requests a specific feature NOT in the catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
-   - First, ESTIMATE its complexity: 'small', 'medium', or 'large'.
-   - Second, assign the corresponding ID from the 'CUSTOM TASKS' list ('custom-s', 'custom-m', 'custom-l').
-   - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
-   - Fourth, you MUST include the property '"is_new": true'.
-   - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
-4. Your entire response must be ONLY the raw JSON.`;
-                break;
-            }
-            default: {
-                 model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-                 generationConfig = {
-                    temperature: 0.2,
-                    topK: 1,
-                    topP: 1,
-                    maxOutputTokens: 2048,
-                };
-                // Fallback to the original, robust logic for other modes
-                switch (mode) {
-                    case 'analyze':
-                        systemInstruction = ANALYZE_INSTRUCTION;
-                        break;
-                    case 'objection':
-                        systemInstruction = OBJECTION_INSTRUCTION;
-                        break;
-                    case 'content-creator':
-                        systemInstruction = CONTENT_CREATOR_INSTRUCTION;
-                        const { service: cc_service, cta, platform, tone } = context;
-                        finalUserMessage = `Service to promote: "${cc_service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
-                        break;
-                    case 'image-prompt-creator':
-                        systemInstruction = IMAGE_PROMPT_CREATOR_INSTRUCTION;
-                        const { postText } = context;
-                        finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
-                        break;
-                    case 'lead-gen-plan':
-                        systemInstruction = LEAD_GEN_PLAN_INSTRUCTION;
-                        const { service: lgp_service, audience } = context;
-                        finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${lgp_service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
-                        break;
-                    case 'outreach-generator':
-                        systemInstruction = OUTREACH_GENERATOR_INSTRUCTION;
-                        const { businessName, painPointsDetails, marketingIntel } = context;
-                        finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
-                        break;
-                    case 'entrenamiento':
-                        let catalogString = '';
-                        Object.values(pricingData.allServices).forEach(category => {
-                            catalogString += `\nCATEGORY: ${category.name}\n`;
-                            category.items.forEach(item => {
-                                catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
-                                if(item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
-                            });
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig,
+            });
+
+            responsePayload = result.response.text();
+
+        } else {
+            // Fallback to the original, robust logic for other modes
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            let systemInstruction;
+            let finalUserMessage = userMessage;
+
+            switch (mode) {
+                case 'analyze': systemInstruction = ANALYZE_INSTRUCTION; break;
+                case 'objection': systemInstruction = OBJECTION_INSTRUCTION; break;
+                case 'content-creator':
+                    systemInstruction = CONTENT_CREATOR_INSTRUCTION;
+                    const { service: cc_service, cta, platform, tone } = context;
+                    finalUserMessage = `Service to promote: "${cc_service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
+                    break;
+                case 'image-prompt-creator':
+                    systemInstruction = IMAGE_PROMPT_CREATOR_INSTRUCTION;
+                    const { postText } = context;
+                    finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
+                    break;
+                case 'lead-gen-plan':
+                    systemInstruction = LEAD_GEN_PLAN_INSTRUCTION;
+                    const { service: lgp_service, audience } = context;
+                    finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${lgp_service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
+                    break;
+                case 'outreach-generator':
+                    systemInstruction = OUTREACH_GENERATOR_INSTRUCTION;
+                    const { businessName, painPointsDetails, marketingIntel } = context;
+                    finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
+                    break;
+                case 'entrenamiento':
+                    let catalogString = '';
+                    Object.values(pricingData.allServices).forEach(category => {
+                        catalogString += `\nCATEGORY: ${category.name}\n`;
+                        category.items.forEach(item => {
+                            catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
+                            if(item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
                         });
-                        pricingData.monthlyPlans.forEach(plan => {
-                             catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
-                        });
-                        systemInstruction = `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
+                    });
+                    pricingData.monthlyPlans.forEach(plan => {
+                         catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
+                    });
+                    systemInstruction = `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
 
 **Your Core Directives:**
 1.  **Be an Expert:** When asked about a service, explain what it is, who it's for, and most importantly, what the key selling points (benefits) are.
@@ -284,48 +273,31 @@ ${catalogString}
 --- END OF CATALOG ---
 
 Now, answer the affiliate's question based on this information.`;
-                        break;
-                }
+                    break;
             }
-        }
 
-        const chat = model.startChat({
-            generationConfig,
-            history: [
-                { role: "user", parts: [{ text: systemInstruction }] },
-                { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
-                ...(historyFromClient || [])
-            ]
-        });
+            const chat = model.startChat({
+                history: [
+                    { role: "user", parts: [{ text: systemInstruction }] },
+                    { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
+                    ...(historyFromClient || [])
+                ]
+            });
 
-        const result = await chat.sendMessage(finalUserMessage);
-        
-        if (!result || !result.response || typeof result.response.text !== 'function') {
-             throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
-        }
-        
-        let responseText = result.response.text();
-        let responsePayload = responseText;
-
-        if (mode === 'builder' || mode === 'lead-gen-plan') {
-             try {
-                // Robust JSON extractor: finds a JSON block even if it's wrapped in markdown or has leading/trailing text.
-                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|({[\s\S]*})/);
-                if (!jsonMatch) {
-                    throw new Error("No se encontró un bloque JSON en la respuesta de la IA.");
+            const result = await chat.sendMessage(finalUserMessage);
+            responsePayload = result.response.text();
+            
+            if (mode === 'lead-gen-plan') {
+                const jsonMatch = responsePayload.match(/({[\s\S]*})/);
+                if (jsonMatch && jsonMatch[1]) {
+                    responsePayload = jsonMatch[1];
                 }
-                const jsonString = jsonMatch[1] || jsonMatch[2];
-                JSON.parse(jsonString); // This is just to validate. If it fails, it throws.
-                responsePayload = jsonString; // Use the cleaned, valid JSON string for the response.
-            } catch (e) {
-                console.error("AI response contained a JSON-like block that was invalid.", e);
-                throw new Error(`La IA devolvió un JSON malformado.`);
             }
         }
         
         const finalHistoryForClient = [
             ...(historyFromClient || []),
-            { role: 'user', parts: [{ text: userMessage }] }, // Use original user message for history
+            { role: 'user', parts: [{ text: userMessage }] },
             { role: 'model', parts: [{ text: responsePayload }] }
         ];
 
@@ -348,16 +320,12 @@ Now, answer the affiliate's question based on this information.`;
             userFriendlyMessage = "Límite de Cuota Excedido: Has alcanzado el límite de solicitudes. Por favor, espera un momento.";
         } else if (status >= 500) {
             userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Inténtalo de nuevo más tarde.";
-        } else if (errorDetails.includes('Respuesta inválida')) {
-            userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
         } else if (errorDetails.includes('400 Bad Request') || errorDetails.includes('is not found for API version')) {
              userFriendlyMessage = "la solicitud fue mal formada. Esto puede ser un problema con la API Key o la configuración del proyecto. Asegúrate que la API de Gemini está habilitada en tu proyecto de Google Cloud."
-        } else if (errorDetails.includes('JSON malformado')) {
-            userFriendlyMessage = "la IA devolvió una respuesta con un formato incorrecto que no se pudo procesar."
         }
 
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
-        const errorBody = (mode === 'builder' || mode === 'lead-gen-plan')
+        const errorBody = (mode === 'builder')
             ? JSON.stringify({
                 introduction: "Lo siento, hubo un error de conexión con el asistente.",
                 services: [],
