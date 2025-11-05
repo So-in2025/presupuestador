@@ -93,9 +93,10 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             
             let textToSpeak = message;
     
-            if (currentAiMode === 'builder' && message.trim().startsWith('{')) {
+            if (currentAiMode === 'builder' && message.replace(/^[\s\n]+/, '').startsWith('{')) {
                 try {
-                    const jsonResponse = JSON.parse(message);
+                    const cleaned = message.replace(/^[\s\n]+/, '');
+                    const jsonResponse = JSON.parse(cleaned);
                      if (!jsonResponse.introduction || !Array.isArray(jsonResponse.services)) {
                         throw new Error("Invalid JSON structure for builder mode.");
                     }
@@ -269,7 +270,9 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             toggleTypingIndicator(false);
             
             chatHistory = data.history; 
-            const aiResponseText = data.response; 
+            const aiResponseText = typeof data.response === "string" 
+            ? data.response.trim()
+            : JSON.stringify(data.response);
             
             addMessageToChat(aiResponseText, 'model');
 
