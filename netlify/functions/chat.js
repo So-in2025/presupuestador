@@ -1,11 +1,10 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v79 - CRITICAL FIX: Correct Gemini Library Usage
- * This version corrects the fatal `TypeError: GoogleGenAI is not a constructor` error
- * by using the correct `GoogleGenerativeAI` class name and refactoring the API call
- * to the official, stable `getGenerativeModel().generateContent()` pattern.
- * This aligns the code with the installed library version and resolves the root cause of the crashes.
+ * Lógica de Intención: v80 - CRITICAL FIX: Correct Model Name
+ * This version corrects the fatal `404 Not Found` error by replacing the deprecated
+ * 'gemini-1.5-flash' model with the current, correct model 'gemini-2.5-flash'.
+ * This directly resolves the API error reported in the logs.
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -202,7 +201,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         }
 
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: { role: 'model', parts: [{ text: systemInstruction }] }
         });
 

@@ -1,8 +1,8 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v7 - CRITICAL FIX: Correct Gemini Library Usage
+ * Backend para Radar de Oportunidades v8 - CRITICAL FIX: Correct Model Name
  * Uses Gemini to find real businesses AND perform a technical analysis for each.
- * Aligned with official @google/generative-ai SDK usage to fix crashes.
+ * Replaced deprecated 'gemini-1.5-flash' with 'gemini-2.5-flash' to fix 404 errors.
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -10,7 +10,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. You MUST return ONLY a valid JSON object with a single key "businesses" which is an array of objects. Each object MUST have "name" and "address" keys. Example: {"businesses": [{"name": "Example Cafe", "address": "123 Main St, Anytown"}]}. Do not add any other text or explanations. Business Type: "${businessType}", Location: "${location}".`;
 
@@ -30,7 +30,7 @@ const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
 
 const getTechnicalAnalysisFromAI = async (businessName, businessAddress, filters, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `You are a "Technical Web Analyst" API. Analyze the business: "${businessName}" at "${businessAddress}". Perform a simulated but realistic analysis based on its likely web presence. You MUST return ONLY a valid JSON object with the following structure:
     {
