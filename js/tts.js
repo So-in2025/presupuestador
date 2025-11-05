@@ -99,9 +99,9 @@ class TTSManager {
     }
     
     stop() {
+        this.ttsQueue = []; // CRITICAL FIX: Clear queue before cancelling.
         if (window.speechSynthesis.speaking) {
-            this.ttsQueue = [];
-            window.speechSynthesis.cancel(); // Dispara onend
+            window.speechSynthesis.cancel(); // This will trigger onend, but since the queue is empty, it will stop correctly.
         } else {
              this._resetUI();
         }

@@ -325,7 +325,7 @@ export function initializeBranding() {
     });
 }
 
-// --- TOUR GUIADO (RECONSTRUIDO CON SETTIMEOUT) ---
+// --- TOUR GUIADO (REVERTIDO A LÓGICA MÁS SIMPLE Y ROBUSTA) ---
 const tourSteps = [
     { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
     { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
@@ -349,7 +349,6 @@ const tourManager = {
         endBtn: document.getElementById('tour-end'),
         arrow: document.getElementById('tour-arrow'),
     },
-    scrollTimeout: null,
 
     start() {
         if (localStorage.getItem('zenTourCompleted') === 'true' || this.isActive) return;
@@ -364,10 +363,7 @@ const tourManager = {
             this.elements.prevBtn.addEventListener('click', () => this.prev());
             this.elements.endBtn.addEventListener('click', () => this.end());
             window.addEventListener('resize', () => {
-                if (this.isActive) {
-                    const targetElement = document.querySelector('.tour-highlight-active');
-                    if (targetElement) this.positionTooltip(targetElement);
-                }
+                if (this.isActive) this.positionTooltip();
             });
             window.tourListenersAttached = true;
         }
@@ -397,21 +393,12 @@ const tourManager = {
         this.elements.prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
         this.elements.nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
         this.elements.endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
-
-        this.elements.tooltip.style.opacity = '0'; // Ocultar antes de mover
         
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetElement.scrollIntoView({ behavior: 'auto', block: 'center' }); // Revertido a 'auto' para evitar race conditions.
         targetElement.classList.add('tour-highlight-active');
-
-        // Lógica de espera robusta
-        clearTimeout(this.scrollTimeout);
-        this.scrollTimeout = setTimeout(() => {
-            // Asegurarse de que el paso no haya cambiado mientras se esperaba
-            if (this.currentStep === index && this.isActive) {
-                this.positionTooltip(targetElement);
-                this.elements.tooltip.style.opacity = '1';
-            }
-        }, 400); // 400ms es un buen margen para que termine el scroll
+        
+        // Posicionar inmediatamente después del scroll
+        this.positionTooltip();
     },
     
     next() { this.showStep(this.currentStep + 1); },
@@ -420,8 +407,6 @@ const tourManager = {
     end() {
         if (!this.isActive) return;
         this.isActive = false;
-        
-        clearTimeout(this.scrollTimeout);
         
         document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
         this.elements.tooltip.style.opacity = '0';
@@ -435,9 +420,14 @@ const tourManager = {
         localStorage.setItem('zenTourCompleted', 'true');
     },
 
-    positionTooltip(targetElement) {
+    positionTooltip() {
+        if (!this.isActive) return;
+        const targetElement = document.querySelector('.tour-highlight-active');
+        if (!targetElement) return;
+
         const { tooltip, arrow } = this.elements;
         requestAnimationFrame(() => {
+            tooltip.style.opacity = '0';
             tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
             const targetRect = targetElement.getBoundingClientRect();
             const tooltipRect = tooltip.getBoundingClientRect();
@@ -446,17 +436,15 @@ const tourManager = {
             let top, left;
             let arrowClass = 'tooltip-is-below';
 
-            // Priorizar poner el tooltip arriba si hay espacio
-            if (targetRect.top > tooltipRect.height + margin) {
-                top = window.scrollY + targetRect.top - tooltipRect.height - margin;
+            if (targetRect.top > tooltip.offsetHeight + margin) {
+                top = window.scrollY + targetRect.top - tooltip.offsetHeight - margin;
                 arrowClass = 'tooltip-is-above';
-            } else { // Si no, ponerlo abajo
+            } else {
                 top = window.scrollY + targetRect.bottom + margin;
                 arrowClass = 'tooltip-is-below';
             }
 
             left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltip.offsetWidth / 2);
-            // Ajustar si se sale de la pantalla
             if (left < margin) left = margin;
             if (left + tooltip.offsetWidth > window.innerWidth - margin) {
                 left = window.innerWidth - tooltip.offsetWidth - margin;
@@ -468,6 +456,8 @@ const tourManager = {
             
             const targetCenterX = window.scrollX + targetRect.left + targetRect.width / 2;
             arrow.style.left = `${targetCenterX - left}px`;
+            
+            tooltip.style.opacity = '1';
         });
     },
     
