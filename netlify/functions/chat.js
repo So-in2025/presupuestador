@@ -253,98 +253,101 @@ exports.handler = async (event) => {
         // Build systemInstruction + mode-specific tweaks
         switch (mode) {
             case 'builder': {
-                model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-                const contextText = (context && context.selectedServicesContext && context.selectedServicesContext.length > 0)
-                    ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
-                    : '';
+        model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
 
-                // FORCE JSON in system prompt plus a short enforcement note
-                systemInstruction = `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
+        const contextText = (context && context.selectedServicesContext && context.selectedServicesContext.length > 0)
+            ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
+            : '';
+                systemInstruction = `
+                    Act as a STRICT JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify upsell and cross-sell opportunities. ${contextText}
 
-                --- AVAILABLE CATALOG ---
-                ${serviceList}
-                ${planList}
-                --- CUSTOM TASKS (Use these for requests not in the catalog) ---
-                ${customTaskList}
+                    --- AVAILABLE CATALOG ---
+                    ${serviceList}
+                    ${planList}
+                    --- CUSTOM TASKS (Use these for requests not in the catalog) ---
+                    ${customTaskList}
 
-                Your response MUST be a single, valid JSON object.
+                    You MUST ALWAYS respond with ONE and ONLY ONE JSON object.
+                    NO markdown, NO code blocks, NO explanations, NO greetings, NO commentary,
+                    NO text before or after the JSON.
 
-                You MUST ALWAYS return ALL the mandatory fields exactly as follows:
-                "introduction", "services", "closing", "client_questions", "sales_pitch".
+                    Your response MUST follow EXACTLY this structure:
 
-                Do NOT omit any field.
-                Do NOT rename fields.
-                Do NOT invent new fields.
-                Do NOT modify structure or data types.
-                Do NOT reorder the top-level fields.
+                    {
+                    "introduction": "",
+                    "services": [],
+                    "closing": "",
+                    "client_questions": [],
+                    "sales_pitch": ""
+                    }
 
-                If the user request is very short (e.g. “necesito una web”, “quiero una página”, “una web para mi cafetería”),
-                you MUST still return the complete JSON structure with all required fields, even if values must be inferred or minimal.
+                    STRICT RULES:
+                    1. ALWAYS include all fields exactly as shown.
+                    2. NEVER remove, rename, reorder, or add fields.
+                    3. "services" MUST be an array of objects: [{ "id": "string", "name": "string" }]
+                    4. "client_questions" MUST be an array of strings.
+                    5. All other fields MUST be strings.
+                    6. If the user’s request is short or vague, you MUST infer missing details.
+                    7. If information is missing, put questions ONLY inside "client_questions".
+                    8. NEVER output markdown, triple backticks, emojis, comments, or text outside the JSON.
 
-                If something is unclear, include questions ONLY inside the "client_questions" array.
+                    You MUST output ONLY the JSON object.
+                    `;
 
-                RETURN ONLY the JSON object.
-                NO markdown.
-                NO explanations.
-                NO greetings.
-                NO commentary.
-                NO text before or after the JSON.
-                Strict JSON only.
-                `;
-                break;
-            }
-            default: {
-                model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-                switch (mode) {
-                    case 'analyze':
-                        systemInstruction = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
                         break;
-                    case 'objection':
-                        systemInstruction = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
-                        break;
-                    case 'content-creator':
-                        systemInstruction = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services.`;
-                        const { service: cc_service, cta, platform, tone } = (context || {});
-                        finalUserMessage = `Service to promote: "${cc_service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
-                        break;
-                    case 'image-prompt-creator':
-                        systemInstruction = `You are a world-class Art Director and AI Prompt Engineer. Generate a single-paragraph Midjourney/DALL-E prompt in English for the given social media post.`;
-                        const { postText } = (context || {});
-                        finalUserMessage = `Generate the image prompt. The social media post to analyze is: "${postText || ''}"`;
-                        break;
-                    case 'lead-gen-plan':
-                        systemInstruction = `You are a "Marketing & Sales Strategist" AI. Create a detailed, actionable 7-day plan as a single JSON object.`;
-                        const { service: lgp_service, audience } = (context || {});
-                        finalUserMessage = `Generate the plan. The service to promote is "${lgp_service || ''}". The target audience is "${audience || ''}".`;
-                        break;
-                    case 'outreach-generator':
-                        systemInstruction = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services.`;
-                        const { businessName, painPointsDetails, marketingIntel } = (context || {});
-                        finalUserMessage = `Generate the outreach email. Business name: "${businessName || ''}". Pain points: "${painPointsDetails || ''}". Marketing intel: "${marketingIntel || ''}".`;
-                        break;
-                    case 'entrenamiento':
-                        // Build a compact catalog string for entrenamiento mode
-                        let catalogString = '';
-                        Object.values(pricingData.allServices).forEach(category => {
-                            catalogString += `\nCATEGORY: ${category.name}\n`;
-                            (category.items || []).forEach(item => {
-                                catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
-                                if (item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
+                    }
+                default: {
+                    model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+                    switch (mode) {
+                        case 'analyze':
+                            systemInstruction = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
+                            break;
+                        case 'objection':
+                            systemInstruction = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+                            break;
+                        case 'content-creator':
+                            systemInstruction = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services.`;
+                            const { service: cc_service, cta, platform, tone } = (context || {});
+                            finalUserMessage = `Service to promote: "${cc_service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
+                            break;
+                        case 'image-prompt-creator':
+                            systemInstruction = `You are a world-class Art Director and AI Prompt Engineer. Generate a single-paragraph Midjourney/DALL-E prompt in English for the given social media post.`;
+                            const { postText } = (context || {});
+                            finalUserMessage = `Generate the image prompt. The social media post to analyze is: "${postText || ''}"`;
+                            break;
+                        case 'lead-gen-plan':
+                            systemInstruction = `You are a "Marketing & Sales Strategist" AI. Create a detailed, actionable 7-day plan as a single JSON object.`;
+                            const { service: lgp_service, audience } = (context || {});
+                            finalUserMessage = `Generate the plan. The service to promote is "${lgp_service || ''}". The target audience is "${audience || ''}".`;
+                            break;
+                        case 'outreach-generator':
+                            systemInstruction = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services.`;
+                            const { businessName, painPointsDetails, marketingIntel } = (context || {});
+                            finalUserMessage = `Generate the outreach email. Business name: "${businessName || ''}". Pain points: "${painPointsDetails || ''}". Marketing intel: "${marketingIntel || ''}".`;
+                            break;
+                        case 'entrenamiento':
+                            // Build a compact catalog string for entrenamiento mode
+                            let catalogString = '';
+                            Object.values(pricingData.allServices).forEach(category => {
+                                catalogString += `\nCATEGORY: ${category.name}\n`;
+                                (category.items || []).forEach(item => {
+                                    catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
+                                    if (item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
+                                });
                             });
-                        });
-                        pricingData.monthlyPlans.forEach(plan => {
-                            catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
-                        });
-                        systemInstruction = `You are "SO->IN Product Expert", an specialized AI assistant. Your purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. Base your answers exclusively on the provided service catalog:
+                            pricingData.monthlyPlans.forEach(plan => {
+                                catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
+                            });
+                            systemInstruction = `You are "SO->IN Product Expert", an specialized AI assistant. Your purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. Base your answers exclusively on the provided service catalog:
 
-${catalogString}
-`;
-                        break;
-                    default:
-                        systemInstruction = `You are a helpful assistant.`;
+                            ${catalogString}
+                            `;
+                            break;
+                        default:
+                            systemInstruction = `You are a helpful assistant.`;
+                    }
                 }
             }
-        }
 
         // Build initial chat history for the model
         const chatHistory = [
