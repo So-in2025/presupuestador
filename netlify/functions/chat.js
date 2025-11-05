@@ -1,13 +1,21 @@
+
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen - versión producción endurecida
  * - Mejor manejo de respuestas JSON generadas por la IA
  * - Sanitización de texto
  * - Fallbacks compatibles con frontend
+ * - Logging avanzado y reintentos para forzar JSON en modos críticos
  */
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
+const crypto = require('crypto');
+
+// Helper: generate a short request id for logs
+function genRequestId() {
+    return crypto.randomBytes(6).toString('hex');
+}
 
 // Helper: sanitize text (remove BOM, normalize curly quotes)
 function sanitizeTextForParsing(text) {
@@ -16,6 +24,8 @@ function sanitizeTextForParsing(text) {
     text = text.replace(/^\uFEFF/, '');
     // Replace curly quotes with straight quotes
     text = text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+    // Normalize non-breaking spaces
+    text = text.replace(/\u00A0/g, ' ');
     // Trim
     return text.trim();
 }
@@ -44,7 +54,8 @@ function extractJsonStringFromText(rawText) {
     while ((match = fencedRegex.exec(text)) !== null) {
         const candidate = match[1].trim();
         const t = sanitizeTextForParsing(candidate);
-        if (tryParseJson(t).ok) return JSON.stringify(tryParseJson(t).value);
+        const parsed = tryParseJson(t);
+        if (parsed.ok) return JSON.stringify(parsed.value);
     }
 
     // 3) Look for any triple-backtick block without json label
@@ -52,7 +63,8 @@ function extractJsonStringFromText(rawText) {
     while ((match = anyFencedRegex.exec(text)) !== null) {
         const candidate = match[1].trim();
         const t = sanitizeTextForParsing(candidate);
-        if (tryParseJson(t).ok) return JSON.stringify(tryParseJson(t).value);
+        const parsed = tryParseJson(t);
+        if (parsed.ok) return JSON.stringify(parsed.value);
     }
 
     // 4) Fallback: find first '{' and attempt to find balanced JSON block (brace counting)
@@ -62,6 +74,7 @@ function extractJsonStringFromText(rawText) {
     let i = firstBrace;
     let depth = 0;
     let inString = false;
+    let stringChar = null;
     let escape = false;
     for (; i < text.length; i++) {
         const ch = text[i];
@@ -74,12 +87,13 @@ function extractJsonStringFromText(rawText) {
             escape = true;
             continue;
         }
-        if (ch === '"' || ch === "'") {
-            // toggle inString if not escaped
+        if ((ch === '"' || ch === "'")) {
             if (!inString) {
-                inString = ch;
-            } else if (inString === ch) {
+                inString = true;
+                stringChar = ch;
+            } else if (inString && ch === stringChar) {
                 inString = false;
+                stringChar = null;
             }
             continue;
         }
@@ -91,11 +105,11 @@ function extractJsonStringFromText(rawText) {
             if (depth === 0) {
                 const candidate = text.slice(firstBrace, i + 1);
                 const cleaned = sanitizeTextForParsing(candidate);
-                if (tryParseJson(cleaned).ok) return JSON.stringify(tryParseJson(cleaned).value);
-                // If this candidate fails, continue searching for next '{' after firstBrace
+                const parsed = tryParseJson(cleaned);
+                if (parsed.ok) return JSON.stringify(parsed.value);
+                // If fails, try to find next possible block recursively
                 const nextStart = text.indexOf('{', firstBrace + 1);
                 if (nextStart === -1) break;
-                // reset and move firstBrace
                 return extractJsonStringFromText(text.slice(nextStart));
             }
         }
@@ -115,12 +129,79 @@ function builderErrorResponse(message) {
     });
 }
 
+// Utility: sleep (ms)
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Attempt to call the model and enforce JSON for critical modes with retries
+async function callModelWithJsonEnforcement(model, chatOptions, maxAttempts = 2, reqId = '') {
+    const retryDelay = 600; // ms between retries
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const attemptTag = `req=${reqId} attempt=${attempt}`;
+        try {
+            const result = await model.sendMessage(chatOptions.message);
+            if (!result || !result.response || typeof result.response.text !== 'function') {
+                console.warn(`${attemptTag} - Invalid response structure from model`, result);
+                throw new Error('Invalid model response structure');
+            }
+            const raw = sanitizeTextForParsing(result.response.text());
+            console.info(`${attemptTag} - Raw model output length=${raw.length}`);
+            // If it's already valid JSON, return it
+            const wholeTry = tryParseJson(raw);
+            if (wholeTry.ok) {
+                console.info(`${attemptTag} - Model returned valid JSON (whole)`);
+                return { ok: true, text: JSON.stringify(wholeTry.value), raw };
+            }
+            // Try to extract JSON blocks
+            const extracted = extractJsonStringFromText(raw);
+            if (extracted) {
+                const validated = tryParseJson(extracted);
+                if (validated.ok) {
+                    console.info(`${attemptTag} - Extracted valid JSON`);
+                    return { ok: true, text: JSON.stringify(validated.value), raw };
+                }
+                console.warn(`${attemptTag} - Extracted JSON failed validation`, validated.error);
+            } else {
+                console.warn(`${attemptTag} - No JSON block found in response`);
+            }
+            // If we reach here, model didn't return usable JSON
+            if (attempt < maxAttempts) {
+                console.info(`${attemptTag} - Retrying after ${retryDelay}ms to enforce JSON`);
+                // provide a short clarifying system message asking the model to return only JSON
+                // Note: We intentionally do NOT include sensitive data in follow-ups
+                await wait(retryDelay);
+                // Re-send a stricter follow-up by appending to message with enforcement
+                chatOptions.message = chatOptions.message + "\n\n[IMPORTANT] If your previous response included explanation or text, now return ONLY the JSON object requested, with no extra text, markdown or commentary. If you cannot comply, return an empty response.";
+                continue;
+            } else {
+                // Final attempt failed
+                return { ok: false, text: raw };
+            }
+        } catch (e) {
+            console.error(`${attemptTag} - Error calling model:`, e);
+            if (attempt < maxAttempts) {
+                await wait(retryDelay);
+                continue;
+            }
+            return { ok: false, error: e, text: '' };
+        }
+    }
+    return { ok: false, text: '' };
+}
+
 // --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 exports.handler = async (event) => {
+    const requestId = genRequestId();
+    const startTs = Date.now();
+    console.info(`req=${requestId} - handler entry, method=${event.httpMethod} time=${new Date().toISOString()}`);
+
     if (event.httpMethod !== "POST") {
+        console.warn(`req=${requestId} - method not allowed`);
         return { statusCode: 405, body: "Method Not Allowed" };
     }
     if (!pricingData) {
+        console.error(`req=${requestId} - pricingData missing`);
         return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
     }
 
@@ -128,17 +209,19 @@ exports.handler = async (event) => {
     try {
         body = JSON.parse(event.body);
     } catch (e) {
-        console.error("Invalid JSON body:", e);
+        console.error(`req=${requestId} - invalid JSON body`, e);
         return { statusCode: 400, body: "Invalid JSON-formatted request body." };
     }
 
     const { userMessage, history: historyFromClient, mode, context, apiKey } = body;
     if (!userMessage || !mode || !apiKey) {
+        console.warn(`req=${requestId} - incomplete request`);
         return { statusCode: 400, body: JSON.stringify({ error: true, message: "Incomplete request." }) };
     }
 
     // Ensure apiKey is a string
     if (typeof apiKey !== 'string' || apiKey.trim() === '') {
+        console.warn(`req=${requestId} - apiKey invalid`);
         return { statusCode: 400, body: JSON.stringify({ error: true, message: "API key missing or invalid." }) };
     }
 
@@ -158,11 +241,9 @@ exports.handler = async (event) => {
             maxOutputTokens: 2048,
         };
 
-        // prepare lists used across modes
+        // prepare lists used across modes (compact)
         const serviceList = Object.values(pricingData.allServices)
-            .filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)")
-            .flatMap(cat => cat.items)
-            .map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
+            .flatMap(cat => (cat.items || []).map(s => `ID: ${s.id} | Name: ${s.name}`)).join('\n');
 
         const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
 
@@ -177,6 +258,7 @@ exports.handler = async (event) => {
                     ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
                     : '';
 
+                // FORCE JSON in system prompt plus a short enforcement note
                 systemInstruction = `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
 
 --- AVAILABLE CATALOG ---
@@ -186,30 +268,12 @@ ${planList}
 ${customTaskList}
 
 Your response MUST be a single, valid JSON object. Do NOT add any text, markdown, or any other characters before or after the JSON object.
+If you need to clarify missing information, return a JSON object with empty or optional fields and include "client_questions" requesting the missing data.
+Do NOT provide explanatory text. Return strictly JSON only.`;
 
-**THE JSON STRUCTURE MUST BE:**
-{
-  "introduction": "A brief, friendly opening.",
-  "services": [
-    {
-      "id": "p2",
-      "name": "Sitio Web Presencial",
-      "priority": "essential",
-      "is_new": false
-    }
-  ],
-  "closing": "A concise closing statement.",
-  "client_questions": [
-    "A relevant question to ask the client."
-  ],
-  "sales_pitch": "A short, powerful sales pitch for the proposed solution."
-}
-
-**CRITICAL:** If you cannot produce exactly valid JSON, produce NOTHING (return empty response).`;
                 break;
             }
             default: {
-                // fallback model and other modes
                 model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
                 switch (mode) {
                     case 'analyze':
@@ -251,7 +315,7 @@ Your response MUST be a single, valid JSON object. Do NOT add any text, markdown
                         pricingData.monthlyPlans.forEach(plan => {
                             catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
                         });
-                        systemInstruction = `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. Base your answers exclusively on the provided service catalog:
+                        systemInstruction = `You are "SO->IN Product Expert", an specialized AI assistant. Your purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. Base your answers exclusively on the provided service catalog:
 
 ${catalogString}
 `;
@@ -262,56 +326,46 @@ ${catalogString}
             }
         }
 
-        // Start chat with model
+        // Build initial chat history for the model
+        const chatHistory = [
+            { role: "user", parts: [{ text: systemInstruction }] },
+            { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
+            ...(historyFromClient || [])
+        ];
+
+        // Start chat
         const chat = model.startChat({
             generationConfig,
-            history: [
-                { role: "user", parts: [{ text: systemInstruction }] },
-                { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
-                ...(historyFromClient || [])
-            ]
+            history: chatHistory
         });
 
-        // Send message and obtain result
-        const result = await chat.sendMessage(finalUserMessage);
+        // For modes that require strict JSON, use the enforcement helper
+        let responseText = '';
+        let responsePayload = '';
 
-        if (!result || !result.response || typeof result.response.text !== 'function') {
-            console.error("Invalid IA response structure:", result);
-            throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
-        }
-
-        let responseText = sanitizeTextForParsing(result.response.text());
-        let responsePayload = responseText;
-
-        // If mode expects JSON, try to safely extract it
         if (mode === 'builder' || mode === 'lead-gen-plan') {
-            try {
-                // Attempt: 1) parse whole response
-                const attemptWhole = tryParseJson(responseText);
-                if (attemptWhole.ok) {
-                    responsePayload = JSON.stringify(attemptWhole.value);
-                } else {
-                    // 2) use extractor (fenced blocks / balanced braces)
-                    const extracted = extractJsonStringFromText(responseText);
-                    if (!extracted) {
-                        console.warn("No JSON block found in IA response for mode:", mode);
-                        // Return a structured error JSON compatible with frontend expectations
-                        responsePayload = builderErrorResponse("la IA devolvió un JSON malformado o con contenido adicional.");
-                    } else {
-                        // Validate extracted JSON
-                        const validated = tryParseJson(extracted);
-                        if (!validated.ok) {
-                            console.warn("Extracted JSON failed to parse after extraction:", validated.error);
-                            responsePayload = builderErrorResponse("La IA devolvió un JSON que no pudo ser parseado (post-extracción).");
-                        } else {
-                            responsePayload = JSON.stringify(validated.value);
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error("Error processing IA JSON response:", e);
-                responsePayload = builderErrorResponse("Error interno al procesar la respuesta de la IA.");
+            // Prepare the message to send
+            const messageToSend = finalUserMessage;
+            console.info(`req=${requestId} - sending to model (mode=${mode}) - message length=${(messageToSend||'').length}`);
+
+            // Use enforcement with 2 attempts
+            const enforcementResult = await callModelWithJsonEnforcement(chat, { message: messageToSend }, 2, requestId);
+
+            if (enforcementResult.ok) {
+                responseText = enforcementResult.text;
+                responsePayload = responseText;
+            } else {
+                console.warn(`req=${requestId} - enforcement failed; returning structured builder error. rawLength=${(enforcementResult.text||'').length}`);
+                responsePayload = builderErrorResponse("la IA devolvió un JSON malformado o con contenido adicional.");
             }
+        } else {
+            // Non-strict modes: single call
+            const result = await chat.sendMessage(finalUserMessage);
+            if (!result || !result.response || typeof result.response.text !== 'function') {
+                throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
+            }
+            responseText = sanitizeTextForParsing(result.response.text());
+            responsePayload = responseText;
         }
 
         // Prepare final history to return to frontend
@@ -321,13 +375,17 @@ ${catalogString}
             { role: 'model', parts: [{ text: responsePayload }] }
         ];
 
+        const durationMs = Date.now() - startTs;
+        console.info(`req=${requestId} - handler success - mode=${mode} durationMs=${durationMs}`);
+
         return {
             statusCode: 200,
             body: JSON.stringify({ response: responsePayload, history: finalHistoryForClient })
         };
 
     } catch (err) {
-        console.error("Error in Netlify function handler:", err);
+        const durationMs = Date.now() - startTs;
+        console.error(`req=${requestId} - handler ERROR after ${durationMs}ms:`, err);
         const errorDetails = (err && err.message) ? err.message : String(err);
         let userFriendlyMessage = "un error inesperado ocurrió al comunicarme con el asistente.";
         const status = err.status || 500;
@@ -348,13 +406,11 @@ ${catalogString}
             userFriendlyMessage = "la IA devolvió una respuesta con un formato incorrecto que no se pudo procesar.";
         }
 
-        // If builder mode was requested, return structured JSON body so frontend can continue gracefully
         const isBuilderLike = (body && (body.mode === 'builder' || body.mode === 'lead-gen-plan'));
         const errorBody = isBuilderLike
             ? builderErrorResponse(userFriendlyMessage)
             : `Hubo un problema con la IA. ${userFriendlyMessage}`;
 
-        // Return 500 but include a consistent payload for frontend
         return {
             statusCode: 500,
             body: JSON.stringify({
