@@ -86,7 +86,6 @@ function initializeSplashScreen() {
         ttsManager.stop();
         splashScreen.style.opacity = '0';
         splashScreen.style.pointerEvents = 'none';
-        splashScreen.style.zIndex = '-1';
         
         setTimeout(() => {
             splashScreen.classList.add('hidden');
@@ -100,64 +99,10 @@ function initializeSplashScreen() {
         detailsSection.classList.toggle('open');
     });
 
-    // --- LÓGICA DE LECTURA INTELIGENTE (CON VOZ MEJORADA) ---
-    let ttsQueue = [];
-    let currentHighlightElement = null;
-
-    const highlightElement = (element) => {
-        document.querySelectorAll('[data-tts-content]').forEach(el => el.classList.remove('tts-highlight'));
-        if (element) {
-            element.classList.add('tts-highlight');
-            currentHighlightElement = element;
-        } else {
-            currentHighlightElement = null;
-        }
-    };
-
-    const playNextInQueue = () => {
-        if (ttsQueue.length > 0) {
-            const { element, text } = ttsQueue.shift();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            if (ttsManager.selectedVoice) {
-                utterance.voice = ttsManager.selectedVoice;
-            }
-            utterance.lang = 'es-ES';
-            utterance.rate = 1.0;
-
-            utterance.onstart = () => {
-                highlightElement(element);
-            };
-
-            utterance.onend = () => {
-                playNextInQueue();
-            };
-            
-            utterance.onerror = () => {
-                playNextInQueue(); // Skip on error
-            };
-
-            window.speechSynthesis.speak(utterance);
-        } else {
-            readAloudBtn.textContent = 'Leer en voz alta';
-            highlightElement(null);
-        }
-    };
-
+    // --- LÓGICA DE LECTURA REFACTORIZADA ---
     readAloudBtn.addEventListener('click', () => {
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel(); // Esto dispara el evento 'onend'
-            ttsQueue = [];
-            readAloudBtn.textContent = 'Leer en voz alta';
-            highlightElement(null);
-        } else {
-            const contentElements = document.querySelectorAll('#detailsSection [data-tts-content]');
-            contentElements.forEach(element => {
-                ttsQueue.push({ element: element, text: element.dataset.ttsContent });
-            });
-            readAloudBtn.textContent = 'Detener lectura';
-            playNextInQueue();
-        }
+        const contentElements = document.querySelectorAll('#detailsSection [data-tts-content]');
+        ttsManager.speakQueue(contentElements, readAloudBtn);
     });
 }
 

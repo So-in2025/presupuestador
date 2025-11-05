@@ -27,7 +27,7 @@ export function createServiceItemHTML(svc, type, name, isExclusive, categoryKey 
     const pointCostHTML = showPoints && svc.pointCost ? `<span class="font-bold text-yellow-400 text-xs">${svc.pointCost} Pts</span>` : '';
     const priceText = svc.price > 0 ? formatPrice(svc.price) : 'A cotizar';
     const deleteButtonHTML = categoryKey === 'local' ? `
-        <button data-action="delete-local-service" data-id="${svc.id}" class="absolute top-1 right-1 p-1 rounded-full text-purple-300 hover:text-red-400 hover:bg-slate-700 transition-colors z-10 btn-press-feedback" title="Eliminar servicio permanentemente">
+        <button data-action="delete-local-service" data-id="${svc.id}" class="absolute top-1 right-1 p-1 rounded-full text-purple-300 hover:text-red-400 hover:bg-slate-700 transition-colors z-10 btn-press-feedback" title="Eliminar servicio permanentemente" aria-label="Eliminar servicio personalizado">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
             </svg>
@@ -89,7 +89,6 @@ export function initializeServiceCheckboxes() {
     dom.servicesSelectionDiv.innerHTML = servicesHTML;
 }
 
-// NUEVA: Función para añadir dinámicamente un servicio local a la UI
 export function appendLocalServiceToUI(service) {
     let container = document.getElementById('local-services-container');
     if (!container) {
@@ -144,15 +143,17 @@ export function initializeMonthlyPlansSelection() {
 
 export function renderTasksDashboard() {
     const dashboard = dom.tasksDashboardDiv;
+    const { tasks, monthlyPlans } = getState();
+    dashboard.style.transition = 'opacity 0.3s ease-in-out';
     dashboard.style.opacity = '0';
     
     const statuses = ['Prospecto', 'Propuesta Guardada', 'Enviada', 'En Negociación', 'Ganada', 'Perdida'];
 
     setTimeout(() => {
-        const { tasks, monthlyPlans } = getState();
         dashboard.innerHTML = tasks.length === 0
             ? '<p class="text-slate-400">No hay propuestas guardadas.</p>'
-            : tasks.map((task, index) => {
+            : tasks.sort((a, b) => new Date(b.dateUpdated) - new Date(a.dateUpdated)).map((task, index) => {
+                const originalIndex = tasks.indexOf(task); // Keep track of original index for actions
                 if (task.isProspect) {
                     return `
                         <div class="prospect-card p-3 border border-orange-500 rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
@@ -162,8 +163,8 @@ export function renderTasksDashboard() {
                                     <p class="text-sm text-orange-300 font-medium">Puntuación de Dolor: <span class="font-bold text-xl pain-score-display">${task.radarData.painScore}</span></p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <button data-action="edit" data-index="${index}" class="text-green-400 hover:text-green-300 text-sm action-button rounded-md transition">Convertir a Propuesta</button>
-                                    <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
+                                    <button data-action="edit" data-index="${originalIndex}" class="text-green-400 hover:text-green-300 text-sm action-button rounded-md transition">Convertir a Propuesta</button>
+                                    <button data-action="delete" data-index="${originalIndex}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
                                 </div>
                             </div>
                         </div>`;
@@ -171,14 +172,13 @@ export function renderTasksDashboard() {
 
                 const statusOptions = statuses.filter(s => s !== 'Prospecto').map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${s}</option>`).join('');
                 const statusSelectHTML = `
-                    <select data-index="${index}" class="task-status-select styled-select styled-input text-xs p-1 w-full mt-2">
+                    <select data-index="${originalIndex}" class="task-status-select styled-select styled-input text-xs p-1 w-full mt-2">
                         ${statusOptions}
                     </select>`;
 
                 let serviceList = '';
                 let icon = '';
                 const isUrgent = task.isUrgent;
-
                 const urgentLabelHTML = isUrgent ? '<span class="ml-2 text-xs font-bold bg-red-600 text-white px-2 py-0.5 rounded-full">URGENTE</span>' : '';
 
                 if (task.isTiered) {
@@ -190,14 +190,14 @@ export function renderTasksDashboard() {
                 } else if (task.plan) {
                     icon = '📅';
                     const planInfo = monthlyPlans.find(p => p.id == task.plan.id);
-                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo.name}</span>`;
+                    serviceList = `<span class="text-sm text-cyan-300 font-medium">Plan: ${planInfo?.name || 'Desconocido'}</span>`;
                 } else {
                     icon = '🧩';
                     serviceList = `<span class="text-sm text-slate-300">${task.services.length} ítems individuales</span>`;
                 }
 
                 return `
-                    <div class="p-3 border ${isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
+                    <div class="proposal-card p-3 border ${isUrgent ? 'border-red-500' : 'border-slate-700'} rounded-lg bg-slate-800 transition duration-150 hover:bg-slate-700">
                         <div class="flex justify-between items-start mb-1">
                             <div>
                                 <h4 class="font-bold text-base text-white"><span class="mr-2">${icon}</span>${task.clientName || 'Sin Cliente'} - ${task.webName || 'Sin Web'}</h4>
@@ -205,8 +205,8 @@ export function renderTasksDashboard() {
                                 ${urgentLabelHTML}
                             </div>
                             <div class="flex gap-2">
-                                <button data-action="edit" data-index="${index}" class="text-blue-400 hover:text-blue-300 text-sm action-button rounded-md transition">Editar</button>
-                                <button data-action="delete" data-index="${index}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
+                                <button data-action="edit" data-index="${originalIndex}" class="text-blue-400 hover:text-blue-300 text-sm action-button rounded-md transition">Editar</button>
+                                <button data-action="delete" data-index="${originalIndex}" class="text-red-400 hover:text-red-300 text-sm action-button rounded-md transition">Eliminar</button>
                             </div>
                         </div>
                         ${statusSelectHTML}
@@ -219,7 +219,7 @@ export function renderTasksDashboard() {
         updatePerformanceDashboard();
         
         dashboard.style.opacity = '1';
-    }, 300); // Coincide con la duración de la transición
+    }, 150);
 }
 
 export function updatePerformanceDashboard() {
@@ -235,7 +235,7 @@ export function updatePerformanceDashboard() {
     const salesThisMonth = wonThisMonth.reduce((sum, t) => sum + (t.totalClient || 0), 0);
     const profitThisMonth = wonThisMonth.reduce((sum, t) => sum + ((t.totalClient || 0) - (t.totalDev || 0)), 0);
     
-    const activePipelineTasks = tasks.filter(t => !t.isProspect && t.status !== 'Ganada' && t.status !== 'Perdida');
+    const activePipelineTasks = tasks.filter(t => !t.isProspect && ['Propuesta Guardada', 'Enviada', 'En Negociación'].includes(t.status));
     const activePipelineValue = activePipelineTasks.reduce((sum, t) => sum + (t.totalClient || 0), 0);
 
     const closedTasks = tasks.filter(t => !t.isProspect && (t.status === 'Ganada' || t.status === 'Perdida'));
@@ -258,7 +258,7 @@ export function rerenderAllPrices() {
 }
 
 
-// --- NUEVO: BRANDING ---
+// --- BRANDING ---
 function applyBranding(logo, color) {
     const root = document.documentElement;
     if (color) {
@@ -325,7 +325,7 @@ export function initializeBranding() {
     });
 }
 
-// --- TOUR GUIADO (RECONSTRUIDO Y ROBUSTO) ---
+// --- TOUR GUIADO (REFACTORIZADO) ---
 const tourSteps = [
     { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
     { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
@@ -376,18 +376,16 @@ function positionTooltip(targetElement) {
         let top, left;
         let arrowClass = 'tooltip-is-below';
 
-        // Prioritize placing above
         if (targetRect.top > tooltipRect.height + margin) {
             top = window.scrollY + targetRect.top - tooltipRect.height - margin;
             arrowClass = 'tooltip-is-above';
-        } else { // Place below if not enough space above
+        } else {
             top = window.scrollY + targetRect.bottom + margin;
             arrowClass = 'tooltip-is-below';
         }
 
         left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
 
-        // Prevent overflow
         if (left < margin) left = margin;
         if (left + tooltipRect.width > window.innerWidth - margin) {
             left = window.innerWidth - tooltipRect.width - margin;
@@ -408,14 +406,11 @@ function positionTooltip(targetElement) {
     });
 }
 
-
 function showStep(index) {
-    // 1. Cleanup previous step state
     document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
     if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
     if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
 
-    // 2. Handle end of tour
     if (index >= tourSteps.length) {
         endTour();
         return;
@@ -425,56 +420,42 @@ function showStep(index) {
     const step = tourSteps[index];
     const targetElement = document.querySelector(step.el);
 
-    // 3. Validate target element
     if (!targetElement || !(targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length)) {
         console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
         endTour();
         return;
     }
 
-    // 4. Update UI elements immediately
     tourText.textContent = step.text;
     stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-    tooltip.style.opacity = '0'; // Hide tooltip until it's positioned
+    tooltip.style.opacity = '0';
     tourOverlay.style.opacity = '1';
     targetElement.classList.add('tour-highlight-active');
 
-    // 5. Scroll to the element
     targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
-    // 6. ROBUST SCROLL-END DETECTION AND POSITIONING
     let scrollEndTimer = null;
     const scrollEndListener = () => {
         clearTimeout(scrollEndTimer);
         scrollEndTimer = setTimeout(() => {
-            window.removeEventListener('scroll', scrollEndListener); // Self-destructing listener
             positionTooltip(targetElement);
-            tooltip.style.opacity = '1'; // Fade in the tooltip
-        }, 150); // Wait for 150ms of no scrolling to consider it "ended"
+            tooltip.style.opacity = '1';
+        }, 150);
     };
 
-    // Attach listener and fire it once to handle no-scroll case
-    window.addEventListener('scroll', scrollEndListener, { passive: true });
-    scrollEndListener(); // Initial call handles elements already in view
+    window.addEventListener('scroll', scrollEndListener, { once: true, passive: true });
+    scrollEndListener();
 
-    // 7. Re-attach generic listeners for subsequent manual adjustments by user
     const updatePosition = () => positionTooltip(targetElement);
     tourScrollHandler = debounce(updatePosition, 15);
     tourResizeHandler = debounce(updatePosition, 15);
     window.addEventListener('scroll', tourScrollHandler);
     window.addEventListener('resize', tourResizeHandler);
 
-
-    // 8. Update button states
     prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
-    if (index === tourSteps.length - 1) {
-        nextBtn.style.display = 'none';
-    } else {
-        nextBtn.style.display = 'inline-block';
-        nextBtn.textContent = 'Siguiente';
-    }
+    nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
+    endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
 }
-
 
 function endTour() {
     if (!isTourActive) return;
@@ -483,7 +464,6 @@ function endTour() {
     tooltip.style.opacity = '0';
     tourOverlay.style.opacity = '0';
     
-    // Ocultar elementos después de la transición
     setTimeout(() => {
         tooltip.classList.add('hidden');
         tourOverlay.classList.add('hidden');

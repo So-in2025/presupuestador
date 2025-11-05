@@ -22,3 +22,5 @@ class TTSManager {
             return;
         }
         this.loadVoices
+        }
+        }
