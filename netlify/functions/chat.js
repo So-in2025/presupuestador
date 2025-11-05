@@ -1,12 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v76 - FULL RESTORE to original robust architecture
- * This version restores the original, monolithic structure that was stable.
- * All prompts are inline, it uses the correct 'gemini-2.5-flash' model,
- * and it re-implements the robust JSON parser for builder mode.
+ * Lógica de Intención: v77 - Modern Gemini API Refactor
+ * This version refactors the core Gemini API call to use the modern, recommended
+ * 'generateContent' method instead of the older 'startChat'. This provides more
+ * robust JSON mode enforcement and better alignment with current SDK best practices,
+ * resolving issues where the model failed to return structured data.
  */
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- NETLIFY SERVERLESS FUNCTION HANDLER ---
@@ -150,7 +151,7 @@ ${postText}
 - Their ideal client is: ${audience}
 
 **YOUR TASK:**
-Create a step-by-step 7-day plan. For each day, provide a clear "Theme" and a list of 2-3 concrete, actionable "Tasks".
+Create a step-by-step 7-day plan.
 
 **OUTPUT FORMAT:**
 Your response MUST be a single, valid JSON object. Do NOT include any text, comments, or markdown before or after the JSON.
@@ -191,8 +192,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
     }
 
     try {
-        const genAI = new GoogleGenerativeAI({apiKey});
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const ai = new GoogleGenAI({apiKey});
 
         let systemInstruction;
         let finalUserMessage = userMessage;
@@ -200,7 +200,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         if (mode === 'builder') {
             const builderPrompts = getBuilderPrompt(userMessage, context);
             systemInstruction = builderPrompts.systemInstruction;
-            finalUserMessage = builderPrompts.fullPromptForUser;
+            finalUserMessage = builderPrompts.fullUserMessage;
         } else if (mode === 'entrenamiento') {
             systemInstruction = getTrainingPrompt();
         } else {
@@ -208,33 +208,30 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
             systemInstruction = getOtherModePrompt(mode, context);
         }
 
-        const chat = model.startChat({
-            history: [
-                { role: "user", parts: [{ text: systemInstruction }] },
-                { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
-                ...(historyFromClient || [])
-            ]
+        const contentsForApi = [
+            ...(historyFromClient || []),
+            { role: "user", parts: [{ text: finalUserMessage }] },
+        ];
+        
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: contentsForApi,
+            config: {
+                systemInstruction: systemInstruction,
+                ...(mode === 'builder' || mode === 'lead-gen-plan' ? { responseMimeType: "application/json" } : {})
+            }
         });
-
-        const result = await chat.sendMessage(finalUserMessage);
-        const response = await result.response;
-        let responseText = response.text();
+        
+        const responseText = result.text;
         let responsePayload;
         
         if (mode === 'builder' || mode === 'lead-gen-plan') {
-            const jsonMatch = responseText.match(/{[\s\S]*}/); 
-            if (jsonMatch) {
-                const jsonString = jsonMatch[0];
-                try {
-                    JSON.parse(jsonString); 
-                    responsePayload = jsonString; 
-                } catch (e) {
-                    console.error("AI response contained a JSON-like block that was invalid.", e, "Raw response:", responseText);
-                    throw new Error("La IA devolvió un JSON malformado.");
-                }
-            } else {
-                console.error(`AI response for ${mode} mode did not contain a JSON block. Raw response:`, responseText);
-                throw new Error("La IA no devolvió una respuesta en el formato esperado (JSON).");
+             try {
+                JSON.parse(responseText); 
+                responsePayload = responseText;
+            } catch (e) {
+                console.error("AI response contained invalid JSON, despite requesting JSON output.", e, "Raw response:", responseText);
+                throw new Error("La IA devolvió un JSON malformado.");
             }
         } else {
             responsePayload = responseText;
@@ -256,7 +253,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         const errorDetails = err.message || err.toString();
         
         let userFriendlyMessage = "un error inesperado ocurrió al comunicarme con el asistente.";
-        if (err.message.includes("La IA devolvió un JSON malformado") || err.message.includes("formato esperado (JSON)")) {
+        if (err.message.includes("La IA devolvió un JSON malformado")) {
              userFriendlyMessage = "El asistente devolvió una respuesta, pero no en el formato esperado.";
         } else if (errorDetails.includes('API_KEY_INVALID') || errorDetails.includes('API key not valid')) {
             userFriendlyMessage = "Error de Autenticación: La API Key proporcionada no es válida.";
