@@ -3,9 +3,6 @@
  * Módulo centralizado para la gestión de Texto-a-Voz (TTS).
  * Maneja la selección de voz, reproducción, detención y estado de la síntesis.
  */
-// Se elimina la importación directa para romper la dependencia circular
-// import { showNotification } from './modals.js';
-
 class TTSManager {
     constructor() {
         this.isPlaying = false;
@@ -44,6 +41,9 @@ class TTSManager {
             const textSpan = this.currentButton.querySelector('.tts-button-text');
             if (textSpan) textSpan.textContent = 'Escuchar Explicación';
             else if (this.currentButton.dataset.action === 'tts') this.currentButton.textContent = '▶️';
+            else if (this.currentButton.classList.contains('info-tooltip-btn')) {
+                // No cambiar el ícono
+            }
         }
         if (this.queueButton) {
             this.queueButton.textContent = 'Leer en voz alta';
@@ -79,7 +79,7 @@ class TTSManager {
         if (this.currentButton) {
             const textSpan = this.currentButton.querySelector('.tts-button-text');
             if (textSpan) textSpan.textContent = 'Detener';
-            else this.currentButton.textContent = '⏹️';
+            else if (this.currentButton.dataset.action === 'tts') this.currentButton.textContent = '⏹️';
         }
 
         this.currentUtterance.onend = () => {
@@ -89,6 +89,12 @@ class TTSManager {
         };
 
         this.currentUtterance.onerror = async (event) => {
+            // Ignorar el error de 'canceled' que ocurre cuando el usuario detiene la reproducción.
+            if (event.error === 'canceled') {
+                this.isPlaying = false;
+                this._resetUI();
+                return;
+            }
             console.error('Error en la síntesis de voz:', event.error);
             const { showNotification } = await import('./modals.js');
             showNotification('error', 'Error de Voz', 'No se pudo reproducir el audio.');
@@ -99,12 +105,12 @@ class TTSManager {
     }
     
     stop() {
-        this.ttsQueue = []; // CRITICAL FIX: Clear queue before cancelling.
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel(); // This will trigger onend, but since the queue is empty, it will stop correctly.
-        } else {
-             this._resetUI();
+        this.ttsQueue = [];
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel(); 
         }
+        this.isPlaying = false;
+        this._resetUI();
     }
     
     speakQueue(elements, button) {
@@ -151,6 +157,11 @@ class TTSManager {
         };
         
         this.currentUtterance.onerror = (e) => {
+             if (e.error === 'canceled') {
+                this.isPlaying = false;
+                this._resetUI();
+                return;
+            }
             console.error("Error en cola TTS:", e.error);
             this._playNextInQueue(); // Saltar al siguiente
         };

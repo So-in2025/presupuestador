@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v50 - startChat Revert
+ * Lógica de Intención: v51 - Robust JSON Parsing
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -104,7 +104,9 @@ ${planList}
 --- CUSTOM TASKS (Use these for requests not in the catalog) ---
 ${customTaskList}
 
-Your response MUST be a single, valid JSON object with the following structure: 
+Your response MUST be a single, valid JSON object. Do NOT add any text, markdown like \`\`\`json, or any other characters before or after the JSON object.
+
+**JSON STRUCTURE:**
 { 
   "introduction": "...", 
   "services": [{ "id": "...", "name": "...", "priority": "...", "is_new": boolean (optional) }], 
@@ -123,7 +125,7 @@ Your response MUST be a single, valid JSON object with the following structure:
     - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
     - Fourth, you MUST include the property '"is_new": true'.
     - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
-4.  Do NOT add any text, markdown, or comments before or after the JSON object. Your entire response must be the raw JSON.`;
+4. Your entire response must be ONLY the raw JSON.`;
 
 const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services. Your goal is to create posts that not only engage but are optimized for maximum discoverability and lead generation.
 
@@ -289,7 +291,13 @@ exports.handler = async (event) => {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
         }
         
-        const responseText = result.response.text();
+        let responseText = result.response.text();
+        
+        // --- ROBUST JSON CLEANING ---
+        if (mode === 'builder' || mode === 'lead-gen-plan') {
+            responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
+
         const finalHistoryForClient = [
             ...(historyFromClient || []),
             { role: 'user', parts: [{ text: userMessage }] }, // Use original user message for history

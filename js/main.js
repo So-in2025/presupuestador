@@ -32,7 +32,7 @@ import {
     closeSalesChannelsModal,
     showOpportunityRadarModal
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
+import { initializeBranding, rerenderAllPrices, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 import { ttsManager } from './tts.js'; // Importar el gestor centralizado
@@ -147,10 +147,6 @@ function handleSaveInlineApiKey() {
     input.value = ''; // Clear for security
     
     showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
-    
-    if (!localStorage.getItem('zenTourCompleted')) {
-        initializeTour();
-    }
 }
 
 
@@ -181,7 +177,6 @@ function initializeEventListeners() {
     document.getElementById('toggle-chat-focus-btn')?.addEventListener('click', toggleChatFocusMode);
     document.getElementById('show-branding-modal-btn')?.addEventListener('click', showBrandingModal);
     document.getElementById('change-api-key-btn')?.addEventListener('click', () => updateApiKeyUI(true));
-    document.getElementById('restart-tour-btn')?.addEventListener('click', restartTour);
     document.getElementById('generate-lead-gen-plan-btn')?.addEventListener('click', showLeadGenPlanModal);
     document.getElementById('show-content-studio-btn')?.addEventListener('click', showContentStudioModal);
     document.getElementById('show-sales-channels-btn')?.addEventListener('click', showSalesChannelsModal);
@@ -215,7 +210,7 @@ function initializeEventListeners() {
         rerenderAllPrices();
     });
 
-    // TTS Buttons for Modals
+    // TTS Buttons for Modals & Tooltips
     const setupTTSButton = (buttonId, text) => {
         const button = document.getElementById(buttonId);
         if (button) {
@@ -225,6 +220,18 @@ function initializeEventListeners() {
             });
         }
     };
+    
+    document.body.addEventListener('click', (e) => {
+        const button = e.target.closest('.info-tooltip-btn');
+        if (button) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tooltip = button.closest('.tooltip-container').querySelector('.tooltip-content');
+            if (tooltip) {
+                ttsManager.speak(tooltip.innerText, button);
+            }
+        }
+    });
 
     setupTTSButton('lead-gen-tts-btn', "Esta herramienta es tu estratega de marketing personal. Su único fin es darte un plan de acción de 7 días, claro y accionable, para que puedas captar a tu primer cliente de alto valor. La visión es simple: dejar de esperar a que lleguen los clientes y empezar a buscarlos activamente con una estrategia profesional. Usa esta guía para posicionarte como un experto en tu nicho y llenar tu pipeline de ventas.");
     setupTTSButton('content-studio-tts-btn', "Este es tu estudio creativo. Su propósito es ahorrarte horas de trabajo y eliminar el bloqueo del escritor. La estrategia es simple: generar contenido de alta calidad, tanto textos como imágenes, que resuenen con tu audiencia y estén alineados a los servicios que ofreces. La visión es convertirte en una máquina de contenido, publicando de manera consistente y profesional para construir tu marca y atraer clientes sin esfuerzo.");

@@ -69,21 +69,21 @@
             -webkit-user-select: none; -ms-user-select: none; user-select: none;
         }
         
-        .tooltip-container { position: relative; }
+        .tooltip-container { position: relative; display: inline-block; }
         .tooltip-content {
-            visibility: hidden; opacity: 0; position: absolute; top: 100%; left: 50%;
+            visibility: hidden; opacity: 0; position: absolute; bottom: 125%; left: 50%;
             transform: translateX(-50%) translateY(8px); z-index: 100; width: max-content; 
             max-width: 380px; padding: 10px 14px; border-radius: 8px; 
-            background-color: rgba(30, 41, 59, 0.9);
+            background-color: rgba(30, 41, 59, 0.95);
             border: 1px solid var(--accent-color); color: var(--text-primary); 
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             font-size: 0.875rem; line-height: 1.5; transition: opacity 0.3s, transform 0.3s;
             pointer-events: none; text-align: left;
         }
-        .item-card:hover .tooltip-content, .tooltip-container:hover .tooltip-content { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(5px); }
-        .tooltip-content::before {
-            content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-            border-width: 6px; border-style: solid; border-color: transparent transparent rgba(30, 41, 59, 0.9) transparent;
+        .tooltip-container:hover .tooltip-content { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
+        .tooltip-content::after {
+            content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            border-width: 6px; border-style: solid; border-color: var(--accent-color) transparent transparent transparent;
         }
         .custom-checkbox, .custom-radio {
             appearance: none; -webkit-appearance: none; width: 1.5rem; height: 1.5rem;
@@ -153,6 +153,9 @@
             --icon-color: #94A3B8;
             transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
             box-shadow: 0 0 25px -8px var(--ai-glow-color);
+            /* --- CORRECCIÓN DE SUPERPOSICIÓN --- */
+            position: relative;
+            z-index: 40;
         }
         #ai-assistant-container.chat-light-mode {
             --chat-bg: rgba(241, 245, 249, 0.8);
@@ -196,40 +199,9 @@
         
         /* --- HIERARCHY & INTERACTION FIX --- */
         #splash-screen { z-index: 100000; }
-        #tour-tooltip { z-index: 99999; }
-        .tour-highlight-active { z-index: 99998; }
-        #tour-overlay { z-index: 99997; }
         .modal-overlay { z-index: 90000; }
         #ai-chat-focus-container { z-index: 80000; }
         
-        /* --- ESTILOS TOUR GUIADO PROFESIONAL (MEJORADO) --- */
-        #tour-tooltip {
-            font-size: 1rem; line-height: 1.6;
-            transition: top 0.3s ease-in-out, left 0.3s ease-in-out, opacity 0.3s;
-        }
-        .tour-highlight-active {
-            position: relative; border-radius: 8px;
-            box-shadow: 0 0 0 4px var(--accent-color);
-            transition: box-shadow 0.3s ease-in-out;
-        }
-        #tour-tooltip .tour-arrow {
-            position: absolute;
-            width: 0; height: 0;
-            border-style: solid;
-            transform: translateX(-50%);
-        }
-        #tour-tooltip.tooltip-is-above .tour-arrow {
-            top: 100%;
-            border-width: 8px 8px 0 8px; /* Flecha hacia abajo */
-            border-color: var(--accent-color) transparent transparent transparent;
-        }
-        #tour-tooltip.tooltip-is-below .tour-arrow {
-            bottom: 100%;
-            border-width: 0 8px 8px 8px; /* Flecha hacia arriba */
-            border-color: transparent transparent var(--accent-color) transparent;
-        }
-
-
         /* Spinner */
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -305,7 +277,7 @@
         }
         .modal-overlay.opacity-0 { opacity: 0; }
         .modal-overlay.opacity-0 > div { transform: scale(0.95); opacity: 0; }
-        #tasksDashboard { transition: opacity 0.3s ease-in-out; }
+        #tasksDashboard { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
         
         .btn-press-feedback { transition: transform 0.1s ease-out; }
         .btn-press-feedback:active:not(:disabled) { transform: scale(0.97); }
@@ -330,6 +302,9 @@
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.75rem;
             margin-bottom: 1.25rem !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         /* --- BARRA DE RENDIMIENTO FIJA (NUEVO DISEÑO) --- */
@@ -443,17 +418,15 @@
             color: transparent;
         }
         .prospect-card, .proposal-card {
-            transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
+            transition: background-color 0.2s ease-out, border-color 0.2s ease-out, transform 0.2s ease-out;
+        }
+        .proposal-card {
+            transform: scale(1);
         }
 
         /* --- ESTILOS RESPONSIVOS Y CORRECCIONES --- */
         #splash-screen {
             overscroll-behavior: contain; /* Prevenir scroll del body en iOS */
-        }
-
-        /* Forzar que el highlight del tour esté siempre encima del overlay */
-        .tour-highlight-active {
-            z-index: 99998 !important; 
         }
 
         @media (max-width: 767px) { /* Móviles y tablets pequeñas */
@@ -480,17 +453,6 @@
             /* Contenido de los modales más denso */
             .modal-overlay > div .p-5 {
                 padding: 1rem;
-            }
-
-            /* Compactar el tour en móviles */
-            #tour-tooltip {
-                max-width: 90vw;
-                font-size: 0.9rem;
-                padding: 0.75rem;
-            }
-            #tour-tooltip button {
-                padding: 0.25rem 0.6rem;
-                font-size: 0.8rem;
             }
             
             /* Evitar que el dossier del radar se comprima mal */
@@ -655,9 +617,6 @@
                     <button id="change-api-key-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🔑 Cambiar API Key
                     </button>
-                    <button id="restart-tour-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
-                        🔄 Reiniciar Tour
-                    </button>
                     <button id="show-sales-channels-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🌐 Canales de Venta
                     </button>
@@ -686,7 +645,15 @@
                 <!-- COLUMNA 1 & 2: Formulario -->
                 <div class="lg:col-span-2 xl:col-span-3 space-y-6">
                     <div id="proposal-details-container" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold accent-color">1. Iniciar Nueva Propuesta</h2>
+                        <h2>
+                            <span class="text-2xl font-semibold accent-color">1. Iniciar Nueva Propuesta</span>
+                            <div class="tooltip-container" data-tooltip-id="proposal-details">
+                                <button class="info-tooltip-btn h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Información sobre esta sección">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="tooltip-content">Completa los datos básicos del cliente y del proyecto. Esta información se usará para generar los documentos PDF finales.</div>
+                            </div>
+                        </h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div>
                                 <label for="clientName" class="block text-sm font-medium text-slate-300 mb-1">Nombre del Cliente:</label>
@@ -720,9 +687,15 @@
                     <!-- CONTENEDOR DEL CHAT IA -->
                     <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg flex flex-col h-[70vh] lg:h-[500px] relative">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center">
-                                <h2 class="text-2xl font-semibold text-purple-400">Asistente IA de Ventas</h2>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-2xl font-semibold text-purple-400 p-0 m-0 border-none">Asistente IA de Ventas</h2>
                                 <span id="ai-status-indicator" class="ml-3 h-3 w-3 bg-red-500 rounded-full"></span>
+                                <div class="tooltip-container" data-tooltip-id="ai-assistant">
+                                    <button class="info-tooltip-btn h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Información sobre esta sección">
+                                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <div class="tooltip-content">Describe la necesidad de tu cliente y la IA creará una propuesta de servicios al instante. Usa los modos para entrenarte o analizar conversaciones.</div>
+                                </div>
                             </div>
                             <div class="flex items-center gap-3">
                                 <button id="toggle-chat-focus-btn" class="text-slate-400 hover:text-white transition hidden lg:flex items-center justify-center h-8 w-8 rounded-full hover:bg-slate-700" aria-label="Modo Enfoque" title="Activar Modo Enfoque">
@@ -789,7 +762,15 @@
                     </div>
 
                     <div id="solution-config-container" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold accent-color">2. Configurar la Solución</h2>
+                        <h2>
+                            <span class="text-2xl font-semibold accent-color">2. Configurar la Solución</span>
+                            <div class="tooltip-container" data-tooltip-id="solution-config">
+                                <button class="info-tooltip-btn h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Información sobre esta sección">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="tooltip-content">Elige una solución integral (Paquete/Plan) o selecciona ítems específicos. La IA puede preseleccionar servicios aquí basado en tu chat.</div>
+                            </div>
+                        </h2>
                         <p class="text-sm text-slate-400 mb-4">Elige una solución integral (Paquete/Plan) o selecciona ítems específicos.</p>
                         
                         <div id="modeIndicator" class="mb-4 p-3 rounded-lg border border-yellow-500 bg-yellow-900/20 text-yellow-300 font-bold text-center">
@@ -826,7 +807,15 @@
                 <div class="lg:col-span-1 xl:col-span-1 space-y-6">
                     
                     <div id="summaryCard" class="card-bg p-5 rounded-xl shadow-lg top-4">
-                        <h2 class="text-2xl font-semibold accent-color">3. Calcular Rentabilidad</h2>
+                        <h2>
+                            <span class="text-2xl font-semibold accent-color">3. Calcular Rentabilidad</span>
+                             <div class="tooltip-container" data-tooltip-id="summary-card">
+                                <button class="info-tooltip-btn h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Información sobre esta sección">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="tooltip-content">Ajusta tu margen de ganancia. El sistema calculará el precio final para tu cliente en tiempo real.</div>
+                            </div>
+                        </h2>
                         <div class="mb-4">
                             <label for="marginPercentage" class="block text-sm font-medium text-slate-300 mb-2">Tu Margen de Ganancia (%)</label>
                             <input type="number" id="marginPercentage" value="60" min="0" class="w-full styled-input accent-color">
@@ -850,7 +839,15 @@
                     </div>
 
                     <div id="saved-proposals-container" class="card-bg p-5 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold text-pink-400">4. Pipeline de Ventas</h2>
+                        <h2>
+                            <span class="text-2xl font-semibold text-pink-400">4. Pipeline de Ventas</span>
+                            <div class="tooltip-container" data-tooltip-id="pipeline">
+                                <button class="info-tooltip-btn h-6 w-6 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Información sobre esta sección">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="tooltip-content">Gestiona todo tu pipeline de ventas: edita, elimina y genera los documentos PDF de todas tus propuestas.</div>
+                            </div>
+                        </h2>
                         <div id="tasksDashboard" class="space-y-4"><p class="text-slate-400">Aún no hay propuestas guardadas.</p></div>
                         <div class="mt-4 flex gap-2">
                             <button id="exportPdfBtn" class="flex-grow bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500 transition shadow-lg action-button btn-press-feedback">Generar Documentos</button>
@@ -1332,22 +1329,6 @@
                     <h4 class="text-xl font-bold text-slate-300">Selecciona una Oportunidad</h4>
                     <p class="text-slate-400 mt-1">Elige un resultado del escaneo para ver el dossier de inteligencia y el asistente de contacto.</p>
                 </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- TOUR GUIADO -->
-    <div id="tour-overlay" class="hidden fixed inset-0 bg-black/70 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
-    <div id="tour-tooltip" class="hidden fixed card-bg max-w-sm rounded-xl shadow-2xl p-5 border-2 border-[var(--accent-color)] opacity-0">
-        <div id="tour-arrow" class="tour-arrow"></div>
-        <p id="tour-text" class="text-slate-200"></p>
-        <div class="flex justify-between items-center mt-4">
-            <span id="tour-step-counter" class="text-xs text-slate-400"></span>
-            <div>
-                <button id="tour-prev" class="text-sm bg-slate-700 text-slate-200 py-1 px-3 rounded-md hover:bg-slate-600 transition">Anterior</button>
-                <button id="tour-next" class="text-sm accent-bg font-medium py-1 px-3 rounded-md transition">Siguiente</button>
-                <button id="tour-end" class="text-sm bg-red-600 text-white font-medium py-1 px-3 rounded-md hover:bg-red-700 transition">Finalizar</button>
             </div>
         </div>
     </div>

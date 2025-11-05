@@ -83,7 +83,8 @@ export function initializeServiceCheckboxes() {
                 <div class="accordion-content px-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${localItemsHTML}</div>
                 </div>
-            </div>`;
+            </div>
+        `;
     }
 
     dom.servicesSelectionDiv.innerHTML = servicesHTML;
@@ -144,8 +145,10 @@ export function initializeMonthlyPlansSelection() {
 export function renderTasksDashboard() {
     const dashboard = dom.tasksDashboardDiv;
     const { tasks, monthlyPlans } = getState();
-    dashboard.style.transition = 'opacity 0.3s ease-in-out';
-    dashboard.style.opacity = '0';
+    dashboard.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
+    
+    // Add a class to trigger exit animation
+    dashboard.classList.add('opacity-0', 'scale-95');
     
     const statuses = ['Prospecto', 'Propuesta Guardada', 'Enviada', 'En Negociación', 'Ganada', 'Perdida'];
 
@@ -218,9 +221,11 @@ export function renderTasksDashboard() {
 
         updatePerformanceDashboard();
         
-        dashboard.style.opacity = '1';
+        // Trigger enter animation
+        dashboard.classList.remove('opacity-0', 'scale-95');
     }, 150);
 }
+
 
 export function updatePerformanceDashboard() {
     const { tasks } = getState();
@@ -324,158 +329,6 @@ export function initializeBranding() {
         applyBranding(null, brandInfo.color);
     });
 }
-
-// --- TOUR GUIADO (REVERTIDO A LÓGICA MÁS SIMPLE Y ROBUSTA) ---
-const tourSteps = [
-    { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
-    { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
-    { el: '#solution-config-container', text: 'Aquí puedes seleccionar los servicios recomendados por la IA o elegirlos manualmente. Tienes total flexibilidad.' },
-    { el: '#summaryCard', text: 'Ajusta tu margen de ganancia. El sistema calculará el precio final para tu cliente en tiempo real, dándote control total sobre tu rentabilidad.' },
-    { el: '#addTask', text: 'Cuando termines, guarda la propuesta. Se añadirá a tu panel de "Propuestas Guardadas".' },
-    { el: '#saved-proposals-container', text: 'Desde este panel podrás gestionar todo tu pipeline de ventas: edita, elimina y genera los documentos PDF de todas tus propuestas.' },
-    { el: '#tieredBuilderBtn', text: 'Consejo Pro: Usa el constructor por niveles para presentar 3 opciones a tu cliente (Básico, Recomendado, Completo). ¡Es una técnica de venta muy poderosa!' }
-];
-
-const tourManager = {
-    currentStep: 0,
-    isActive: false,
-    elements: {
-        tooltip: document.getElementById('tour-tooltip'),
-        overlay: document.getElementById('tour-overlay'),
-        text: document.getElementById('tour-text'),
-        counter: document.getElementById('tour-step-counter'),
-        prevBtn: document.getElementById('tour-prev'),
-        nextBtn: document.getElementById('tour-next'),
-        endBtn: document.getElementById('tour-end'),
-        arrow: document.getElementById('tour-arrow'),
-    },
-
-    start() {
-        if (localStorage.getItem('zenTourCompleted') === 'true' || this.isActive) return;
-        this.isActive = true;
-        this.currentStep = 0;
-        this.elements.tooltip.classList.remove('hidden');
-        this.elements.overlay.classList.remove('hidden');
-        setTimeout(() => this.elements.overlay.style.opacity = '1', 10);
-
-        if (!window.tourListenersAttached) {
-            this.elements.nextBtn.addEventListener('click', () => this.next());
-            this.elements.prevBtn.addEventListener('click', () => this.prev());
-            this.elements.endBtn.addEventListener('click', () => this.end());
-            window.addEventListener('resize', () => {
-                if (this.isActive) this.positionTooltip();
-            });
-            window.tourListenersAttached = true;
-        }
-
-        this.showStep(this.currentStep);
-    },
-
-    showStep(index) {
-        document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
-        if (index >= tourSteps.length) {
-            this.end();
-            return;
-        }
-
-        this.currentStep = index;
-        const step = tourSteps[index];
-        const targetElement = document.querySelector(step.el);
-
-        if (!targetElement) {
-            console.warn(`Tour element ${step.el} not found. Ending tour.`);
-            this.end();
-            return;
-        }
-        
-        this.elements.text.textContent = step.text;
-        this.elements.counter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-        this.elements.prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
-        this.elements.nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
-        this.elements.endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
-        
-        targetElement.scrollIntoView({ behavior: 'auto', block: 'center' }); // Revertido a 'auto' para evitar race conditions.
-        targetElement.classList.add('tour-highlight-active');
-        
-        // Posicionar inmediatamente después del scroll
-        this.positionTooltip();
-    },
-    
-    next() { this.showStep(this.currentStep + 1); },
-    prev() { this.showStep(this.currentStep - 1); },
-    
-    end() {
-        if (!this.isActive) return;
-        this.isActive = false;
-        
-        document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
-        this.elements.tooltip.style.opacity = '0';
-        this.elements.overlay.style.opacity = '0';
-        
-        setTimeout(() => {
-            this.elements.tooltip.classList.add('hidden');
-            this.elements.overlay.classList.add('hidden');
-        }, 300);
-        
-        localStorage.setItem('zenTourCompleted', 'true');
-    },
-
-    positionTooltip() {
-        if (!this.isActive) return;
-        const targetElement = document.querySelector('.tour-highlight-active');
-        if (!targetElement) return;
-
-        const { tooltip, arrow } = this.elements;
-        requestAnimationFrame(() => {
-            tooltip.style.opacity = '0';
-            tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
-            const targetRect = targetElement.getBoundingClientRect();
-            const tooltipRect = tooltip.getBoundingClientRect();
-            const margin = 12;
-
-            let top, left;
-            let arrowClass = 'tooltip-is-below';
-
-            if (targetRect.top > tooltip.offsetHeight + margin) {
-                top = window.scrollY + targetRect.top - tooltip.offsetHeight - margin;
-                arrowClass = 'tooltip-is-above';
-            } else {
-                top = window.scrollY + targetRect.bottom + margin;
-                arrowClass = 'tooltip-is-below';
-            }
-
-            left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltip.offsetWidth / 2);
-            if (left < margin) left = margin;
-            if (left + tooltip.offsetWidth > window.innerWidth - margin) {
-                left = window.innerWidth - tooltip.offsetWidth - margin;
-            }
-
-            tooltip.style.top = `${top}px`;
-            tooltip.style.left = `${left}px`;
-            tooltip.classList.add(arrowClass);
-            
-            const targetCenterX = window.scrollX + targetRect.left + targetRect.width / 2;
-            arrow.style.left = `${targetCenterX - left}px`;
-            
-            tooltip.style.opacity = '1';
-        });
-    },
-    
-    restart() {
-        this.end();
-        localStorage.removeItem('zenTourCompleted');
-        setTimeout(() => this.start(), 100);
-    }
-};
-
-export function initializeTour() {
-    tourManager.start();
-}
-
-export function restartTour() {
-    tourManager.restart();
-}
-
 
 export function initializeUI() {
     initializeServiceCheckboxes();
