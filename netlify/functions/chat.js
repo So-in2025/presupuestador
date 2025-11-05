@@ -1,11 +1,11 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v77 - Modern Gemini API Refactor
- * This version refactors the core Gemini API call to use the modern, recommended
- * 'generateContent' method instead of the older 'startChat'. This provides more
- * robust JSON mode enforcement and better alignment with current SDK best practices,
- * resolving issues where the model failed to return structured data.
+ * Lógica de Intención: v78 - Robust Prompt Refactor
+ * This version refactors the builder prompt to separate the system instructions (behavior)
+ * from the user prompt context (service catalog). This prevents potential token limit
+ * issues with the systemInstruction field and provides a clearer, more robust prompt
+ * structure for the model, definitively fixing intermittent JSON generation failures.
  */
 const { GoogleGenAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -21,45 +21,42 @@ exports.handler = async (event) => {
         const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
         
         const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
-            ? `CONTEXTO ADICIONAL: El revendedor ya ha preseleccionado los siguientes servicios: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. No sugieras estos ítems de nuevo y basa tus recomendaciones en complementar esta selección.`
+            ? `ADDITIONAL CONTEXT: The reseller has already pre-selected the following services: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Do not suggest these items again and base your recommendations on complementing this selection.`
             : '';
 
-        // This is the main system instruction for the builder.
-        const systemInstruction = `Eres un "Arquitecto de Soluciones" experto y un asistente de ventas de élite. Tu única misión es actuar como una API JSON. Analizarás la solicitud del revendedor para un proyecto web y construirás la solución perfecta utilizando EXCLUSIVAMENTE el catálogo de servicios proporcionado. Debes ser proactivo en la identificación de oportunidades de 'upsell' (sugerir un servicio de mayor valor) y 'cross-sell' (sugerir servicios complementarios).
+        // NEW, shorter system instruction focusing on behavior and format.
+        const systemInstruction = `You are an elite "Solution Architect" and sales assistant. Your only mission is to act as a strict JSON API. You will analyze a reseller's request for a web project and build the perfect solution using EXCLUSIVELY the provided service catalog. You must be proactive in identifying 'upsell' and 'cross-sell' opportunities.
 
-**INSTRUCCIONES CRÍTICAS E INQUEBRABLES:**
-1.  **FORMATO DE SALIDA:** Tu respuesta COMPLETA debe ser UN ÚNICO objeto JSON válido. NO incluyas texto, explicaciones, comentarios, ni ninguna envoltura de markdown como \`\`\`json. La respuesta debe comenzar con \`{\` y terminar con \`}\`.
-2.  **ESTRUCTURA JSON:** El JSON debe adherirse estrictamente a la siguiente estructura:
+**CRITICAL, UNBREAKABLE INSTRUCTIONS:**
+1.  **OUTPUT FORMAT:** Your ENTIRE response MUST be a SINGLE valid JSON object. Do NOT include any text, explanations, comments, or markdown wrappers like \`\`\`json. The response must start with \`{\` and end with \`}\`.
+2.  **JSON STRUCTURE:** The JSON must strictly adhere to this structure:
     {
-      "introduction": "Un saludo inicial y una breve confirmación de que has entendido la solicitud.",
-      "services": [
-        {
-          "id": "ID_DEL_SERVICIO_DEL_CATALOGO",
-          "name": "NOMBRE_EXACTO_DEL_SERVICIO",
-          "priority": "PRIORIDAD",
-          "is_new": false
-        }
-      ],
-      "closing": "Un párrafo de cierre que refuerza el valor de la propuesta.",
-      "client_questions": ["Una lista de 3 a 5 preguntas de seguimiento inteligentes para que el revendedor le haga a su cliente."],
-      "sales_pitch": "Un breve párrafo de 'discurso de ventas' que el revendedor puede usar para presentar la solución."
+      "introduction": "A greeting and brief confirmation of understanding.",
+      "services": [{"id": "CATALOG_SERVICE_ID", "name": "EXACT_SERVICE_NAME", "priority": "PRIORITY", "is_new": false}],
+      "closing": "A closing paragraph reinforcing the proposal's value.",
+      "client_questions": ["A list of 3-5 smart follow-up questions for the reseller to ask their client."],
+      "sales_pitch": "A short sales pitch paragraph."
     }
-3.  **CAMPO 'priority':** DEBES usar una de estas tres cadenas de texto exactas: "essential", "recommended", u "optional".
-4.  **MANEJO DE TAREAS A MEDIDA:** Si el usuario solicita una funcionalidad que NO está en el catálogo (ej: 'integración con Calendly', 'un sistema de foros'), DEBES:
-    a. Estimar su complejidad (pequeña, mediana o grande).
-    b. Asignar el ID correspondiente de 'TAREAS A MEDIDA' ('custom-s', 'custom-m', 'custom-l').
-    c. Proporcionar un 'name' descriptivo para la tarea (ej: "Integración con Calendly").
-    d. Incluir la propiedad \`"is_new": true\`.
-5.  **NO INVENTES SERVICIOS:** Si no estás seguro de qué servicio asignar, es mejor no incluirlo. Usa solo los IDs del catálogo.
-
---- CATÁLOGO DE SERVICIOS DISPONIBLES (TU ÚNICA FUENTE DE VERDAD) ---
+3.  **'priority' FIELD:** You MUST use one of these three exact strings: "essential", "recommended", or "optional".
+4.  **HANDLING CUSTOM TASKS:** If the user requests functionality NOT in the catalog (e.g., 'Calendly integration'), you MUST assign the corresponding 'CUSTOM TASKS' ID ('custom-s', 'custom-m', 'custom-l'), provide a descriptive 'name', and include \`"is_new": true\`.
+5.  **DO NOT INVENT SERVICES:** Only use IDs from the provided catalog.`;
+        
+        // NEW, prompt that combines catalog and user message into the main content.
+        const fullPromptForUser = `
+--- SERVICE CATALOG (YOUR ONLY SOURCE OF TRUTH) ---
 ${serviceList}
 ${planList}
---- TAREAS A MEDIDA (ÚSALAS PARA SOLICITUDES NO CATALOGADAS) ---
+--- CUSTOM TASKS (USE FOR NON-CATALOGED REQUESTS) ---
 ${customTaskList}
---- FIN DEL CATÁLOGO ---`;
+--- END OF CATALOG ---
 
-        const fullPromptForUser = `Analiza la siguiente solicitud de proyecto y genera la respuesta JSON: "${userMessage}". ${contextText}`;
+Based *only* on the catalog above, analyze the following project request and generate the required JSON response.
+
+--- PROJECT REQUEST ---
+"${userMessage}"
+${contextText}
+--- END REQUEST ---
+`;
 
         return { systemInstruction, fullPromptForUser };
     };
@@ -200,7 +197,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         if (mode === 'builder') {
             const builderPrompts = getBuilderPrompt(userMessage, context);
             systemInstruction = builderPrompts.systemInstruction;
-            finalUserMessage = builderPrompts.fullUserMessage;
+            finalUserMessage = builderPrompts.fullPromptForUser;
         } else if (mode === 'entrenamiento') {
             systemInstruction = getTrainingPrompt();
         } else {
