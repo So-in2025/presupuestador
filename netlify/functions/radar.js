@@ -1,6 +1,6 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v5.1 - Stricter Prompts
+ * Backend para Radar de Oportunidades v5.2 - Correct Model
  * Uses Gemini to find real businesses AND perform a technical analysis for each.
  * Reverted to use the stable @google/generative-ai SDK.
  */
@@ -10,7 +10,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
     const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. Your entire response MUST be a single, valid JSON array. Do not include any text, explanations, or markdown fences like \`\`\`json. The JSON array must contain objects, and each object must have exactly these three string properties: "name", "address", and "website".
 
@@ -37,7 +37,7 @@ Location: "${location}"`;
 
 const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
     You are an expert web analysis API. You will receive a business name and website. Your task is to provide a realistic estimation of its technical and marketing readiness.

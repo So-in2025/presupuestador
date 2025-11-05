@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v51 - Robust JSON Parsing
+ * Lógica de Intención: v52 - Ultra-Robust JSON Extractor
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -293,9 +293,22 @@ exports.handler = async (event) => {
         
         let responseText = result.response.text();
         
-        // --- ROBUST JSON CLEANING ---
+        // --- ULTRA-ROBUST JSON EXTRACTOR ---
         if (mode === 'builder' || mode === 'lead-gen-plan') {
-            responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch && jsonMatch[0]) {
+                responseText = jsonMatch[0];
+                try {
+                    // Final validation check
+                    JSON.parse(responseText);
+                } catch (e) {
+                    console.error("AI response contained a JSON-like block that was invalid.", e);
+                    throw new Error("La IA devolvió un JSON malformado.");
+                }
+            } else {
+                 console.error("No valid JSON object found in AI response:", responseText);
+                 throw new Error("La IA no devolvió un JSON en el formato esperado.");
+            }
         }
 
         const finalHistoryForClient = [

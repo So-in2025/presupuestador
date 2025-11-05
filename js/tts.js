@@ -89,16 +89,18 @@ class TTSManager {
         };
 
         this.currentUtterance.onerror = async (event) => {
-            // Ignorar el error de 'canceled' que ocurre cuando el usuario detiene la reproducción.
+            // Si la reproducción fue cancelada por el usuario, la función stop() ya se encargó de todo.
+            // Simplemente evitamos mostrar un mensaje de error.
             if (event.error === 'canceled') {
-                this.isPlaying = false;
-                this._resetUI();
                 return;
             }
+            
+            // Para cualquier otro error, lo mostramos.
             console.error('Error en la síntesis de voz:', event.error);
+            this.isPlaying = false;
+            this._resetUI();
             const { showNotification } = await import('./modals.js');
-            showNotification('error', 'Error de Voz', 'No se pudo reproducir el audio.');
-            if (this.currentUtterance) this.currentUtterance.onend();
+            showNotification('error', 'Error de Voz', `No se pudo reproducir el audio: ${event.error}`);
         };
 
         window.speechSynthesis.speak(this.currentUtterance);
@@ -106,7 +108,7 @@ class TTSManager {
     
     stop() {
         this.ttsQueue = [];
-        if (window.speechSynthesis) {
+        if (window.speechSynthesis && (this.isPlaying || window.speechSynthesis.pending)) {
             window.speechSynthesis.cancel(); 
         }
         this.isPlaying = false;
