@@ -435,12 +435,15 @@
             flex-shrink: 0;
         }
         
-        /* --- PROSPECT CARDS --- */
+        /* --- PROSPECT & PROPOSAL CARDS --- */
         .prospect-card .pain-score-display {
             background-image: linear-gradient(to right, #22c55e, #f97316, #dc2626);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+        }
+        .prospect-card, .proposal-card {
+            transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
         }
 
         /* --- ESTILOS RESPONSIVOS Y CORRECCIONES --- */
@@ -642,7 +645,7 @@
                 </div>
                 <p class="text-slate-400 mt-2">Crea, gestiona y exporta propuestas de alto impacto.</p>
                  <div class="mt-4 flex flex-wrap justify-center gap-3">
-                     <button id="show-opportunity-radar-btn" class="text-sm bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback flex items-center gap-2">
+                     <button id="show-opportunity-radar-btn" class="text-sm bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback flex items-center gap-2" aria-label="Abrir Radar de Oportunidades">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 3.5a1.5 1.5 0 011.5 1.5v.582a4.956 4.956 0 013.352 1.253 1.5 1.5 0 01-1.22 2.53 2.956 2.956 0 00-2.132-.915V11.5a1.5 1.5 0 01-3 0V8.45a2.956 2.956 0 00-2.132.915 1.5 1.5 0 01-1.22-2.53A4.957 4.957 0 018.5 5.582V5A1.5 1.5 0 0110 3.5zM5.11 8.84A6.452 6.452 0 0110 6.5a6.452 6.452 0 014.89 2.34 1.5 1.5 0 01-.84 2.59A3.457 3.457 0 0010 10.5a3.457 3.457 0 00-4.05 1.23 1.5 1.5 0 01-.84-2.59zM10 13.5a1.5 1.5 0 011.5 1.5v.993c.474.08.93.225 1.355.422a1.5 1.5 0 01-.71 2.898A4.951 4.951 0 0110 18.5a4.951 4.951 0 01-2.145-.487 1.5 1.5 0 01-.71-2.898c.425-.197.881-.342 1.355-.422V15a1.5 1.5 0 011.5-1.5z"/></svg>
                         Radar de Oportunidades
                     </button>
@@ -777,7 +780,7 @@
 
                         <div class="flex items-center gap-2 pt-4 border-t border-slate-700">
                             <input type="text" id="chat-input" class="w-full styled-input" placeholder="Ej: 'Necesito una web para un fotógrafo...' ">
-                            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300 btn-press-feedback">
+                            <button id="chat-send-btn" class="accent-bg font-bold p-3 rounded-lg shadow-md transition duration-300 btn-press-feedback" aria-label="Enviar mensaje">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                                     <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.949a.75.75 0 00.95.546l4.209-1.202a.75.75 0 01.531 1.343l-4.21 1.202a.75.75 0 00-.95.546l-1.414 4.95a.75.75 0 00.826.95L19 10.354a.75.75 0 000-1.418L3.105 2.289z" />
                                 </svg>
@@ -878,7 +881,7 @@
         <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold flex justify-between items-center">
                 <h3 id="notificationTitle" class="text-lg"></h3>
-                <button id="close-notification-modal-btn-x" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-notification-modal-btn-x" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar notificación">&times;</button>
             </div>
             <div class="p-5">
                 <p id="notificationMessage" class="text-sm text-slate-300"></p>
@@ -892,7 +895,7 @@
         <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-purple-600 flex justify-between items-center">
                 <h3 class="text-lg">Añadir Ítem Personalizado</h3>
-                <button id="close-custom-service-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-custom-service-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <div>
@@ -913,7 +916,7 @@
         <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-yellow-600 flex justify-between items-center">
                 <h3 class="text-lg text-slate-900">Comprar Puntos Extra</h3>
-                <button id="close-extra-points-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-extra-points-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <p class="text-sm text-slate-300">Añade puntos de desarrollo adicionales a tu plan mensual para incluir más servicios.</p>
@@ -932,7 +935,7 @@
         <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-600 flex justify-between items-center">
                 <h3 class="text-lg">Generar Documentos de Propuesta</h3>
-                <button id="close-pdf-options-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-pdf-options-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
                 <div class="pt-2 space-y-3">
@@ -958,7 +961,7 @@
         <div class="card-bg w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-teal-600 flex justify-between items-center">
                 <h3 class="text-lg">Configuración de Marca</h3>
-                <button id="close-branding-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-branding-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <div>
@@ -988,7 +991,7 @@
         <div class="card-bg w-full max-w-6xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-indigo-600 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg">Constructor de Propuesta por Niveles</h3>
-                <button id="close-tiered-builder-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-tiered-builder-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 flex-grow overflow-y-auto">
                 <div class="text-center mb-4">
@@ -1017,7 +1020,7 @@
         <div class="card-bg w-full max-w-4xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-fuchsia-600 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg">✨ Estudio de Contenido para Redes</h3>
-                <button id="close-content-studio-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-content-studio-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 flex-grow overflow-y-auto">
                  <div class="text-center mb-4">
@@ -1091,7 +1094,7 @@
         <div class="card-bg w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-gray-700 flex justify-between items-center">
                 <h3 class="text-lg">Configurar Tipo de Cambio (ARS)</h3>
-                <button id="close-exchange-rate-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-exchange-rate-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <p class="text-sm text-slate-300">Introduce el valor de 1 USD en ARS. Este tipo de cambio se usará para mostrar los precios en pesos argentinos.</p>
@@ -1111,7 +1114,7 @@
         <div class="card-bg w-full max-w-xl rounded-xl shadow-2xl overflow-hidden transform scale-95" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-green-600 flex justify-between items-center">
                 <h3 class="text-lg">🚀 Generar Plan de Captación de Clientes (7 Días)</h3>
-                <button id="close-lead-gen-plan-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-lead-gen-plan-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="p-5 space-y-4">
                 <p class="text-sm text-slate-300">Define la estrategia para que la IA cree un plan de acción semanal para que consigas tus primeros clientes.</p>
@@ -1147,7 +1150,7 @@
         <div class="card-bg w-full max-w-5xl rounded-xl shadow-2xl transform scale-95 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
             <div class="modal-header p-4 rounded-t-xl text-white font-bold bg-blue-800 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg">🌐 Canales de Venta Estratégicos</h3>
-                <button id="close-sales-channels-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-sales-channels-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div class="flex-grow overflow-y-auto">
                 <div class="p-6">
@@ -1279,7 +1282,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 3.5a1.5 1.5 0 011.5 1.5v.582a4.956 4.956 0 013.352 1.253 1.5 1.5 0 01-1.22 2.53 2.956 2.956 0 00-2.132-.915V11.5a1.5 1.5 0 01-3 0V8.45a2.956 2.956 0 00-2.132.915 1.5 1.5 0 01-1.22-2.53A4.957 4.957 0 018.5 5.582V5A1.5 1.5 0 0110 3.5zM5.11 8.84A6.452 6.452 0 0110 6.5a6.452 6.452 0 014.89 2.34 1.5 1.5 0 01-.84 2.59A3.457 3.457 0 0010 10.5a3.457 3.457 0 00-4.05 1.23 1.5 1.5 0 01-.84-2.59zM10 13.5a1.5 1.5 0 011.5 1.5v.993c.474.08.93.225 1.355.422a1.5 1.5 0 01-.71 2.898A4.951 4.951 0 0110 18.5a4.951 4.951 0 01-2.145-.487 1.5 1.5 0 01-.71-2.898c.425-.197.881-.342 1.355-.422V15a1.5 1.5 0 011.5-1.5z"/></svg>
                     Radar de Oportunidades IA
                 </h3>
-                <button id="close-opportunity-radar-modal-btn" class="text-2xl font-bold hover:text-slate-200">&times;</button>
+                <button id="close-opportunity-radar-modal-btn" class="text-2xl font-bold hover:text-slate-200" aria-label="Cerrar modal">&times;</button>
             </div>
             <div id="radar-main-content" class="p-5 flex-grow overflow-y-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Columna de Configuración y Resultados -->
@@ -1350,7 +1353,7 @@
     </div>
     
     <!-- WHATSAPP FLOAT BUTTON -->
-    <a id="whatsapp-float-btn" href="#" target="_blank" rel="noopener noreferrer" class="fixed bottom-5 right-5 z-[85000] h-14 w-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg transform transition hover:scale-110" title="Contactar a Soporte">
+    <a id="whatsapp-float-btn" href="#" target="_blank" rel="noopener noreferrer" class="fixed bottom-5 right-5 z-[85000] h-14 w-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg transform transition hover:scale-110" title="Contactar a Soporte" aria-label="Contactar a Soporte por WhatsApp">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.487 5.235 3.487 8.413.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.447-4.435-9.884-9.888-9.884-5.448 0-9.886 4.434-9.889 9.885.002 2.135.61 4.138 1.737 5.867l-1.163 4.244 4.352-1.141z" />
         </svg>

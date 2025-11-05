@@ -1,88 +1,13 @@
 // /js/chat-frontend.js
 /**
  * Lógica de frontend para Zen Assistant.
- * v18 (Training Mode UI) -> Updated with TTS Voice Selector
+ * v19 (Centralized TTS & A11y)
  */
 
 import { getState } from './state.js';
 import { loadChatHistories, saveChatHistories } from './data.js';
 import { showNotification } from './modals.js';
-
-// --- START: TTS VOICE SELECTOR BLOCK ---
-const ttsManager = {
-    isPlaying: false,
-    stop: function() {
-        if (typeof window.speechSynthesis !== 'undefined') {
-            window.speechSynthesis.cancel();
-        }
-        this.isPlaying = false;
-        // Reset any playing button visuals
-        document.querySelectorAll('.tts-btn.playing').forEach(btn => {
-            btn.innerHTML = '▶️';
-            btn.classList.remove('playing');
-        });
-    },
-    speak: function(text, buttonElement) {
-        if (this.isPlaying) return;
-        if (typeof window.speechSynthesis === 'undefined') {
-            showNotification('error', 'No Soportado', 'Tu navegador no soporta la síntesis de voz.');
-            return;
-        }
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        let voiceToUse = voices.find(v => v.voiceURI === selectedVoiceURI);
-
-        if (!voiceToUse && voices.length > 0) {
-            voiceToUse = 
-                voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
-                voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
-                voices.find(v => v.name.toLowerCase().includes('google')) ||
-                voices[0];
-        }
-
-        if (voiceToUse) {
-            utterance.voice = voiceToUse;
-        }
-        
-        utterance.lang = 'es-ES';
-        utterance.rate = 1.05;
-        utterance.pitch = 1;
-
-        utterance.onstart = () => {
-            this.isPlaying = true;
-            if (buttonElement) {
-                buttonElement.innerHTML = '⏹️';
-                buttonElement.classList.add('playing');
-            }
-        };
-
-        utterance.onend = () => {
-            this.isPlaying = false;
-            if (buttonElement) {
-                buttonElement.innerHTML = '▶️';
-                buttonElement.classList.remove('playing');
-            }
-        };
-        
-        window.speechSynthesis.speak(utterance);
-    }
-};
-
-const handleTTSButtonClick = (buttonElement) => {
-    const text = buttonElement.dataset.text;
-    const isCurrentlyPlayingThis = ttsManager.isPlaying && buttonElement.classList.contains('playing');
-    ttsManager.stop();
-    shouldAutoplay = false; // User interaction stops autoplay
-    if (!isCurrentlyPlayingThis) {
-        ttsManager.speak(text, buttonElement);
-    }
-};
-
-let voices = [];
-let selectedVoiceURI = localStorage.getItem('zenAssistantVoiceURI');
-let shouldAutoplay = true;
-// --- END: TTS VOICE SELECTOR BLOCK ---
-
+import { ttsManager } from './tts.js'; // Usar el gestor de TTS centralizado
 
 export function initializeChatAssistant(showApiKeyOverlay) {
     const chatMessagesContainer = document.getElementById('chat-messages');
@@ -145,125 +70,66 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         updateChatUIForMode();
         renderChatMessages();
     }
-
-    // --- OPTIMIZACIÓN DE RENDERIZADO DE CHAT ---
-
+    
+    // --- REFACTORIZACIÓN: CREACIÓN DE NODOS DEL DOM ---
     function createMessageNode(message, role) {
         const sender = role === 'user' ? 'user' : 'ai';
         const wrapper = document.createElement('div');
         wrapper.className = 'chat-message flex flex-col my-2';
+        
         const bubble = document.createElement('div');
         bubble.className = 'chat-bubble p-3 rounded-lg max-w-[85%] relative';
-        
-        let finalHTML = message.replace(/\n/g, '<br>');
-        let textToSpeak = message;
-
-        if (sender === 'ai') {
-            // --- REFACTORED LOGIC TO FIX WELCOME MESSAGE PARSING ---
-            // 1. If it's builder mode AND the message looks like JSON, try to parse it.
-            if (currentAiMode === 'builder' && message.trim().startsWith('{')) {
-                try {
-                    const jsonResponse = JSON.parse(message);
-                    if (!jsonResponse.introduction || !Array.isArray(jsonResponse.services)) {
-                        throw new Error("Invalid JSON structure for builder mode.");
-                    }
-                    
-                    let cleanText = `${jsonResponse.introduction}\n\n${jsonResponse.closing}\n\n`;
-                    if (jsonResponse.sales_pitch) cleanText += `Argumento de venta: ${jsonResponse.sales_pitch}\n\n`;
-                    if (jsonResponse.client_questions) cleanText += `Preguntas para el cliente: ${jsonResponse.client_questions.join(' ')}`;
-                    textToSpeak = cleanText;
-                    
-                    let messageText = `${jsonResponse.introduction.replace(/\n/g, '<br>')}`;
-                    
-                    const servicesByPriority = { essential: [], recommended: [], optional: [] };
-                    jsonResponse.services.forEach(service => {
-                        (servicesByPriority[service.priority] || servicesByPriority.optional).push(service);
-                    });
-
-                    const priorityConfig = {
-                        essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white border border-cyan-700' },
-                        recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white border border-purple-700' },
-                        optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white border border-slate-600' }
-                    };
-
-                    let actionsHTML = '';
-                    Object.keys(priorityConfig).forEach(priority => {
-                        if (servicesByPriority[priority].length > 0) {
-                            const config = priorityConfig[priority];
-                            let buttonsHTML = servicesByPriority[priority].map(serviceObject => {
-                                const serviceInfo = findServiceById(serviceObject.id);
-                                if (serviceInfo) {
-                                    const displayName = serviceObject.name || serviceInfo.item.name;
-                                    const description = serviceInfo.item.description || 'Sin descripción.';
-                                    const baseClass = "add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full";
-                                    return `
-                                        <div class="tooltip-container relative">
-                                            <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="${baseClass} ${config.btnClass}">
-                                                Añadir ${displayName}
-                                            </button>
-                                            <div class="tooltip-content">${description}</div>
-                                        </div>
-                                    `;
-                                }
-                                return `<div class="tooltip-container relative"><button class="bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed w-full" disabled>Error: "${serviceObject.name}" no encontrado</button></div>`;
-                            }).join('');
-
-                            actionsHTML += `<div class="mb-3"><p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p><div class="flex flex-wrap gap-2">${buttonsHTML}</div></div>`;
-                        }
-                    });
-                    
-                    if (jsonResponse.closing) messageText += `<br><br>${jsonResponse.closing.replace(/\n/g, '<br>')}`;
-                    finalHTML = messageText;
-                    
-                    if (actionsHTML) finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600">${actionsHTML}</div>`;
-
-                    if (Array.isArray(jsonResponse.client_questions) && jsonResponse.client_questions.length > 0) {
-                        let questionsHTML = jsonResponse.client_questions.map((question, index) => {
-                            const escapedQuestion = question.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                            const questionId = `question-${Date.now()}-${index}`;
-                            return `
-                                <div class="flex items-center justify-between gap-2 bg-slate-800 rounded-lg w-full p-2">
-                                    <p id="${questionId}" data-action="suggest-question" data-question="${escapedQuestion}" class="suggest-question-text text-left text-sm text-slate-300 flex-grow cursor-pointer hover:text-cyan-300 transition">❔ ${question}</p>
-                                    <button data-action="copy-question" data-target-id="${questionId}" class="text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition flex-shrink-0">Copiar</button>
-                                </div>
-                            `;
-                        }).join('');
-                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-yellow-300 mb-2">Pregúntale a tu Cliente:</p><div class="flex flex-col items-start gap-2 w-full">${questionsHTML}</div></div>`;
-                    }
-                    
-                    if (jsonResponse.sales_pitch) {
-                        const pitchId = `pitch-${Date.now()}`;
-                        finalHTML += `<div class="mt-3 pt-3 border-t border-slate-600"><p class="text-sm font-bold text-green-300 mb-2">Argumento de Venta (Para tu Cliente):</p><div class="p-3 bg-slate-800 rounded-lg border border-slate-600 relative"><p id="${pitchId}" class="text-slate-200 text-sm">${jsonResponse.sales_pitch.replace(/\n/g, '<br>')}</p><button data-action="copy-pitch" data-target-id="${pitchId}" class="absolute top-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">Copiar</button></div></div>`;
-                    }
-
-                } catch (e) {
-                    // This catch now correctly triggers for malformed JSON, not welcome messages.
-                    finalHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
-                    textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta de forma más clara.";
-                }
-            // 2. If it's analyze mode, format the list.
-            } else if (currentAiMode === 'analyze') {
-                finalHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
-                textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
-            // 3. Otherwise (welcome messages, objection mode), just render as plain text.
-            } else {
-                finalHTML = message.replace(/\n/g, '<br>');
-                textToSpeak = message;
-            }
-
-            const escapedTextToSpeak = textToSpeak.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-            const ttsButtonHTML = `<button data-action="tts" data-text='${escapedTextToSpeak}' class="tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition">▶️</button>`;
-            finalHTML = `<div class="pr-20 pb-2">${finalHTML}</div>${ttsButtonHTML}`;
-        }
-
+    
         if (sender === 'user') {
             wrapper.classList.add('items-end');
             bubble.classList.add('chat-bubble-user', 'rounded-br-none');
-        } else {
+            bubble.textContent = message;
+        } else { // AI
             wrapper.classList.add('items-start');
             bubble.classList.add('chat-bubble-ai', 'rounded-bl-none');
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = 'pr-20 pb-2'; // Espacio para el botón de TTS
+            bubble.appendChild(contentWrapper);
+            
+            let textToSpeak = message;
+    
+            if (currentAiMode === 'builder' && message.trim().startsWith('{')) {
+                try {
+                    const jsonResponse = JSON.parse(message);
+                     if (!jsonResponse.introduction || !Array.isArray(jsonResponse.services)) {
+                        throw new Error("Invalid JSON structure for builder mode.");
+                    }
+                    textToSpeak = `${jsonResponse.introduction}\n\n${jsonResponse.closing || ''}`;
+                    contentWrapper.innerHTML = jsonResponse.introduction.replace(/\n/g, '<br>');
+                    
+                    const actionsContainer = document.createElement('div');
+                    actionsContainer.className = 'mt-3 pt-3 border-t border-slate-600';
+                    contentWrapper.appendChild(document.createElement('br'));
+                    contentWrapper.appendChild(document.createElement('br'));
+                    contentWrapper.insertAdjacentHTML('beforeend', jsonResponse.closing.replace(/\n/g, '<br>'));
+                    bubble.appendChild(actionsContainer);
+                    // Lógica para renderizar botones de servicios, preguntas, etc.
+                    renderBuilderActions(actionsContainer, jsonResponse);
+
+                } catch (e) {
+                    contentWrapper.innerHTML = `<p class="text-yellow-300 font-semibold">El asistente devolvió una respuesta, pero no en el formato esperado.</p><p class="text-sm text-slate-400 mt-1">Intenta reformular tu pregunta de forma más clara para obtener una recomendación de servicios (Ej: "Necesito una web para un restaurante").</p>`;
+                    textToSpeak = "El asistente devolvió una respuesta, pero no en el formato esperado. Intenta reformular tu pregunta.";
+                }
+            } else if (currentAiMode === 'analyze') {
+                contentWrapper.innerHTML = '<ul>' + message.split('- ').filter(line => line.trim() !== '').map(line => `<li class="mb-1">${line.trim()}</li>`).join('') + '</ul>';
+                textToSpeak = "He analizado la conversación. Aquí están los requisitos clave que he extraído: " + message;
+            } else {
+                contentWrapper.innerHTML = message.replace(/\n/g, '<br>');
+            }
+            
+            const ttsButton = document.createElement('button');
+            ttsButton.dataset.action = 'tts';
+            ttsButton.dataset.text = textToSpeak;
+            ttsButton.className = 'tts-btn absolute bottom-2 right-2 text-xs bg-slate-900 text-cyan-300 font-bold py-1 px-2 rounded hover:bg-cyan-800 transition';
+            ttsButton.textContent = '▶️';
+            bubble.appendChild(ttsButton);
         }
-        bubble.innerHTML = finalHTML;
+        
         wrapper.appendChild(bubble);
         return wrapper;
     }
@@ -271,7 +137,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
 
     function renderChatMessages() {
         chatMessagesContainer.innerHTML = '';
-        shouldAutoplay = false; // Deshabilitar autoplay al cargar historial
+        ttsManager.shouldAutoplay = false; 
 
         const fragment = document.createDocumentFragment();
 
@@ -291,11 +157,10 @@ export function initializeChatAssistant(showApiKeyOverlay) {
     function addMessageToChat(message, role) {
         const messageNode = createMessageNode(message, role);
         
-        // Lógica de autoplay solo para mensajes nuevos de la IA
-        if (role === 'model' && shouldAutoplay) {
+        if (role === 'model' && ttsManager.shouldAutoplay) {
             setTimeout(() => {
                 const button = messageNode.querySelector('.tts-btn[data-action="tts"]');
-                if (button) ttsManager.speak(button.dataset.text, button);
+                if (button) ttsManager.speak(button.dataset.text, button, true);
             }, 300);
         }
 
@@ -339,63 +204,6 @@ export function initializeChatAssistant(showApiKeyOverlay) {
         chatInput.placeholder = getPlaceholderForMode(currentAiMode);
     }
     
-    function populateVoiceList() {
-        if (typeof window.speechSynthesis === 'undefined') return;
-        voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es-'));
-        const voiceSelect = document.getElementById('voice-selector');
-        const voiceContainer = document.getElementById('voice-selector-container');
-        
-        if (!voiceSelect || !voiceContainer || voices.length === 0) {
-            if (voiceContainer) voiceContainer.style.display = 'none';
-            return;
-        };
-
-        voiceContainer.style.display = 'flex';
-        voiceSelect.innerHTML = '';
-        voices.forEach(voice => {
-            const option = document.createElement('option');
-            option.textContent = `${voice.name.replace('Google', '').trim()} (${voice.lang})`;
-            option.value = voice.voiceURI;
-            voiceSelect.appendChild(option);
-        });
-
-        const savedVoice = voices.find(v => v.voiceURI === selectedVoiceURI);
-        if (savedVoice) {
-            voiceSelect.value = savedVoice.voiceURI;
-        } else {
-            const maleGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male'));
-            const spanishGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español'));
-            const anyGoogleVoice = voices.find(v => v.name.toLowerCase().includes('google'));
-            const defaultVoice = maleGoogleVoice || spanishGoogleVoice || anyGoogleVoice || voices[0];
-            
-            if (defaultVoice) {
-                 voiceSelect.value = defaultVoice.voiceURI;
-                 selectedVoiceURI = defaultVoice.voiceURI;
-                 localStorage.setItem('zenAssistantVoiceURI', selectedVoiceURI);
-            }
-        }
-    }
-    
-    function createVoiceSelector() {
-        if (document.getElementById('voice-selector-container')) return;
-        const selectorContainer = document.createElement('div');
-        selectorContainer.id = 'voice-selector-container';
-        selectorContainer.className = 'mb-2 p-2 bg-slate-800 rounded-md items-center gap-2';
-        selectorContainer.innerHTML = `
-            <label for="voice-selector" class="text-sm font-bold text-slate-300">Voz:</label>
-            <select id="voice-selector" class="w-full styled-input text-sm accent-color"></select>
-        `;
-        // Insertar después del selector de modo
-        modeSelector.parentNode.insertBefore(selectorContainer, modeSelector.nextSibling);
-
-        const voiceSelect = document.getElementById('voice-selector');
-        voiceSelect.addEventListener('change', (e) => {
-            selectedVoiceURI = e.target.value;
-            localStorage.setItem('zenAssistantVoiceURI', selectedVoiceURI);
-            ttsManager.stop();
-        });
-    }
-
     const findServiceById = (id) => {
         const { allServices, monthlyPlans } = getState();
         let plan = monthlyPlans.find(p => p.id == id);
@@ -413,7 +221,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
 
     async function sendMessage() {
         ttsManager.stop();
-        shouldAutoplay = true;
+        ttsManager.shouldAutoplay = true;
         const userMessage = chatInput.value.trim();
         if (!userMessage || isSending) return;
 
@@ -436,7 +244,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             userMessage: userMessage, 
             history: chatHistory,
             mode: currentAiMode,
-            selectedServicesContext: simpleSelectedServices,
+            context: { selectedServicesContext: simpleSelectedServices },
             apiKey: apiKey 
         };
 
@@ -483,6 +291,10 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             indicator = document.createElement('div');
             indicator.id = 'typing-indicator';
             indicator.className = 'chat-message flex items-start my-2';
+            indicator.setAttribute('role', 'status');
+            indicator.setAttribute('aria-live', 'polite');
+            indicator.setAttribute('aria-label', 'El asistente está escribiendo');
+            
             indicator.innerHTML = `<div class="chat-bubble chat-bubble-ai rounded-bl-none p-3 flex items-center space-x-1">
                 <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce"></span>
                 <span class="h-2 w-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
@@ -509,17 +321,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
             allChatHistories = { builder: [], objection: [], analyze: [], entrenamiento: [] };
             switchMode('builder', true);
         }
-
-        if (typeof speechSynthesis !== 'undefined') {
-            createVoiceSelector();
-            populateVoiceList();
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = populateVoiceList;
-            }
-        }
     
-        window.addEventListener('beforeunload', () => ttsManager.stop());
-
         sendChatBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); sendMessage(); }
@@ -542,9 +344,8 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                         serviceElement.click();
                         summaryCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         if(button) {
-                            button.classList.remove('bg-slate-900', 'text-cyan-300', 'hover:bg-cyan-800'); // Clean up old styles, might need adjustment based on priority
-                            button.className = button.className.replace(/bg-\w+-\d+/g, '').replace(/text-\w+-\d+/g, '').replace(/hover:bg-\w+-\d+/g, '');
-                            button.classList.add('bg-green-700', 'text-white', 'cursor-default');
+                            button.className = button.className.replace(/bg-\w+-\d+/g, '').replace(/text-\w+-\d+/g, '').replace(/hover:bg-\w+-\d+/g, '').replace(/border-\w+-\d+/g, '');
+                            button.classList.add('bg-green-700', 'text-white', 'cursor-default', 'border-transparent');
                             button.textContent = `Añadido ✔️`;
                             button.disabled = true;
                         }
@@ -558,7 +359,7 @@ export function initializeChatAssistant(showApiKeyOverlay) {
                     break;
                 }
                 case 'tts':
-                    if(button) handleTTSButtonClick(button);
+                    if(button) ttsManager.speak(button.dataset.text, button);
                     break;
                 case 'copy-pitch': {
                     const targetId = actionTarget.dataset.targetId;
@@ -601,4 +402,52 @@ export function initializeChatAssistant(showApiKeyOverlay) {
 
     // Llama a la inicialización principal
     initChat();
+}
+
+function renderBuilderActions(container, jsonData) {
+    container.innerHTML = ''; // Limpiar acciones anteriores
+
+    const servicesByPriority = { essential: [], recommended: [], optional: [] };
+    jsonData.services.forEach(service => {
+        (servicesByPriority[service.priority] || servicesByPriority.optional).push(service);
+    });
+
+    const priorityConfig = {
+        essential: { title: 'Fundamentales', color: 'text-cyan-300', btnClass: 'bg-slate-900 text-cyan-300 hover:bg-cyan-800 hover:text-white border border-cyan-700' },
+        recommended: { title: 'Recomendados', color: 'text-purple-300', btnClass: 'bg-slate-900 text-purple-300 hover:bg-purple-800 hover:text-white border border-purple-700' },
+        optional: { title: 'Opcionales', color: 'text-slate-400', btnClass: 'bg-slate-800 text-slate-400 hover:bg-slate-600 hover:text-white border border-slate-600' }
+    };
+
+    Object.keys(priorityConfig).forEach(priority => {
+        if (servicesByPriority[priority].length > 0) {
+            const config = priorityConfig[priority];
+            const section = document.createElement('div');
+            section.className = 'mb-3';
+            section.innerHTML = `<p class="text-sm font-bold ${config.color} mb-2">${config.title}:</p>`;
+            
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'flex flex-wrap gap-2';
+
+            servicesByPriority[priority].forEach(serviceObject => {
+                const serviceInfo = findServiceById(serviceObject.id);
+                const buttonWrapper = document.createElement('div');
+                buttonWrapper.className = 'tooltip-container relative';
+
+                if (serviceInfo) {
+                    const displayName = serviceObject.name || serviceInfo.item.name;
+                    buttonWrapper.innerHTML = `
+                        <button data-action="add-service" data-service-id="${serviceInfo.item.id}" data-service-type="${serviceInfo.type}" class="add-service-btn font-bold py-2 px-4 rounded-lg transition duration-200 w-full ${config.btnClass}">
+                            Añadir ${displayName}
+                        </button>
+                        <div class="tooltip-content">${serviceInfo.item.description || 'Sin descripción.'}</div>
+                    `;
+                } else {
+                    buttonWrapper.innerHTML = `<button class="bg-red-900 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed w-full" disabled>Error: "${serviceObject.name}" no encontrado</button>`;
+                }
+                buttonContainer.appendChild(buttonWrapper);
+            });
+            section.appendChild(buttonContainer);
+            container.appendChild(section);
+        }
+    });
 }

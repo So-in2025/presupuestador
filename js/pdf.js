@@ -2,6 +2,7 @@
 
 import { getState } from './state.js';
 import { showNotification, closePdfOptionsModal } from './modals.js';
+import { toggleButtonLoading } from './ui-helpers.js';
 
 export async function generateActionPlanPdf(planData) {
     const { jsPDF } = window.jspdf;
@@ -88,13 +89,7 @@ export async function generateActionPlanPdf(planData) {
 
 
 export async function generatePdf(isForClient, button) {
-    const spinner = button.querySelector('.spinner');
-    const btnText = button.querySelector('.btn-text');
-    const originalText = btnText.textContent;
-
-    spinner.classList.remove('hidden');
-    btnText.textContent = 'Generando...';
-    button.disabled = true;
+    toggleButtonLoading(button, true, 'Generando...');
 
     try {
         const { tasks, allServices, monthlyPlans, currentCurrency, usdToArsRate } = getState();
@@ -152,9 +147,6 @@ export async function generatePdf(isForClient, button) {
             return { name: `Servicio (ID: ${id})`, description: 'Descripción no encontrada.', price: 0 };
         };
 
-        // =================================================================
-        // --- VERSIÓN 1: PROPUESTA PARA EL CLIENTE FINAL ---
-        // =================================================================
         if (isForClient) {
             if (logoDataUrl) {
                 try { doc.addImage(logoDataUrl, 'PNG', leftMargin, y-10, 60, 30, undefined, 'FAST'); }
@@ -318,10 +310,6 @@ export async function generatePdf(isForClient, button) {
             return;
         }
 
-        // ====================================================================
-        // --- VERSIÓN 2: ORDEN DE TRABAJO INTERNA (PARA SO->IN) ---
-        // ====================================================================
-        
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(accentColor);
@@ -371,8 +359,6 @@ export async function generatePdf(isForClient, button) {
             doc.text(clientDetails, leftMargin, y);
             y += clientDetails.length * 10 + 10;
 
-
-            // Resumen Financiero
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(textPrimaryColor);
@@ -453,8 +439,6 @@ export async function generatePdf(isForClient, button) {
         console.error("Error al generar PDF:", err);
         showNotification('error', 'Error de PDF', 'No se pudo generar el documento. Revisa la consola para más detalles.');
     } finally {
-        spinner.classList.add('hidden');
-        btnText.textContent = originalText;
-        button.disabled = false;
+        toggleButtonLoading(button, false);
     }
 }

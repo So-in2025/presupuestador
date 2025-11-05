@@ -47,14 +47,12 @@ const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
         const result = await model.generateContent(prompt);
         const jsonText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
         const analysis = JSON.parse(jsonText);
-        // Basic validation
         if (typeof analysis.performanceScore !== 'number' || typeof analysis.hasSSL !== 'boolean') {
              throw new Error("Invalid JSON structure from analysis AI.");
         }
         return analysis;
     } catch (error) {
         console.error(`Failed to get technical analysis for ${business.name}:`, error);
-        // Return a default "error" analysis object
         return {
             performanceScore: 30, mobileScore: 40, seoScore: 50,
             hasSSL: false, techStack: "Unknown", hasAnalytics: false, hasPixel: false, error: true
@@ -75,21 +73,12 @@ exports.handler = async (event) => {
              return { statusCode: 401, body: JSON.stringify({ error: true, message: "API Key is required." }) };
         }
 
-        // ===================================================================
-        // PASO 1: GET REAL BUSINESS LISTINGS FROM GEMINI
-        // ===================================================================
         const potentialLeads = await getRealBusinessesFromAI(businessType, location, apiKey);
         
         if (!potentialLeads || potentialLeads.length === 0) {
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ opportunities: [] }) // No businesses found
-            };
+            return { statusCode: 200, body: JSON.stringify({ opportunities: [] }) };
         }
 
-        // ===================================================================
-        // PASO 2: PERFORM AI-DRIVEN TECHNICAL ANALYSIS FOR EACH SITE
-        // ===================================================================
         const analysisPromises = potentialLeads.map(lead => getTechnicalAnalysisForBusiness(lead, apiKey));
         const technicalAnalyses = await Promise.all(analysisPromises);
         
@@ -104,26 +93,23 @@ exports.handler = async (event) => {
                 seo: seoScore < 80,
             };
             
-            let painScore = 0;
-            if (painPoints.slow) painScore += (50 - performanceScore) * 1.5;
-            if (painPoints.mobile) painScore += (90 - mobileScore) * 0.5;
-            if (painPoints.ssl) painScore += 30;
-            if (painPoints.seo) painScore += (80 - seoScore) * 0.4;
+            let painScore = [
+                painPoints.slow ? (50 - performanceScore) * 1.5 : 0,
+                painPoints.mobile ? (90 - mobileScore) * 0.5 : 0,
+                painPoints.ssl ? 30 : 0,
+                painPoints.seo ? (80 - seoScore) * 0.4 : 0
+            ].reduce((a, b) => a + b, 0);
             
             painScore = Math.min(98, Math.round(painScore));
             if (painScore < 20) painScore = 20 + Math.floor(Math.random() * 10);
 
             return {
-                ...lead,
-                id: Date.now() + index,
-                painScore,
-                painPoints,
-                ...analysis
+                ...lead, id: Date.now() + index, painScore, painPoints, ...analysis
             };
         });
 
         const filteredOpportunities = analyzedOpportunities.filter(opp => {
-             if (opp.error) return false; // Exclude businesses that failed analysis
+             if (opp.error) return false;
             return Object.keys(filters).every(key => !filters[key] || opp.painPoints[key]);
         });
 
@@ -133,10 +119,10 @@ exports.handler = async (event) => {
         };
 
     } catch (err) {
-        console.error("Error in radar function:", err);
+        console.error("Error in radar function:", err.message || err);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: true, message: "Internal server error while processing the search." })
+            body: JSON.stringify({ error: true, message: `Ocurrió un error interno en el servidor. Revisa los logs de la función. Detalle: ${err.message}` })
         };
     }
 };

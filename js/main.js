@@ -34,73 +34,8 @@ import {
 } from './modals.js';
 import { initializeBranding, rerenderAllPrices, restartTour, initializeTour, updateCurrencyToggleButton, saveBranding } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
-import { generatePdf, generateActionPlanPdf } from './pdf.js';
-
-// --- TTS Manager for Explanations ---
-const infoTTSManager = {
-    currentUtterance: null,
-    currentButton: null,
-
-    stop() {
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-        }
-        if (this.currentButton) {
-            const svgElement = this.currentButton.querySelector('svg');
-            const textSpan = this.currentButton.querySelector('.tts-button-text');
-            if (svgElement) {
-                svgElement.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM18.584 14.828a1.5 1.5 0 000-2.121 5.03 5.03 0 00-7.113 0 1.5 1.5 0 001.06 2.561 2.03 2.03 0 012.872 0 1.5 1.5 0 002.121 0z" /><path d="M16.463 17.56a8.966 8.966 0 000-11.121 1.5 1.5 0 00-2.12 2.121A5.966 5.966 0 0112 12a5.966 5.966 0 01-2.343-4.44 1.5 1.5 0 10-2.121-2.121A8.966 8.966 0 0012 21a8.966 8.966 0 004.463-3.44z" /></svg>`;
-            }
-            if (textSpan) textSpan.textContent = 'Escuchar Explicación';
-            this.currentButton.classList.remove('bg-red-500');
-        }
-        this.currentUtterance = null;
-        this.currentButton = null;
-    },
-
-    speak(text, button) {
-        if (this.currentButton === button) {
-            this.stop();
-            return;
-        }
-        this.stop();
-
-        let selectedVoice = null;
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-             const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
-             if (spanishVoices.length > 0) {
-                selectedVoice = 
-                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
-                    spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
-                    spanishVoices.find(v => v.name.toLowerCase().includes('google')) ||
-                    spanishVoices[0];
-             }
-        }
-
-        this.currentUtterance = new SpeechSynthesisUtterance(text);
-        if (selectedVoice) {
-            this.currentUtterance.voice = selectedVoice;
-        }
-        this.currentUtterance.lang = 'es-ES';
-        
-        this.currentUtterance.onend = () => this.stop();
-        this.currentUtterance.onerror = () => this.stop();
-
-        this.currentButton = button;
-        const svgElement = this.currentButton.querySelector('svg');
-        const textSpan = this.currentButton.querySelector('.tts-button-text');
-
-        if (svgElement) {
-             svgElement.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2H4z" /></svg>`;
-        }
-        if (textSpan) textSpan.textContent = 'Detener';
-        this.currentButton.classList.add('bg-red-500');
-
-
-        window.speechSynthesis.speak(this.currentUtterance);
-    }
-};
+import { generatePdf } from './pdf.js';
+import { ttsManager } from './tts.js'; // Importar el gestor centralizado
 
 // --- LÓGICA MODO ENFOQUE CHAT ---
 const chatContainer = document.getElementById('ai-assistant-container');
@@ -148,7 +83,7 @@ function initializeSplashScreen() {
     const readAloudBtn = document.getElementById('read-aloud-btn');
 
     startBtn.addEventListener('click', () => {
-        window.speechSynthesis.cancel();
+        ttsManager.stop();
         splashScreen.style.opacity = '0';
         splashScreen.style.pointerEvents = 'none';
         splashScreen.style.zIndex = '-1';
@@ -167,75 +102,55 @@ function initializeSplashScreen() {
 
     // --- LÓGICA DE LECTURA INTELIGENTE (CON VOZ MEJORADA) ---
     let ttsQueue = [];
-    let currentUtterance = null;
-    let selectedVoice = null;
-
-    const loadAndSelectVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) return;
-
-        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
-        if (spanishVoices.length === 0) return;
-
-        selectedVoice = 
-            spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male')) ||
-            spanishVoices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('español')) ||
-            spanishVoices.find(v => v.name.toLowerCase().includes('google')) ||
-            spanishVoices[0];
-    };
-
-    // Cargar voces al inicio y cuando cambien.
-    loadAndSelectVoice();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadAndSelectVoice;
-    }
-
+    let currentHighlightElement = null;
 
     const highlightElement = (element) => {
         document.querySelectorAll('[data-tts-content]').forEach(el => el.classList.remove('tts-highlight'));
         if (element) {
             element.classList.add('tts-highlight');
+            currentHighlightElement = element;
+        } else {
+            currentHighlightElement = null;
         }
     };
 
     const playNextInQueue = () => {
         if (ttsQueue.length > 0) {
             const { element, text } = ttsQueue.shift();
-            currentUtterance = new SpeechSynthesisUtterance(text);
             
-            if (selectedVoice) {
-                currentUtterance.voice = selectedVoice;
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (ttsManager.selectedVoice) {
+                utterance.voice = ttsManager.selectedVoice;
             }
-            
-            currentUtterance.lang = 'es-ES';
-            currentUtterance.rate = 1.0;
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.0;
 
-            currentUtterance.onstart = () => {
+            utterance.onstart = () => {
                 highlightElement(element);
             };
 
-            currentUtterance.onend = () => {
+            utterance.onend = () => {
                 playNextInQueue();
             };
+            
+            utterance.onerror = () => {
+                playNextInQueue(); // Skip on error
+            };
 
-            window.speechSynthesis.speak(currentUtterance);
+            window.speechSynthesis.speak(utterance);
         } else {
             readAloudBtn.textContent = 'Leer en voz alta';
             highlightElement(null);
-            currentUtterance = null;
         }
     };
 
     readAloudBtn.addEventListener('click', () => {
         if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
+            window.speechSynthesis.cancel(); // Esto dispara el evento 'onend'
             ttsQueue = [];
             readAloudBtn.textContent = 'Leer en voz alta';
             highlightElement(null);
         } else {
-            // Asegurarse de que las voces estén cargadas antes de hablar
-            if (!selectedVoice) loadAndSelectVoice();
-
             const contentElements = document.querySelectorAll('#detailsSection [data-tts-content]');
             contentElements.forEach(element => {
                 ttsQueue.push({ element: element, text: element.dataset.ttsContent });
@@ -243,10 +158,6 @@ function initializeSplashScreen() {
             readAloudBtn.textContent = 'Detener lectura';
             playNextInQueue();
         }
-    });
-
-     window.addEventListener('beforeunload', () => {
-        window.speechSynthesis.cancel();
     });
 }
 
@@ -360,41 +271,20 @@ function initializeEventListeners() {
     });
 
     // TTS Buttons for Modals
-    const leadGenTTSBtn = document.getElementById('lead-gen-tts-btn');
-    if (leadGenTTSBtn) {
-        leadGenTTSBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const text = "Esta herramienta es tu estratega de marketing personal. Su único fin es darte un plan de acción de 7 días, claro y accionable, para que puedas captar a tu primer cliente de alto valor. La visión es simple: dejar de esperar a que lleguen los clientes y empezar a buscarlos activamente con una estrategia profesional. Usa esta guía para posicionarte como un experto en tu nicho y llenar tu pipeline de ventas.";
-            infoTTSManager.speak(text, leadGenTTSBtn);
-        });
-    }
+    const setupTTSButton = (buttonId, text) => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                ttsManager.speak(text, button);
+            });
+        }
+    };
 
-    const contentStudioTTSBtn = document.getElementById('content-studio-tts-btn');
-    if (contentStudioTTSBtn) {
-        contentStudioTTSBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const text = "Este es tu estudio creativo. Su propósito es ahorrarte horas de trabajo y eliminar el bloqueo del escritor. La estrategia es simple: generar contenido de alta calidad, tanto textos como imágenes, que resuenen con tu audiencia y estén alineados a los servicios que ofreces. La visión es convertirte en una máquina de contenido, publicando de manera consistente y profesional para construir tu marca y atraer clientes sin esfuerzo.";
-            infoTTSManager.speak(text, contentStudioTTSBtn);
-        });
-    }
-
-    const tieredBuilderTTSBtn = document.getElementById('tiered-builder-tts-btn');
-    if (tieredBuilderTTSBtn) {
-        tieredBuilderTTSBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const text = "Esta es una de las técnicas de venta más poderosas. En lugar de dar un solo precio, presentas tres opciones: una Básica, una Recomendada y una Completa. Esto aprovecha la psicología de 'anclaje de precios' y le da al cliente una sensación de control. La mayoría de las veces, elegirán la opción del medio, la que tú consideras ideal, aumentando así significativamente el valor promedio de tus tratos y tu tasa de cierre.";
-            infoTTSManager.speak(text, tieredBuilderTTSBtn);
-        });
-    }
-
-    const salesChannelsTTSBtn = document.getElementById('sales-channels-tts-btn');
-    if (salesChannelsTTSBtn) {
-        salesChannelsTTSBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const text = "Esta sección es tu mapa del tesoro. No basta con tener la mejor propuesta, hay que saber dónde presentarla. Aquí te damos una lista curada de plataformas y comunidades donde tus clientes potenciales ya están buscando soluciones. La estrategia es simple: ve a donde está la conversación, aporta valor y presenta tu solución en el momento justo. Esto acelera tu ciclo de ventas y te conecta con oportunidades reales.";
-            infoTTSManager.speak(text, salesChannelsTTSBtn);
-        });
-    }
+    setupTTSButton('lead-gen-tts-btn', "Esta herramienta es tu estratega de marketing personal. Su único fin es darte un plan de acción de 7 días, claro y accionable, para que puedas captar a tu primer cliente de alto valor. La visión es simple: dejar de esperar a que lleguen los clientes y empezar a buscarlos activamente con una estrategia profesional. Usa esta guía para posicionarte como un experto en tu nicho y llenar tu pipeline de ventas.");
+    setupTTSButton('content-studio-tts-btn', "Este es tu estudio creativo. Su propósito es ahorrarte horas de trabajo y eliminar el bloqueo del escritor. La estrategia es simple: generar contenido de alta calidad, tanto textos como imágenes, que resuenen con tu audiencia y estén alineados a los servicios que ofreces. La visión es convertirte en una máquina de contenido, publicando de manera consistente y profesional para construir tu marca y atraer clientes sin esfuerzo.");
+    setupTTSButton('tiered-builder-tts-btn', "Esta es una de las técnicas de venta más poderosas. En lugar de dar un solo precio, presentas tres opciones: una Básica, una Recomendada y una Completa. Esto aprovecha la psicología de 'anclaje de precios' y le da al cliente una sensación de control. La mayoría de las veces, elegirán la opción del medio, la que tú consideras ideal, aumentando así significativamente el valor promedio de tus tratos y tu tasa de cierre.");
+    setupTTSButton('sales-channels-tts-btn', "Esta sección es tu mapa del tesoro. No basta con tener la mejor propuesta, hay que saber dónde presentarla. Aquí te damos una lista curada de plataformas y comunidades donde tus clientes potenciales ya están buscando soluciones. La estrategia es simple: ve a donde está la conversación, aporta valor y presenta tu solución en el momento justo. Esto acelera tu ciclo de ventas y te conecta con oportunidades reales.");
 
     // --- NEW: Sales Channels Tab Logic ---
     const salesChannelsTabsContainer = document.getElementById('sales-channels-tabs');
