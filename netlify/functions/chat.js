@@ -380,7 +380,7 @@ ${catalogString}
             }
         } else {
             // Non-strict modes: single call
-            const result = await chat.sendMessage(finalUserMessage);
+            const result = await chat.sendMessage({ role: "user", parts: [{ text: finalUserMessage }] });
             if (!result || !result.response || typeof result.response.text !== 'function') {
                 throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
             }
