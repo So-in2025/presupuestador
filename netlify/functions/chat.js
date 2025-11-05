@@ -1,20 +1,19 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v54 - Reverted to ORIGINAL stable startChat logic for gemini-2.5-flash compatibility
+ * Lógica de Intención: v60 - REVERTED to pre-refactor structure. Monolithic, but robust.
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
-// --- CONSTANTS & CONFIGURATION ---
-const TEXT_MODEL_NAME = 'gemini-2.5-flash'; // Correct model as requested by user.
+// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
+exports.handler = async (event) => {
+    // --- PROMPT TEMPLATES (All in one place for stability, pre-refactor style) ---
+    const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
 
-// --- PROMPT TEMPLATES ---
-const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
-
-const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
-
-const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services. Your task is to write a short, friendly, and value-driven outreach email based on specific intelligence gathered by an AI radar.
+    const OBJECTION_INSTRUCTION = `You are Zen Coach, an expert sales coach. Your mission is to help the reseller overcome their clients' objections. Provide a structured, professional, and empathetic response, focusing on VALUE and BENEFITS, not technical features. Translate "cost" objections into conversations about "investment" and "return."`;
+    
+    const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter specializing in high-converting cold outreach for web development services. Your task is to write a short, friendly, and value-driven outreach email based on specific intelligence gathered by an AI radar.
 
 **INTELLIGENCE BRIEFING:**
 - **Recipient:** [BUSINESS_NAME]
@@ -34,7 +33,7 @@ const OUTREACH_GENERATOR_INSTRUCTION = `You are a professional sales copywriter 
 5.  **Output:** Your entire response MUST be ONLY the generated email text. Do not add any greetings, explanations, or titles like "Asunto:" or "Cuerpo:". Just the raw text of the email, ready to be copied.`;
 
 
-const LEAD_GEN_PLAN_INSTRUCTION = `You are a "Marketing & Sales Strategist" AI. Your one and only mission is to empower a web development affiliate/reseller to get their first high-quality client within 7 days. You will create a detailed, actionable 7-day plan.
+    const LEAD_GEN_PLAN_INSTRUCTION = `You are a "Marketing & Sales Strategist" AI. Your one and only mission is to empower a web development affiliate/reseller to get their first high-quality client within 7 days. You will create a detailed, actionable 7-day plan.
 
 **CONTEXT:**
 - The affiliate will promote a specific service: [SERVICE TO PROMOTE]
@@ -81,53 +80,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
 }
 `;
 
-const ENTRENAMIENTO_INSTRUCTION_TEMPLATE = (catalogData) => `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
-
-**Your Core Directives:**
-1.  **Be an Expert:** When asked about a service, explain what it is, who it's for, and most importantly, what the key selling points (benefits) are.
-2.  **Stay Focused:** Do NOT invent services or features. If a service is not in the catalog, state that clearly and professionally.
-3.  **Think Like a Salesperson:** Frame your answers to help the affiliate sell. Instead of just listing features, explain the value they provide to the end client. For example, instead of "it has SEO," say "it helps the client get found on Google, attracting more customers."
-4.  **Be Clear and Concise:** Provide answers in a structured way, using bullet points or short paragraphs for readability.
-
---- SO->IN SERVICE CATALOG (YOUR KNOWLEDGE BASE) ---
-${catalogData}
---- END OF CATALOG ---
-
-Now, answer the affiliate's question based on this information.`;
-
-const BUILDER_INSTRUCTION_TEMPLATE = (serviceList, planList, contextText, customTaskList) =>
-`Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
-
---- AVAILABLE CATALOG ---
-${serviceList}
-${planList}
---- CUSTOM TASKS (Use these for requests not in the catalog) ---
-${customTaskList}
-
-Your response MUST be a single, valid JSON object. Do NOT add any text, markdown like \`\`\`json, or any other characters before or after the JSON object.
-
-**JSON STRUCTURE:**
-{ 
-  "introduction": "...", 
-  "services": [{ "id": "...", "name": "...", "priority": "...", "is_new": boolean (optional) }], 
-  "closing": "...", 
-  "client_questions": ["..."], 
-  "sales_pitch": "..." 
-}
-
-**CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
-1.  For each service object, you MUST include a "priority" key.
-2.  The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
-3.  **NEW TASK: CUSTOM SERVICE SUGGESTIONS:**
-    - If the user requests a specific feature NOT in the catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
-    - First, ESTIMATE its complexity: 'small', 'medium', or 'large'.
-    - Second, assign the corresponding ID from the 'CUSTOM TASKS' list ('custom-s', 'custom-m', 'custom-l').
-    - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
-    - Fourth, you MUST include the property '"is_new": true'.
-    - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
-4. Your entire response must be ONLY the raw JSON.`;
-
-const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services. Your goal is to create posts that not only engage but are optimized for maximum discoverability and lead generation.
+    const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite SEO and social media expert specialized in generating high-conversion content for web development services. Your goal is to create posts that not only engage but are optimized for maximum discoverability and lead generation.
 
 **CRITICAL METHODOLOGY (Follow these 5 steps meticulously):**
 
@@ -156,7 +109,7 @@ const CONTENT_CREATOR_INSTRUCTION = `You are "Zen Content Strategist", an elite 
 
 **FINAL OUTPUT:** The entire response should be the generated post, ready to be copied and pasted.`;
 
-const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and AI Prompt Engineer. Your mission is to transform a social media post's concept into a masterpiece-level, hyper-detailed prompt for an advanced image generation AI like Midjourney or DALL-E 3. You must be extremely specific and artistic.
+    const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and AI Prompt Engineer. Your mission is to transform a social media post's concept into a masterpiece-level, hyper-detailed prompt for an advanced image generation AI like Midjourney or DALL-E 3. You must be extremely specific and artistic.
 
 **YOUR METHODOLOGY (Follow these steps rigorously):**
 
@@ -178,8 +131,8 @@ const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and
 
 5.  **Final Assembly:**
     *   Combine all these elements into a single, cohesive paragraph.
-    *   The prompt MUST be in **English**.
-    *   Your entire response MUST be **ONLY the prompt text**. No explanations, no "Here is your prompt:", just the raw text.
+    - **The prompt MUST be in **English**.
+    - **Your entire response MUST be **ONLY the prompt text**. No explanations, no "Here is your prompt:", just the raw text.
 
 **Social Media Post Text to Analyze:**
 ---
@@ -187,54 +140,6 @@ const IMAGE_PROMPT_CREATOR_INSTRUCTION = `You are a world-class Art Director and
 ---
 `;
 
-// --- PROMPT ENGINEERING HELPERS ---
-function getSystemInstructionForMode(mode, context = {}) {
-    switch (mode) {
-        case 'analyze': return ANALYZE_INSTRUCTION;
-        case 'objection': return OBJECTION_INSTRUCTION;
-        case 'content-creator': return CONTENT_CREATOR_INSTRUCTION;
-        case 'image-prompt-creator': return IMAGE_PROMPT_CREATOR_INSTRUCTION;
-        case 'lead-gen-plan': return LEAD_GEN_PLAN_INSTRUCTION;
-        case 'outreach-generator': return OUTREACH_GENERATOR_INSTRUCTION;
-        case 'entrenamiento': {
-            let catalogString = '';
-            Object.values(pricingData.allServices).forEach(category => {
-                catalogString += `\nCATEGORY: ${category.name}\n`;
-                category.items.forEach(item => {
-                    catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
-                    if(item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
-                });
-            });
-            pricingData.monthlyPlans.forEach(plan => {
-                 catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
-            });
-            return ENTRENAMIENTO_INSTRUCTION_TEMPLATE(catalogString);
-        }
-        case 'builder':
-        default:
-            const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
-            const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
-            const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
-            const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
-                ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
-                : '';
-            return BUILDER_INSTRUCTION_TEMPLATE(serviceList, planList, contextText, customTaskList);
-    }
-}
-
-
-// --- INTELLIGENCE HELPERS ---
-function createErrorJsonResponse(introduction, closing) {
-    return JSON.stringify({
-        introduction, services: [], closing,
-        client_questions: ["¿Podrías reformular tu solicitud para ser más específico?"],
-        sales_pitch: "El asistente no pudo generar una recomendación con la información actual."
-    });
-}
-
-
-// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
-exports.handler = async (event) => {
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
     if (!pricingData) return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
 
@@ -249,41 +154,149 @@ exports.handler = async (event) => {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: TEXT_MODEL_NAME });
-
-        const generationConfig = {
-            temperature: 0.2,
-            topK: 1,
-            topP: 1,
-            maxOutputTokens: 2048,
-        };
         
-        const systemInstruction = getSystemInstructionForMode(mode, context);
+        let model;
+        let generationConfig;
+        let systemInstruction;
+        let finalUserMessage = userMessage;
+
+        switch (mode) {
+            case 'builder': {
+                 model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+                 generationConfig = {
+                    temperature: 0.2,
+                    topK: 1,
+                    topP: 1,
+                    maxOutputTokens: 2048,
+                };
+                const serviceList = Object.values(pricingData.allServices).filter(cat => cat.name !== "H. Tareas a Medida (Sugeridas por IA)").flatMap(cat => cat.items).map(s => `ID: ${s.id} | Name: ${s.name}`).join('\n');
+                const planList = pricingData.monthlyPlans.map(p => `ID: ${p.id} | Name: ${p.name}`).join('\n');
+                const customTaskList = (pricingData.allServices.customTasks?.items || []).map(s => `ID: ${s.id} | Name: ${s.name} (This is a bucket for custom tasks of ${s.id.split('-')[1] === 's' ? 'small' : s.id.split('-')[1] === 'm' ? 'medium' : 'large'} complexity. Assign this ID and provide a descriptive name.)`).join('\n');
+                const contextText = (context.selectedServicesContext && context.selectedServicesContext.length > 0)
+                    ? `CONTEXT: The reseller has already selected: ${context.selectedServicesContext.map(s => `"${s.name}"`).join(', ')}. Avoid suggesting these items again and base your recommendations on complementing this selection.`
+                    : '';
+                systemInstruction = `Act as a JSON API. Analyze the user's request for a web project and build the perfect solution using ONLY the provided catalog. You MUST proactively identify opportunities for 'upsell' or 'cross-sell'. ${contextText}
+
+--- AVAILABLE CATALOG ---
+${serviceList}
+${planList}
+--- CUSTOM TASKS (Use these for requests not in the catalog) ---
+${customTaskList}
+
+Your response MUST be a single, valid JSON object. Do NOT add any text, markdown, or any other characters before or after the JSON object.
+
+**THE JSON STRUCTURE MUST BE:**
+{
+  "introduction": "A brief, friendly opening.",
+  "services": [
+    {
+      "id": "p2",
+      "name": "Sitio Web Presencial",
+      "priority": "essential",
+      "is_new": false
+    },
+    {
+      "id": "custom-m",
+      "name": "Integración con Calendly",
+      "priority": "recommended",
+      "is_new": true
+    }
+  ],
+  "closing": "A concise closing statement.",
+  "client_questions": [
+    "A relevant question to ask the client.",
+    "Another relevant question."
+  ],
+  "sales_pitch": "A short, powerful sales pitch for the proposed solution."
+}
+
+**CRITICAL INSTRUCTIONS FOR 'services' ARRAY:**
+1. For each service object, you MUST include a "priority" key.
+2. The value for "priority" MUST be one of these three strings: "essential", "recommended", or "optional".
+3. **NEW TASK: CUSTOM SERVICE SUGGESTIONS:**
+   - If the user requests a specific feature NOT in the catalog (e.g., 'integration with Calendly', 'real-time chat'), you MUST handle it.
+   - First, ESTIMATE its complexity: 'small', 'medium', or 'large'.
+   - Second, assign the corresponding ID from the 'CUSTOM TASKS' list ('custom-s', 'custom-m', 'custom-l').
+   - Third, you MUST provide a descriptive 'name' for the task (e.g., "Integración con Calendly").
+   - Fourth, you MUST include the property '"is_new": true'.
+   - Example: For a Calendly integration, you estimate it's a medium task. Your service object MUST be: { "id": "custom-m", "name": "Integración con Calendly", "priority": "recommended", "is_new": true }
+4. Your entire response must be ONLY the raw JSON.`;
+                break;
+            }
+            default: {
+                 model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+                 generationConfig = {
+                    temperature: 0.2,
+                    topK: 1,
+                    topP: 1,
+                    maxOutputTokens: 2048,
+                };
+                // Fallback to the original, robust logic for other modes
+                switch (mode) {
+                    case 'analyze':
+                        systemInstruction = ANALYZE_INSTRUCTION;
+                        break;
+                    case 'objection':
+                        systemInstruction = OBJECTION_INSTRUCTION;
+                        break;
+                    case 'content-creator':
+                        systemInstruction = CONTENT_CREATOR_INSTRUCTION;
+                        const { service: cc_service, cta, platform, tone } = context;
+                        finalUserMessage = `Service to promote: "${cc_service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
+                        break;
+                    case 'image-prompt-creator':
+                        systemInstruction = IMAGE_PROMPT_CREATOR_INSTRUCTION;
+                        const { postText } = context;
+                        finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
+                        break;
+                    case 'lead-gen-plan':
+                        systemInstruction = LEAD_GEN_PLAN_INSTRUCTION;
+                        const { service: lgp_service, audience } = context;
+                        finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${lgp_service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
+                        break;
+                    case 'outreach-generator':
+                        systemInstruction = OUTREACH_GENERATOR_INSTRUCTION;
+                        const { businessName, painPointsDetails, marketingIntel } = context;
+                        finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
+                        break;
+                    case 'entrenamiento':
+                        let catalogString = '';
+                        Object.values(pricingData.allServices).forEach(category => {
+                            catalogString += `\nCATEGORY: ${category.name}\n`;
+                            category.items.forEach(item => {
+                                catalogString += `- Service: ${item.name}\n  - Description: ${item.description}\n  - Cost: $${item.price} USD\n`;
+                                if(item.pointCost) catalogString += `  - Point Cost for Monthly Plans: ${item.pointCost}\n`;
+                            });
+                        });
+                        pricingData.monthlyPlans.forEach(plan => {
+                             catalogString += `\nPLAN: ${plan.name}\n  - Description: ${plan.description}\n  - Monthly Cost: $${plan.price} USD\n  - Included Development Points: ${plan.points}\n`;
+                        });
+                        systemInstruction = `You are "SO->IN Product Expert", a specialized AI assistant. Your sole purpose is to train and empower affiliates by providing detailed, sales-oriented information about the services offered. You MUST base your answers exclusively on the provided service catalog.
+
+**Your Core Directives:**
+1.  **Be an Expert:** When asked about a service, explain what it is, who it's for, and most importantly, what the key selling points (benefits) are.
+2.  **Stay Focused:** Do NOT invent services or features. If a service is not in the catalog, state that clearly and professionally.
+3.  **Think Like a Salesperson:** Frame your answers to help the affiliate sell. Instead of just listing features, explain the value they provide to the end client. For example, instead of "it has SEO," say "it helps the client get found on Google, attracting more customers."
+4.  **Be Clear and Concise:** Provide answers in a structured way, using bullet points or short paragraphs for readability.
+
+--- SO->IN SERVICE CATALOG (YOUR KNOWLEDGE BASE) ---
+${catalogString}
+--- END OF CATALOG ---
+
+Now, answer the affiliate's question based on this information.`;
+                        break;
+                }
+            }
+        }
 
         const chat = model.startChat({
             generationConfig,
             history: [
                 { role: "user", parts: [{ text: systemInstruction }] },
-                { role: "model", parts: [{ text: "Understood. I will follow all directives." }] },
+                { role: "model", parts: [{ text: "Understood. I will follow all directives and provide the response in the required format." }] },
                 ...(historyFromClient || [])
             ]
         });
-
-        let finalUserMessage = userMessage;
-
-        if (mode === 'content-creator') {
-            const { service, cta, platform, tone } = context;
-            finalUserMessage = `Service to promote: "${service}". Platform: ${platform}. Tone: ${tone}. Custom CTA: "${cta || 'None provided'}".`;
-        } else if (mode === 'lead-gen-plan') {
-            const { service, audience } = context;
-            finalUserMessage = `Generate the plan. The service to promote is "[SERVICE TO PROMOTE]: ${service}". The target audience is "[TARGET AUDIENCE]: ${audience}".`;
-        } else if (mode === 'image-prompt-creator') {
-            const { postText } = context;
-            finalUserMessage = `Generate the image prompt. The social media post to analyze is: "[SOCIAL MEDIA POST]: ${postText}"`;
-        } else if (mode === 'outreach-generator') {
-            const { businessName, painPointsDetails, marketingIntel } = context;
-            finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
-        }
 
         const result = await chat.sendMessage(finalUserMessage);
         
@@ -292,34 +305,33 @@ exports.handler = async (event) => {
         }
         
         let responseText = result.response.text();
-        
-        // --- ULTRA-ROBUST JSON EXTRACTOR ---
+        let responsePayload = responseText;
+
         if (mode === 'builder' || mode === 'lead-gen-plan') {
-            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-            if (jsonMatch && jsonMatch[0]) {
-                responseText = jsonMatch[0];
-                try {
-                    // Final validation check
-                    JSON.parse(responseText);
-                } catch (e) {
-                    console.error("AI response contained a JSON-like block that was invalid.", e);
-                    throw new Error("La IA devolvió un JSON malformado.");
+             try {
+                // Robust JSON extractor: finds a JSON block even if it's wrapped in markdown or has leading/trailing text.
+                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|({[\s\S]*})/);
+                if (!jsonMatch) {
+                    throw new Error("No se encontró un bloque JSON en la respuesta de la IA.");
                 }
-            } else {
-                 console.error("No valid JSON object found in AI response:", responseText);
-                 throw new Error("La IA no devolvió un JSON en el formato esperado.");
+                const jsonString = jsonMatch[1] || jsonMatch[2];
+                JSON.parse(jsonString); // This is just to validate. If it fails, it throws.
+                responsePayload = jsonString; // Use the cleaned, valid JSON string for the response.
+            } catch (e) {
+                console.error("AI response contained a JSON-like block that was invalid.", e);
+                throw new Error(`La IA devolvió un JSON malformado.`);
             }
         }
-
+        
         const finalHistoryForClient = [
             ...(historyFromClient || []),
             { role: 'user', parts: [{ text: userMessage }] }, // Use original user message for history
-            { role: 'model', parts: [{ text: responseText }] }
+            { role: 'model', parts: [{ text: responsePayload }] }
         ];
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ response: responseText, history: finalHistoryForClient })
+            body: JSON.stringify({ response: responsePayload, history: finalHistoryForClient })
         };
 
     } catch (err) {
@@ -340,11 +352,19 @@ exports.handler = async (event) => {
             userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
         } else if (errorDetails.includes('400 Bad Request') || errorDetails.includes('is not found for API version')) {
              userFriendlyMessage = "la solicitud fue mal formada. Esto puede ser un problema con la API Key o la configuración del proyecto. Asegúrate que la API de Gemini está habilitada en tu proyecto de Google Cloud."
+        } else if (errorDetails.includes('JSON malformado')) {
+            userFriendlyMessage = "la IA devolvió una respuesta con un formato incorrecto que no se pudo procesar."
         }
 
         const finalMessage = `Hubo un problema con la IA. ${userFriendlyMessage}`;
         const errorBody = (mode === 'builder' || mode === 'lead-gen-plan')
-            ? createErrorJsonResponse("Hubo un error de conexión con la IA.", `Detalles: ${userFriendlyMessage}`)
+            ? JSON.stringify({
+                introduction: "Lo siento, hubo un error de conexión con el asistente.",
+                services: [],
+                closing: `Error: ${userFriendlyMessage}`,
+                client_questions: ["¿Podrías reformular tu solicitud para ser más específico?"],
+                sales_pitch: "El asistente no pudo generar una recomendación con la información actual."
+            })
             : finalMessage;
 
         return {

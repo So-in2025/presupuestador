@@ -1,6 +1,6 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v5.2 - Correct Model
+ * Backend para Radar de Oportunidades v6.0 - Robust JSON Schema
  * Uses Gemini to find real businesses AND perform a technical analysis for each.
  * Reverted to use the stable @google/generative-ai SDK.
  */
@@ -12,22 +12,34 @@ const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
-    const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. Your entire response MUST be a single, valid JSON array. Do not include any text, explanations, or markdown fences like \`\`\`json. The JSON array must contain objects, and each object must have exactly these three string properties: "name", "address", and "website".
-
-Example of a perfect response for businessType="cafes" and location="Paris, France":
-[
-  {"name": "Café de Flore", "address": "172 Boulevard Saint-Germain, 75006 Paris, France", "website": "https://cafedeflore.fr/"},
-  {"name": "Les Deux Magots", "address": "6 Place Saint-Germain des Prés, 75006 Paris, France", "website": "https://www.lesdeuxmagots.fr/"}
-]
+    const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. You must strictly follow the provided JSON schema. If no businesses are found, return an empty array [].
 
 Now, process this request:
 Business Type: "${businessType}"
 Location: "${location}"`;
 
+    const generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    name: { type: "STRING" },
+                    address: { type: "STRING" },
+                    website: { type: "STRING" }
+                },
+                required: ["name", "address", "website"]
+            }
+        }
+    };
+
     try {
-        const result = await model.generateContent(prompt);
-        const jsonText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const businesses = JSON.parse(jsonText);
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig,
+        });
+        const businesses = JSON.parse(result.response.text());
         return Array.isArray(businesses) ? businesses : [];
     } catch (error) {
         console.error("Gemini API call failed (getRealBusinessesFromAI):", error.message);
@@ -39,40 +51,35 @@ const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `
-    You are an expert web analysis API. You will receive a business name and website. Your task is to provide a realistic estimation of its technical and marketing readiness.
-    Your entire response MUST be a single, valid JSON object. Do not add any text, explanations, or markdown fences like \`\`\`json.
-    The JSON object must have exactly these properties and value types:
-    - "performanceScore": an integer between 20 and 95.
-    - "mobileScore": an integer between 30 and 100.
-    - "seoScore": an integer between 40 and 90.
-    - "hasSSL": a boolean (true or false).
-    - "techStack": a string (e.g., "WordPress", "Shopify", "React", "Wix", "HTML/CSS Básico").
-    - "hasAnalytics": a boolean (true or false).
-    - "hasPixel": a boolean (true or false).
+    const prompt = `You are an expert web analysis API. You will receive a business name and website. Your task is to provide a realistic estimation of its technical and marketing readiness. You must strictly follow the provided JSON schema.
 
-    Example of a perfect response:
-    {
-      "performanceScore": 45,
-      "mobileScore": 92,
-      "seoScore": 78,
-      "hasSSL": true,
-      "techStack": "WordPress",
-      "hasAnalytics": true,
-      "hasPixel": false
-    }
-
-    Now, analyze this business:
-    Business Name: "${business.name}"
-    Website URL: "${business.website}"`;
+Analyze this business:
+Business Name: "${business.name}"
+Website URL: "${business.website}"`;
     
-    try {
-        const result = await model.generateContent(prompt);
-        const jsonText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const analysis = JSON.parse(jsonText);
-        if (typeof analysis.performanceScore !== 'number' || typeof analysis.hasSSL !== 'boolean') {
-             throw new Error("Invalid JSON structure from analysis AI.");
+     const generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: "OBJECT",
+            properties: {
+                performanceScore: { type: "INTEGER" },
+                mobileScore: { type: "INTEGER" },
+                seoScore: { type: "INTEGER" },
+                hasSSL: { type: "BOOLEAN" },
+                techStack: { type: "STRING" },
+                hasAnalytics: { type: "BOOLEAN" },
+                hasPixel: { type: "BOOLEAN" }
+            },
+            required: ["performanceScore", "mobileScore", "seoScore", "hasSSL", "techStack", "hasAnalytics", "hasPixel"]
         }
+    };
+
+    try {
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig
+        });
+        const analysis = JSON.parse(result.response.text());
         return analysis;
     } catch (error) {
         console.error(`Failed to get technical analysis for ${business.name}:`, error);

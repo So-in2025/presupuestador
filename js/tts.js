@@ -76,6 +76,7 @@ class TTSManager {
         
         this.currentButton = button;
         this.isPlaying = true;
+        this.wasManuallyStopped = false; // Reset flag
         
         if (this.currentButton) {
             const textSpan = this.currentButton.querySelector('.tts-button-text');
@@ -89,27 +90,24 @@ class TTSManager {
             this.currentUtterance = null;
         };
 
-        this.currentUtterance.onerror = async (event) => {
-            // Si la detención fue manual, el flag estará activado.
-            // Lo reseteamos y salimos sin mostrar ningún error.
-            if (this.wasManuallyStopped) {
-                this.wasManuallyStopped = false;
-                return;
+        this.currentUtterance.onerror = (event) => {
+            // Silencia los errores de cancelación, que son normales cuando el usuario detiene el audio.
+            if (event.error === 'interrupted' || event.error === 'canceled') {
+                // No hacer nada, es una cancelación intencional.
+            } else {
+                console.error('Error en la síntesis de voz:', event.error);
             }
-            
-            console.error('Error en la síntesis de voz:', event.error);
             this.isPlaying = false;
             this._resetUI();
-            // Ya no mostramos el cartel rojo por pedido del usuario.
         };
 
         window.speechSynthesis.speak(this.currentUtterance);
     }
     
     stop() {
-        this.wasManuallyStopped = true; // Activamos el flag antes de cancelar
-        this.ttsQueue = [];
-        if (window.speechSynthesis && (this.isPlaying || window.speechSynthesis.pending)) {
+        this.wasManuallyStopped = true;
+        this.ttsQueue = []; // Limpiar la cola de reproducción
+        if (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
             window.speechSynthesis.cancel(); 
         }
         this.isPlaying = false;
@@ -122,6 +120,7 @@ class TTSManager {
             return;
         }
         this.stop();
+        this.wasManuallyStopped = false; // Reset flag
 
         this.queueButton = button;
         this.ttsQueue = Array.from(elements).map(element => ({
@@ -156,18 +155,18 @@ class TTSManager {
         this.isPlaying = true;
         
         this.currentUtterance.onend = () => {
-            this._playNextInQueue();
+            if (!this.wasManuallyStopped) { // Only continue if not stopped
+                this._playNextInQueue();
+            }
         };
         
         this.currentUtterance.onerror = (e) => {
-             if (this.wasManuallyStopped) {
-                this.wasManuallyStopped = false;
-                this.isPlaying = false;
-                this._resetUI();
-                return;
+             if (e.error === 'interrupted' || e.error === 'canceled') {
+                // No hacer nada si fue cancelado
+            } else {
+                console.error("Error en cola TTS:", e.error);
+                if (!this.wasManuallyStopped) this._playNextInQueue(); // Try to continue
             }
-            console.error("Error en cola TTS:", e.error);
-            this._playNextInQueue(); // Saltar al siguiente
         };
 
         window.speechSynthesis.speak(this.currentUtterance);
