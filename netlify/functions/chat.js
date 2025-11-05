@@ -1,13 +1,13 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v52 - Ultra-Robust JSON Extractor
+ * Lógica de Intención: v53 - Reverted to stable startChat logic
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
 
 // --- CONSTANTS & CONFIGURATION ---
-const TEXT_MODEL_NAME = 'gemini-2.5-flash'; // Correct model requested by user.
+const TEXT_MODEL_NAME = 'gemini-pro'; // Stable model compatible with the older SDK version.
 
 // --- PROMPT TEMPLATES ---
 const ANALYZE_INSTRUCTION = `You are an expert business analyst. Your only task is to read the conversation provided by the reseller and extract a concise, clear list of 3 to 5 key requirements or needs of the end customer. Format your response as a bulleted list, using '-' for each point. Do not greet, do not say goodbye, just return the list.`;
@@ -233,7 +233,7 @@ function createErrorJsonResponse(introduction, closing) {
 }
 
 
-// --- NETLIFY SERVERLESS FUNCTION HANDLER (REVERTED TO STABLE STARTCHAT LOGIC) ---
+// --- NETLIFY SERVERLESS FUNCTION HANDLER ---
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
     if (!pricingData) return { statusCode: 500, body: JSON.stringify({ error: true, message: 'Internal Server Error: Pricing configuration is not available.' }) };
@@ -338,7 +338,7 @@ exports.handler = async (event) => {
             userFriendlyMessage = "el servicio de IA está experimentando problemas temporales. Inténtalo de nuevo más tarde.";
         } else if (errorDetails.includes('Respuesta inválida')) {
             userFriendlyMessage = "la IA no devolvió una respuesta válida. Inténtalo de nuevo."
-        } else if (errorDetails.includes('400 Bad Request')) {
+        } else if (errorDetails.includes('400 Bad Request') || errorDetails.includes('is not found for API version')) {
              userFriendlyMessage = "la solicitud fue mal formada. Esto puede ser un problema con la API Key o la configuración del proyecto. Asegúrate que la API de Gemini está habilitada en tu proyecto de Google Cloud."
         }
 

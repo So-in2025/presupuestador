@@ -14,6 +14,7 @@ class TTSManager {
         this.ttsQueue = [];
         this.currentHighlightElement = null;
         this.queueButton = null;
+        this.wasManuallyStopped = false; // Flag para controlar la detención manual
         this.init();
     }
 
@@ -89,24 +90,26 @@ class TTSManager {
         };
 
         this.currentUtterance.onerror = async (event) => {
-            // Si la reproducción fue cancelada por el usuario, la función stop() ya se encargó de todo.
-            // Simplemente evitamos mostrar un mensaje de error.
-            if (event.error === 'canceled') {
+            // Si la detención fue manual, el flag estará activado.
+            // Lo reseteamos y salimos sin mostrar ningún error.
+            if (this.wasManuallyStopped) {
+                this.wasManuallyStopped = false;
                 return;
             }
             
-            // Para cualquier otro error, lo mostramos.
             console.error('Error en la síntesis de voz:', event.error);
             this.isPlaying = false;
             this._resetUI();
-            const { showNotification } = await import('./modals.js');
-            showNotification('error', 'Error de Voz', `No se pudo reproducir el audio: ${event.error}`);
+            // Ya no mostramos el cartel rojo por pedido del usuario.
+            // const { showNotification } = await import('./modals.js');
+            // showNotification('error', 'Error de Voz', `No se pudo reproducir el audio: ${event.error}`);
         };
 
         window.speechSynthesis.speak(this.currentUtterance);
     }
     
     stop() {
+        this.wasManuallyStopped = true; // Activamos el flag antes de cancelar
         this.ttsQueue = [];
         if (window.speechSynthesis && (this.isPlaying || window.speechSynthesis.pending)) {
             window.speechSynthesis.cancel(); 
@@ -159,7 +162,8 @@ class TTSManager {
         };
         
         this.currentUtterance.onerror = (e) => {
-             if (e.error === 'canceled') {
+             if (this.wasManuallyStopped) {
+                this.wasManuallyStopped = false;
                 this.isPlaying = false;
                 this._resetUI();
                 return;
