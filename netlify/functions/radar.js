@@ -1,6 +1,6 @@
 // /netlify/functions/radar.js
 /**
- * Backend para Radar de Oportunidades v5.0 - True AI Analysis
+ * Backend para Radar de Oportunidades v5.1 - Stricter Prompts
  * Uses Gemini to find real businesses AND perform a technical analysis for each.
  * Reverted to use the stable @google/generative-ai SDK.
  */
@@ -12,7 +12,17 @@ const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
-    const prompt = `Find 3 to 4 real businesses that match the type "${businessType}" in the location "${location}". For each business, provide its name, a plausible address within the location, and its official website URL. Prioritize businesses that likely have a website. Your response must be a valid JSON array of objects, with each object having "name", "address", and "website" properties. Do not include any other text or markdown.`;
+    const prompt = `Your task is to act as a data API. You will receive a business type and a location. You must find 3 to 4 real businesses matching these criteria. Your entire response MUST be a single, valid JSON array. Do not include any text, explanations, or markdown fences like \`\`\`json. The JSON array must contain objects, and each object must have exactly these three string properties: "name", "address", and "website".
+
+Example of a perfect response for businessType="cafes" and location="Paris, France":
+[
+  {"name": "Café de Flore", "address": "172 Boulevard Saint-Germain, 75006 Paris, France", "website": "https://cafedeflore.fr/"},
+  {"name": "Les Deux Magots", "address": "6 Place Saint-Germain des Prés, 75006 Paris, France", "website": "https://www.lesdeuxmagots.fr/"}
+]
+
+Now, process this request:
+Business Type: "${businessType}"
+Location: "${location}"`;
 
     try {
         const result = await model.generateContent(prompt);
@@ -20,8 +30,8 @@ const getRealBusinessesFromAI = async (businessType, location, apiKey) => {
         const businesses = JSON.parse(jsonText);
         return Array.isArray(businesses) ? businesses : [];
     } catch (error) {
-        console.error("Gemini API call failed (getRealBusinessesFromAI):", error);
-        return []; // Return empty array on failure
+        console.error("Gemini API call failed (getRealBusinessesFromAI):", error.message);
+        throw new Error(`La IA no pudo encontrar negocios. Razón: ${error.message}`);
     }
 };
 
@@ -30,18 +40,31 @@ const getTechnicalAnalysisForBusiness = async (business, apiKey) => {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const prompt = `
-        Act as a web performance and SEO expert. Analyze the business named "${business.name}" with website URL "${business.website}". 
-        Based on the business type and a quick assessment of its likely online presence, provide a realistic estimation of its technical and marketing readiness.
-        Your response MUST be a single, valid JSON object with the following properties and value types:
-        - "performanceScore": an integer between 20 and 95.
-        - "mobileScore": an integer between 30 and 100.
-        - "seoScore": an integer between 40 and 90.
-        - "hasSSL": a boolean.
-        - "techStack": a string (e.g., "WordPress", "Shopify", "React", "Wix", "HTML/CSS Básico").
-        - "hasAnalytics": a boolean.
-        - "hasPixel": a boolean.
-        Do not include any other text or markdown.
-    `;
+    You are an expert web analysis API. You will receive a business name and website. Your task is to provide a realistic estimation of its technical and marketing readiness.
+    Your entire response MUST be a single, valid JSON object. Do not add any text, explanations, or markdown fences like \`\`\`json.
+    The JSON object must have exactly these properties and value types:
+    - "performanceScore": an integer between 20 and 95.
+    - "mobileScore": an integer between 30 and 100.
+    - "seoScore": an integer between 40 and 90.
+    - "hasSSL": a boolean (true or false).
+    - "techStack": a string (e.g., "WordPress", "Shopify", "React", "Wix", "HTML/CSS Básico").
+    - "hasAnalytics": a boolean (true or false).
+    - "hasPixel": a boolean (true or false).
+
+    Example of a perfect response:
+    {
+      "performanceScore": 45,
+      "mobileScore": 92,
+      "seoScore": 78,
+      "hasSSL": true,
+      "techStack": "WordPress",
+      "hasAnalytics": true,
+      "hasPixel": false
+    }
+
+    Now, analyze this business:
+    Business Name: "${business.name}"
+    Website URL: "${business.website}"`;
     
     try {
         const result = await model.generateContent(prompt);

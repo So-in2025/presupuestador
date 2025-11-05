@@ -325,7 +325,7 @@ export function initializeBranding() {
     });
 }
 
-// --- TOUR GUIADO (REFACTORIZADO) ---
+// --- TOUR GUIADO (RECONSTRUIDO CON INTERSECTIONOBSERVER) ---
 const tourSteps = [
     { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
     { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
@@ -336,183 +336,158 @@ const tourSteps = [
     { el: '#tieredBuilderBtn', text: 'Consejo Pro: Usa el constructor por niveles para presentar 3 opciones a tu cliente (Básico, Recomendado, Completo). ¡Es una técnica de venta muy poderosa!' }
 ];
 
-let currentStep = 0;
-let isTourActive = false;
-let tourScrollHandler = null;
-let tourResizeHandler = null;
+const tourManager = {
+    currentStep: 0,
+    isActive: false,
+    observer: null,
+    elements: {
+        tooltip: document.getElementById('tour-tooltip'),
+        overlay: document.getElementById('tour-overlay'),
+        text: document.getElementById('tour-text'),
+        counter: document.getElementById('tour-step-counter'),
+        prevBtn: document.getElementById('tour-prev'),
+        nextBtn: document.getElementById('tour-next'),
+        endBtn: document.getElementById('tour-end'),
+        arrow: document.getElementById('tour-arrow'),
+    },
 
-const tooltip = document.getElementById('tour-tooltip');
-const tourOverlay = document.getElementById('tour-overlay');
-const tourText = document.getElementById('tour-text');
-const stepCounter = document.getElementById('tour-step-counter');
-const prevBtn = document.getElementById('tour-prev');
-const nextBtn = document.getElementById('tour-next');
-const endBtn = document.getElementById('tour-end');
-const tourArrow = document.getElementById('tour-arrow');
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-function positionTooltip(targetElement) {
-    if (!isTourActive || !targetElement) return;
-
-    requestAnimationFrame(() => {
-        tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
+    start() {
+        if (localStorage.getItem('zenTourCompleted') === 'true' || this.isActive) return;
+        this.isActive = true;
+        this.currentStep = 0;
+        this.elements.tooltip.classList.remove('hidden');
+        this.elements.overlay.classList.remove('hidden');
+        setTimeout(() => this.elements.overlay.style.opacity = '1', 10);
         
-        const targetRect = targetElement.getBoundingClientRect();
-        tooltip.style.width = 'auto'; 
-        const tooltipRect = tooltip.getBoundingClientRect();
-        
-        const margin = 12;
-        let top, left;
-        let arrowClass = 'tooltip-is-below';
+        this.observer = new IntersectionObserver(this.handleIntersection.bind(this), {
+            root: null, threshold: 0.9,
+        });
 
-        if (targetRect.top > tooltipRect.height + margin) {
-            top = window.scrollY + targetRect.top - tooltipRect.height - margin;
-            arrowClass = 'tooltip-is-above';
-        } else {
-            top = window.scrollY + targetRect.bottom + margin;
-            arrowClass = 'tooltip-is-below';
+        if (!window.tourListenersAttached) {
+            this.elements.nextBtn.addEventListener('click', () => this.next());
+            this.elements.prevBtn.addEventListener('click', () => this.prev());
+            this.elements.endBtn.addEventListener('click', () => this.end());
+            window.tourListenersAttached = true;
         }
 
-        left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+        this.showStep(this.currentStep);
+    },
 
-        if (left < margin) left = margin;
-        if (left + tooltipRect.width > window.innerWidth - margin) {
-            left = window.innerWidth - tooltipRect.width - margin;
+    handleIntersection(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const targetElement = entry.target;
+                const stepIndex = parseInt(targetElement.dataset.tourStepIndex, 10);
+                if (stepIndex === this.currentStep) {
+                    this.observer.unobserve(targetElement);
+                    this.positionTooltip(targetElement);
+                    this.elements.tooltip.style.opacity = '1';
+                }
+            }
+        });
+    },
+
+    showStep(index) {
+        document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
+        if (index >= tourSteps.length) {
+            this.end();
+            return;
         }
 
-        tooltip.style.top = `${top}px`;
-        tooltip.style.left = `${left}px`;
-        tooltip.classList.add(arrowClass);
+        this.currentStep = index;
+        const step = tourSteps[index];
+        const targetElement = document.querySelector(step.el);
 
-        const targetCenterX = window.scrollX + targetRect.left + targetRect.width / 2;
-        let arrowLeft = targetCenterX - left;
+        if (!targetElement) {
+            console.warn(`Tour element ${step.el} not found. Ending tour.`);
+            this.end();
+            return;
+        }
         
-        const arrowWidth = 16;
-        if (arrowLeft < arrowWidth / 2) arrowLeft = arrowWidth / 2;
-        if (arrowLeft > tooltipRect.width - arrowWidth / 2) arrowLeft = tooltipRect.width - arrowWidth / 2;
+        this.elements.text.textContent = step.text;
+        this.elements.counter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
+        this.elements.prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
+        this.elements.nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
+        this.elements.endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
 
-        tourArrow.style.left = `${arrowLeft}px`;
-    });
-}
-
-function showStep(index) {
-    document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
-    if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
-    if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
-
-    if (index >= tourSteps.length) {
-        endTour();
-        return;
-    }
-
-    currentStep = index;
-    const step = tourSteps[index];
-    const targetElement = document.querySelector(step.el);
-
-    if (!targetElement || !(targetElement.offsetWidth || targetElement.offsetHeight || targetElement.getClientRects().length)) {
-        console.warn(`Tour step ${index + 1} target (${step.el}) not found or not visible. Ending tour.`);
-        endTour();
-        return;
-    }
-
-    tourText.textContent = step.text;
-    stepCounter.textContent = `Paso ${index + 1} de ${tourSteps.length}`;
-    tooltip.style.opacity = '0';
-    tourOverlay.style.opacity = '1';
-    targetElement.classList.add('tour-highlight-active');
-
-    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-
-    let scrollEndTimer = null;
-    const scrollEndListener = () => {
-        clearTimeout(scrollEndTimer);
-        scrollEndTimer = setTimeout(() => {
-            positionTooltip(targetElement);
-            tooltip.style.opacity = '1';
-        }, 150);
-    };
-
-    window.addEventListener('scroll', scrollEndListener, { once: true, passive: true });
-    scrollEndListener();
-
-    const updatePosition = () => positionTooltip(targetElement);
-    tourScrollHandler = debounce(updatePosition, 15);
-    tourResizeHandler = debounce(updatePosition, 15);
-    window.addEventListener('scroll', tourScrollHandler);
-    window.addEventListener('resize', tourResizeHandler);
-
-    prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
-    nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
-    endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
-}
-
-function endTour() {
-    if (!isTourActive) return;
-    isTourActive = false;
-    document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
-    tooltip.style.opacity = '0';
-    tourOverlay.style.opacity = '0';
+        this.elements.tooltip.style.opacity = '0';
+        targetElement.classList.add('tour-highlight-active');
+        targetElement.dataset.tourStepIndex = index;
+        
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.observer.observe(targetElement);
+    },
     
-    setTimeout(() => {
-        tooltip.classList.add('hidden');
-        tourOverlay.classList.add('hidden');
-    }, 300);
+    next() { this.showStep(this.currentStep + 1); },
+    prev() { this.showStep(this.currentStep - 1); },
+    
+    end() {
+        if (!this.isActive) return;
+        this.isActive = false;
+        
+        if (this.observer) this.observer.disconnect();
+        
+        document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
+        this.elements.tooltip.style.opacity = '0';
+        this.elements.overlay.style.opacity = '0';
+        
+        setTimeout(() => {
+            this.elements.tooltip.classList.add('hidden');
+            this.elements.overlay.classList.add('hidden');
+        }, 300);
+        
+        localStorage.setItem('zenTourCompleted', 'true');
+    },
 
-    localStorage.setItem('zenTourCompleted', 'true');
-    if (tourScrollHandler) window.removeEventListener('scroll', tourScrollHandler);
-    if (tourResizeHandler) window.removeEventListener('resize', tourResizeHandler);
-    tourScrollHandler = null;
-    tourResizeHandler = null;
-}
+    positionTooltip(targetElement) {
+        const { tooltip, arrow } = this.elements;
+        requestAnimationFrame(() => {
+            tooltip.classList.remove('tooltip-is-above', 'tooltip-is-below');
+            const targetRect = targetElement.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const margin = 12;
+
+            let top, left;
+            let arrowClass = 'tooltip-is-below';
+
+            if (targetRect.top > tooltipRect.height + margin) {
+                top = window.scrollY + targetRect.top - tooltipRect.height - margin;
+                arrowClass = 'tooltip-is-above';
+            } else {
+                top = window.scrollY + targetRect.bottom + margin;
+                arrowClass = 'tooltip-is-below';
+            }
+
+            left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+            if (left < margin) left = margin;
+            if (left + tooltipRect.width > window.innerWidth - margin) {
+                left = window.innerWidth - tooltipRect.width - margin;
+            }
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+            tooltip.classList.add(arrowClass);
+            
+            const targetCenterX = window.scrollX + targetRect.left + targetRect.width / 2;
+            arrow.style.left = `${targetCenterX - left}px`;
+        });
+    },
+    
+    restart() {
+        this.end();
+        localStorage.removeItem('zenTourCompleted');
+        setTimeout(() => this.start(), 100);
+    }
+};
 
 export function initializeTour() {
-    if (localStorage.getItem('zenTourCompleted') === 'true') return;
-
-    if (!window.tourListenersAttached) {
-        nextBtn.addEventListener('click', () => showStep(currentStep + 1));
-        prevBtn.addEventListener('click', () => showStep(currentStep - 1));
-        endBtn.addEventListener('click', endTour);
-        window.tourListenersAttached = true;
-    }
-
-    let attempts = 0;
-    const maxAttempts = 50;
-    const checkInterval = setInterval(() => {
-        const initialStepElement = document.querySelector(tourSteps[0].el);
-        if (initialStepElement && initialStepElement.offsetParent !== null) {
-            clearInterval(checkInterval);
-            isTourActive = true;
-            tooltip.classList.remove('hidden');
-            tourOverlay.classList.remove('hidden');
-            tooltip.style.opacity = '0';
-            tourOverlay.style.opacity = '0';
-            showStep(0);
-        } else {
-            attempts++;
-            if (attempts > maxAttempts) {
-                clearInterval(checkInterval);
-                console.warn("Tour could not start because the initial element was not found.");
-            }
-        }
-    }, 100);
+    tourManager.start();
 }
 
 export function restartTour() {
-    endTour();
-    localStorage.removeItem('zenTourCompleted');
-    setTimeout(() => initializeTour(), 100);
+    tourManager.restart();
 }
+
 
 export function initializeUI() {
     initializeServiceCheckboxes();
