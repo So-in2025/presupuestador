@@ -325,7 +325,7 @@ export function initializeBranding() {
     });
 }
 
-// --- TOUR GUIADO (RECONSTRUIDO CON INTERSECTIONOBSERVER) ---
+// --- TOUR GUIADO (RECONSTRUIDO CON SETTIMEOUT) ---
 const tourSteps = [
     { el: '#ai-assistant-container', text: '¡Bienvenido a Proyecto Zen! Este es tu Asistente IA. Describe aquí la necesidad de tu cliente y recibirás una propuesta de servicios al instante.' },
     { el: '#proposal-details-container', text: 'Luego, completa los datos básicos del cliente y del proyecto en esta sección.' },
@@ -339,7 +339,6 @@ const tourSteps = [
 const tourManager = {
     currentStep: 0,
     isActive: false,
-    observer: null,
     elements: {
         tooltip: document.getElementById('tour-tooltip'),
         overlay: document.getElementById('tour-overlay'),
@@ -350,6 +349,7 @@ const tourManager = {
         endBtn: document.getElementById('tour-end'),
         arrow: document.getElementById('tour-arrow'),
     },
+    scrollTimeout: null,
 
     start() {
         if (localStorage.getItem('zenTourCompleted') === 'true' || this.isActive) return;
@@ -358,33 +358,21 @@ const tourManager = {
         this.elements.tooltip.classList.remove('hidden');
         this.elements.overlay.classList.remove('hidden');
         setTimeout(() => this.elements.overlay.style.opacity = '1', 10);
-        
-        this.observer = new IntersectionObserver(this.handleIntersection.bind(this), {
-            root: null, threshold: 0.9,
-        });
 
         if (!window.tourListenersAttached) {
             this.elements.nextBtn.addEventListener('click', () => this.next());
             this.elements.prevBtn.addEventListener('click', () => this.prev());
             this.elements.endBtn.addEventListener('click', () => this.end());
+            window.addEventListener('resize', () => {
+                if (this.isActive) {
+                    const targetElement = document.querySelector('.tour-highlight-active');
+                    if (targetElement) this.positionTooltip(targetElement);
+                }
+            });
             window.tourListenersAttached = true;
         }
 
         this.showStep(this.currentStep);
-    },
-
-    handleIntersection(entries) {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const targetElement = entry.target;
-                const stepIndex = parseInt(targetElement.dataset.tourStepIndex, 10);
-                if (stepIndex === this.currentStep) {
-                    this.observer.unobserve(targetElement);
-                    this.positionTooltip(targetElement);
-                    this.elements.tooltip.style.opacity = '1';
-                }
-            }
-        });
     },
 
     showStep(index) {
@@ -410,12 +398,20 @@ const tourManager = {
         this.elements.nextBtn.style.display = index === tourSteps.length - 1 ? 'none' : 'inline-block';
         this.elements.endBtn.style.display = index === tourSteps.length - 1 ? 'inline-block' : 'none';
 
-        this.elements.tooltip.style.opacity = '0';
-        targetElement.classList.add('tour-highlight-active');
-        targetElement.dataset.tourStepIndex = index;
+        this.elements.tooltip.style.opacity = '0'; // Ocultar antes de mover
         
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        this.observer.observe(targetElement);
+        targetElement.classList.add('tour-highlight-active');
+
+        // Lógica de espera robusta
+        clearTimeout(this.scrollTimeout);
+        this.scrollTimeout = setTimeout(() => {
+            // Asegurarse de que el paso no haya cambiado mientras se esperaba
+            if (this.currentStep === index && this.isActive) {
+                this.positionTooltip(targetElement);
+                this.elements.tooltip.style.opacity = '1';
+            }
+        }, 400); // 400ms es un buen margen para que termine el scroll
     },
     
     next() { this.showStep(this.currentStep + 1); },
@@ -425,7 +421,7 @@ const tourManager = {
         if (!this.isActive) return;
         this.isActive = false;
         
-        if (this.observer) this.observer.disconnect();
+        clearTimeout(this.scrollTimeout);
         
         document.querySelector('.tour-highlight-active')?.classList.remove('tour-highlight-active');
         this.elements.tooltip.style.opacity = '0';
@@ -450,18 +446,20 @@ const tourManager = {
             let top, left;
             let arrowClass = 'tooltip-is-below';
 
+            // Priorizar poner el tooltip arriba si hay espacio
             if (targetRect.top > tooltipRect.height + margin) {
                 top = window.scrollY + targetRect.top - tooltipRect.height - margin;
                 arrowClass = 'tooltip-is-above';
-            } else {
+            } else { // Si no, ponerlo abajo
                 top = window.scrollY + targetRect.bottom + margin;
                 arrowClass = 'tooltip-is-below';
             }
 
-            left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+            left = window.scrollX + targetRect.left + (targetRect.width / 2) - (tooltip.offsetWidth / 2);
+            // Ajustar si se sale de la pantalla
             if (left < margin) left = margin;
-            if (left + tooltipRect.width > window.innerWidth - margin) {
-                left = window.innerWidth - tooltipRect.width - margin;
+            if (left + tooltip.offsetWidth > window.innerWidth - margin) {
+                left = window.innerWidth - tooltip.offsetWidth - margin;
             }
 
             tooltip.style.top = `${top}px`;
