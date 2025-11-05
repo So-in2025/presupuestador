@@ -26,7 +26,7 @@ exports.handler = async (event) => {
         // This is the main system instruction for the builder.
         const systemInstruction = `Eres un "Arquitecto de Soluciones" experto y un asistente de ventas de élite. Tu única misión es actuar como una API JSON. Analizarás la solicitud del revendedor para un proyecto web y construirás la solución perfecta utilizando EXCLUSIVAMENTE el catálogo de servicios proporcionado. Debes ser proactivo en la identificación de oportunidades de 'upsell' (sugerir un servicio de mayor valor) y 'cross-sell' (sugerir servicios complementarios).
 
-**INSTRUCCIONES CRÍTICAS E INQUEBRANTABLES:**
+**INSTRUCCIONES CRÍTICAS E INQUEBRABLES:**
 1.  **FORMATO DE SALIDA:** Tu respuesta COMPLETA debe ser UN ÚNICO objeto JSON válido. NO incluyas texto, explicaciones, comentarios, ni ninguna envoltura de markdown como \`\`\`json. La respuesta debe comenzar con \`{\` y terminar con \`}\`.
 2.  **ESTRUCTURA JSON:** El JSON debe adherirse estrictamente a la siguiente estructura:
     {
@@ -191,7 +191,7 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI({apiKey});
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         let systemInstruction;
@@ -217,7 +217,8 @@ Your response MUST be a single, valid JSON object. Do NOT include any text, comm
         });
 
         const result = await chat.sendMessage(finalUserMessage);
-        let responseText = result.response.text();
+        const response = await result.response;
+        let responseText = response.text();
         let responsePayload;
         
         if (mode === 'builder' || mode === 'lead-gen-plan') {
