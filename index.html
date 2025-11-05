@@ -442,6 +442,102 @@
             background-clip: text;
             color: transparent;
         }
+
+        /* --- ESTILOS RESPONSIVOS Y CORRECCIONES --- */
+        #splash-screen {
+            overscroll-behavior: contain; /* Prevenir scroll del body en iOS */
+        }
+
+        /* Forzar que el highlight del tour esté siempre encima del overlay */
+        .tour-highlight-active {
+            z-index: 99998 !important; 
+        }
+
+        @media (max-width: 767px) { /* Móviles y tablets pequeñas */
+            /* Títulos más compactos */
+            h1#main-title {
+                font-size: 1.75rem; /* ~28px */
+            }
+            h2 {
+                font-size: 1.25rem; /* ~20px */
+            }
+
+            /* Reducir altura del chat para dar más espacio */
+            #ai-assistant-container {
+                height: 65vh;
+                min-height: 400px; /* Evitar que sea demasiado pequeño */
+            }
+
+            /* Ajustar modales para que no toquen los bordes */
+            .modal-overlay > div {
+                width: 95%;
+                max-height: 90vh;
+            }
+            
+            /* Contenido de los modales más denso */
+            .modal-overlay > div .p-5 {
+                padding: 1rem;
+            }
+
+            /* Compactar el tour en móviles */
+            #tour-tooltip {
+                max-width: 90vw;
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+            #tour-tooltip button {
+                padding: 0.25rem 0.6rem;
+                font-size: 0.8rem;
+            }
+            
+            /* Evitar que el dossier del radar se comprima mal */
+            .dossier-metric .dossier-score {
+                font-size: 2rem;
+            }
+
+            /* Columnas del constructor de niveles más simples */
+            #tiered-builder-columns {
+                grid-template-columns: 1fr; /* Forzar una sola columna */
+            }
+
+            /* Botones de acción principal más grandes para mejor usabilidad táctil */
+            header .flex-wrap button {
+                padding-top: 0.6rem;
+                padding-bottom: 0.6rem;
+            }
+
+            /* Mejorar la legibilidad de las tarjetas de servicios */
+            .item-card label {
+                line-height: 1.3;
+            }
+        }
+
+        @media (max-width: 640px) { /* Móviles */
+            /* Apilar la barra de rendimiento en vertical */
+            #performance-dashboard-bar > div {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem; /* Más espacio vertical */
+                padding: 0.75rem 0;
+            }
+            .dashboard-value {
+                font-size: 1.125rem;
+            }
+            
+            /* Dossier del Radar: Hacerlo horizontal y con scroll si es necesario */
+            #radar-dossier-view .grid.grid-cols-3 {
+                display: flex;
+                overflow-x: auto; /* Permitir scroll horizontal si no cabe */
+                padding-bottom: 0.5rem; /* Espacio para la barra de scroll */
+            }
+            .dossier-metric {
+                flex: 0 0 100px; /* Base de 100px de ancho, sin encogerse, sin crecer */
+                padding: 0 0.5rem;
+            }
+            .dossier-metric + .dossier-metric {
+                border-left: 1px solid var(--border-color);
+            }
+        }
     </style>
 </head>
 <body class="text-slate-50 min-h-screen">
