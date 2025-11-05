@@ -1,7 +1,7 @@
 // /netlify/functions/chat.js
 /**
  * Backend para Asistente Zen
- * Lógica de Intención: v43 - Revert to stable SDK & Real Radar Intel
+ * Lógica de Intención: v44 - Final Stable Revision
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pricingData = require('./pricing.json');
@@ -282,23 +282,31 @@ exports.handler = async (event) => {
             finalUserMessage = `Generate the outreach email. Business name is "[BUSINESS_NAME]: ${businessName}". Their website's technical issues are "[PAIN_POINTS_DETAILS]: ${painPointsDetails}". Their marketing intelligence is "[MARKETING_INTEL]: ${marketingIntel}".`;
         }
         
-        const chat = model.startChat({
-            history: [...systemInstructionHistory, ...(historyFromClient || [])],
-            generationConfig,
+        const fullHistoryForAPI = [
+            ...systemInstructionHistory,
+            ...(historyFromClient || []),
+            { role: 'user', parts: [{ text: finalUserMessage }] }
+        ];
+
+        const result = await model.generateContent({
+            contents: fullHistoryForAPI,
+            generationConfig
         });
-        
-        const result = await chat.sendMessage(finalUserMessage);
         
         if (!result || !result.response || typeof result.response.text !== 'function') {
              throw new Error("Respuesta inválida de la API de IA. La estructura del objeto no es la esperada.");
         }
         
         const responseText = result.response.text();
-        const finalHistory = await chat.getHistory(); // Get updated history from the chat instance
+        const finalHistoryForClient = [
+            ...(historyFromClient || []),
+            { role: 'user', parts: [{ text: userMessage }] }, // Use original user message for history
+            { role: 'model', parts: [{ text: responseText }] }
+        ];
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ response: responseText, history: finalHistory })
+            body: JSON.stringify({ response: responseText, history: finalHistoryForClient })
         };
 
     } catch (err) {
