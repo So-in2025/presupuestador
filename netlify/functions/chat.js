@@ -1,12 +1,11 @@
 // /netlify/functions/chat.js
 /**
- * Backend para Asistente Zen - v23 (Modern SDK & Schema Enforcement)
- * - Utiliza el SDK moderno de @google/genai con la clase GoogleGenAI.
- * - Implementa responseSchema para forzar una salida JSON garantizada en los modos 'builder', 'radar' y 'lead-gen-plan'.
- * - Elimina la necesidad de parseo complejo y reintentos.
- * - Simplifica la lógica de la función y mejora la fiabilidad.
+ * Backend para Asistente Zen - v24 (CJS Compatibility Fix)
+ * - Utiliza la clase `GoogleGenerativeAI` compatible con el entorno `require` de Netlify Functions para resolver el error fatal del constructor.
+ * - Adapta la lógica de llamada a la API para usar `getGenerativeModel` y `generateContent` con `generationConfig`.
+ * - Mantiene el uso de `responseSchema` para forzar una salida JSON garantizada, preservando la fiabilidad de la respuesta.
  */
-const { GoogleGenAI, Type } = require("@google/generative-ai");
+const { GoogleGenerativeAI, Type } = require("@google/generative-ai");
 
 // NOTA: En un entorno de producción real, este archivo JSON debería cargarse de forma más robusta.
 // Para Netlify Functions, requerirlo directamente es la forma más sencilla.
@@ -32,14 +31,14 @@ exports.handler = async (event) => {
     }
 
     try {
-        // Inicialización moderna del SDK
-        const ai = new GoogleGenAI({apiKey: apiKey});
+        // Inicialización del SDK compatible con CommonJS
+        const ai = new GoogleGenerativeAI({apiKey: apiKey});
         const modelName = 'gemini-2.5-flash';
 
         let systemInstruction = '';
         const contents = [...historyFromClient.map(h => ({ role: h.role, parts: h.parts })), { role: 'user', parts: [{ text: userMessage }] }];
 
-        const config = {
+        const generationConfig = {
             temperature: 0.2,
             topK: 1,
             topP: 1,
@@ -71,8 +70,8 @@ exports.handler = async (event) => {
                     ${customTaskList}
                 `;
 
-                config.responseMimeType = "application/json";
-                config.responseSchema = {
+                generationConfig.responseMimeType = "application/json";
+                generationConfig.responseSchema = {
                     type: Type.OBJECT,
                     properties: {
                         introduction: { type: Type.STRING, description: "Un saludo inicial amigable y un resumen de tu entendimiento de la necesidad del cliente." },
@@ -108,8 +107,8 @@ exports.handler = async (event) => {
             case 'lead-gen-plan': {
                 systemInstruction = `Eres un "Estratega de Marketing y Ventas" IA. Tu única tarea es crear un plan de acción detallado y práctico de 7 días para captar clientes para un servicio web específico. Debes devolver únicamente un objeto JSON.`;
                 
-                config.responseMimeType = "application/json";
-                config.responseSchema = {
+                generationConfig.responseMimeType = "application/json";
+                generationConfig.responseSchema = {
                     type: Type.OBJECT,
                     properties: {
                         title: { type: Type.STRING },
@@ -159,17 +158,18 @@ exports.handler = async (event) => {
                 systemInstruction = `Eres un asistente servicial.`;
         }
 
-        const generationPayload = {
+        const model = ai.getGenerativeModel({
             model: modelName,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                ...config
-            }
-        };
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+        });
 
-        const response = await ai.models.generateContent(generationPayload);
-        const responseText = response.text;
+        const result = await model.generateContent({
+            contents: contents,
+            generationConfig: generationConfig,
+        });
+        
+        const response = result.response;
+        const responseText = response.text();
         
         const finalHistoryForClient = [
             ...historyFromClient,
