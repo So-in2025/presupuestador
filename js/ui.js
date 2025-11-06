@@ -1,7 +1,7 @@
 // js/ui.js
 
 import * as dom from './dom.js';
-import { getState, formatPrice } from './state.js';
+import { getState, formatPrice, setIsGuidedModeActive } from './state.js';
 import { updateSummary } from './app.js';
 
 export function updateCurrencyToggleButton() {
@@ -348,4 +348,65 @@ export function updateWhatsAppLink() {
     const encodedMessage = encodeURIComponent(message);
     
     whatsAppBtn.href = `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+}
+
+// --- NUEVO: MODO GUIADO ---
+
+export function initializeGuidedMode() {
+    const toggle = document.getElementById('guided-mode-toggle');
+    if (!toggle) return;
+
+    const savedPreference = localStorage.getItem('zenGuidedMode');
+    const isActive = savedPreference !== 'false'; // Activo por defecto
+
+    setIsGuidedModeActive(isActive);
+    toggle.checked = isActive;
+    setGuidedMode(isActive, true); // Aplicar estado inicial
+}
+
+export function setGuidedMode(isActive, isInitialLoad = false) {
+    setIsGuidedModeActive(isActive);
+    localStorage.setItem('zenGuidedMode', isActive);
+
+    if (isActive) {
+        document.body.classList.add('guided-mode-active');
+        // Solo resetear al paso 1 si el usuario lo activa manualmente
+        if (!isInitialLoad) {
+            updateActiveStep(1);
+        } else {
+            // En la carga inicial, simplemente asegurar que un paso esté activo
+            const anyActive = document.querySelector('.step-container.active-step');
+            if (!anyActive) {
+                updateActiveStep(1);
+            }
+        }
+    } else {
+        document.body.classList.remove('guided-mode-active');
+        // Quitar todos los highlights al desactivar
+        document.querySelectorAll('.step-container.active-step').forEach(el => el.classList.remove('active-step'));
+    }
+}
+
+export function updateActiveStep(step) {
+    if (!getState().isGuidedModeActive) return;
+
+    const stepContainers = document.querySelectorAll('.step-container');
+    let scrolled = false;
+
+    stepContainers.forEach(container => {
+        const isTargetStep = container.dataset.step == step;
+        const isAlreadyActive = container.classList.contains('active-step');
+
+        if (isTargetStep) {
+            if (!isAlreadyActive) {
+                container.classList.add('active-step');
+                if (!scrolled) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    scrolled = true;
+                }
+            }
+        } else {
+            container.classList.remove('active-step');
+        }
+    });
 }

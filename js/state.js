@@ -20,6 +20,7 @@ let state = {
     extraPointsPurchased: 0, // NUEVO: Cantidad de puntos extra comprados
     extraPointsCost: 0, // NUEVO: Costo total de los puntos extra
     sessionApiKey: null, // API key ahora se gestiona aquí
+    isGuidedModeActive: true, // NUEVO: Para el modo guiado
 };
 
 // --- HELPERS ---
@@ -54,3 +55,4 @@ export const setExtraPointsPurchased = (points) => { state.extraPointsPurchased 
 export const setExtraPointsCost = (cost) => { state.extraPointsCost = cost; };
 export const setSessionApiKey = (key) => { state.sessionApiKey = key; };
 export const getSessionApiKey = () => state.sessionApiKey;
+export const setIsGuidedModeActive = (isActive) => { state.isGuidedModeActive = isActive; };

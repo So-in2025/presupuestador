@@ -32,7 +32,7 @@ import {
     closeSalesChannelsModal,
     showOpportunityRadarModal
 } from './modals.js';
-import { initializeBranding, rerenderAllPrices, updateCurrencyToggleButton, saveBranding } from './ui.js';
+import { initializeBranding, rerenderAllPrices, updateCurrencyToggleButton, saveBranding, initializeGuidedMode, updateActiveStep } from './ui.js';
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 import { ttsManager } from './tts.js'; // Importar el gestor centralizado
@@ -259,6 +259,11 @@ function initializeEventListeners() {
         });
     }
 
+    // --- NEW: Guided Mode Step Progression ---
+    dom.clientNameInput.addEventListener('blur', () => { if (dom.clientNameInput.value) updateActiveStep(2); });
+    dom.webNameInput.addEventListener('blur', () => { if (dom.webNameInput.value) updateActiveStep(2); });
+    document.body.addEventListener('aiBuilderSuccess', () => updateActiveStep(3));
+
     // Event Delegation
     dom.appContainer.addEventListener('change', (e) => {
         const target = e.target;
@@ -348,5 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPricingData(); // This now also calls initializeUI
     resetForm();
     initializeChatAssistant(updateApiKeyUI);
+    initializeGuidedMode();
     initializeEventListeners(); // The new central hub for all interactions
 });

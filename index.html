@@ -424,6 +424,34 @@
             transform: scale(1);
         }
 
+        /* --- MODO GUIADO --- */
+        .step-container {
+            transition: opacity 0.4s ease-in-out, box-shadow 0.4s ease-in-out, transform 0.4s ease-in-out, border-color 0.4s ease-in-out;
+            border: 2px solid transparent;
+            border-radius: 0.75rem; /* Match card rounding */
+        }
+        .guided-mode-active .step-container {
+            opacity: 0.4;
+        }
+        .guided-mode-active .step-container.active-step {
+            opacity: 1;
+            transform: scale(1.01);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 25px -5px var(--accent-color);
+        }
+        .guided-mode-toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem; /* Adjusted padding to better match other buttons height */
+            background-color: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .guided-mode-toggle-wrapper label { cursor: pointer; }
+
+
         /* --- ESTILOS RESPONSIVOS Y CORRECCIONES --- */
         #splash-screen {
             overscroll-behavior: contain; /* Prevenir scroll del body en iOS */
@@ -620,6 +648,13 @@
                     <button id="show-sales-channels-btn" class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md btn-press-feedback">
                         🌐 Canales de Venta
                     </button>
+                    <div class="guided-mode-toggle-wrapper text-sm text-slate-200">
+                        <label for="guided-mode-toggle" class="font-semibold">Modo Guiado</label>
+                        <label class="theme-switch" for="guided-mode-toggle">
+                            <input type="checkbox" id="guided-mode-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                     <div class="flex items-center gap-2">
                         <button id="currency-toggle-btn" disabled class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-press-feedback"></button>
                         <button id="configure-rate-btn" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 transition btn-press-feedback" aria-label="Configurar tipo de cambio manual">
@@ -644,7 +679,7 @@
             <div id="appContainer" class="flex flex-col lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 <!-- COLUMNA 1 & 2: Formulario -->
                 <div class="lg:col-span-2 xl:col-span-3 space-y-6">
-                    <div id="proposal-details-container" class="card-bg p-5 rounded-xl shadow-lg">
+                    <div id="proposal-details-container" class="card-bg p-5 rounded-xl shadow-lg step-container" data-step="1">
                         <h2>
                             <span class="text-2xl font-semibold accent-color">1. Iniciar Nueva Propuesta</span>
                             <div class="tooltip-container" data-tooltip-id="proposal-details">
@@ -685,7 +720,7 @@
                     </div>
                     
                     <!-- CONTENEDOR DEL CHAT IA -->
-                    <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg flex flex-col h-[70vh] lg:h-[500px] relative">
+                    <div id="ai-assistant-container" class="card-bg p-5 rounded-xl shadow-lg flex flex-col h-[70vh] lg:h-[500px] relative step-container" data-step="2">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-3">
                                 <h2 class="text-2xl font-semibold text-purple-400 p-0 m-0 border-none">Asistente IA de Ventas</h2>
@@ -761,7 +796,7 @@
                         </div>
                     </div>
 
-                    <div id="solution-config-container" class="card-bg p-5 rounded-xl shadow-lg">
+                    <div id="solution-config-container" class="card-bg p-5 rounded-xl shadow-lg step-container" data-step="3">
                         <h2>
                             <span class="text-2xl font-semibold accent-color">2. Configurar la Solución</span>
                             <div class="tooltip-container" data-tooltip-id="solution-config">
@@ -806,7 +841,7 @@
                 <!-- COLUMNA 3 & 4: Resumen y Dashboard -->
                 <div class="lg:col-span-1 xl:col-span-1 space-y-6">
                     
-                    <div id="summaryCard" class="card-bg p-5 rounded-xl shadow-lg top-4">
+                    <div id="summaryCard" class="card-bg p-5 rounded-xl shadow-lg top-4 step-container" data-step="4">
                         <h2>
                             <span class="text-2xl font-semibold accent-color">3. Calcular Rentabilidad</span>
                              <div class="tooltip-container" data-tooltip-id="summary-card">
