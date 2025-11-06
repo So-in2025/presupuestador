@@ -53,6 +53,31 @@ export const setUsdToArsRate = (rate) => { state.usdToArsRate = rate; };
 export const setPointPrice = (price) => { state.pointPrice = price; };
 export const setExtraPointsPurchased = (points) => { state.extraPointsPurchased = points; };
 export const setExtraPointsCost = (cost) => { state.extraPointsCost = cost; };
-export const setSessionApiKey = (key) => { state.sessionApiKey = key; };
+
+export const setSessionApiKey = (key) => {
+    state.sessionApiKey = key;
+    try {
+        if (key) {
+            localStorage.setItem('zenApiKey', key);
+        } else {
+            localStorage.removeItem('zenApiKey');
+        }
+    } catch (e) {
+        console.error("Error al guardar la API Key:", e);
+    }
+};
+
 export const getSessionApiKey = () => state.sessionApiKey;
+
+export const loadApiKeyFromStorage = () => {
+    try {
+        const storedKey = localStorage.getItem('zenApiKey');
+        if (storedKey) {
+            state.sessionApiKey = storedKey;
+        }
+    } catch (e) {
+        console.error("Error al cargar la API Key:", e);
+    }
+};
+
 export const setIsGuidedModeActive = (isActive) => { state.isGuidedModeActive = isActive; };

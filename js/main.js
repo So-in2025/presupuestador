@@ -114,6 +114,7 @@ function updateApiKeyUI(forceShow = false) {
     const chatInput = document.getElementById('chat-input');
     const chatSendBtn = document.getElementById('chat-send-btn');
     const aiStatusIndicator = document.getElementById('ai-status-indicator');
+    const removeApiKeyBtn = document.getElementById('remove-api-key-btn');
 
     if (!apiKey || forceShow) {
         apiKeyOverlay.classList.remove('hidden');
@@ -122,6 +123,9 @@ function updateApiKeyUI(forceShow = false) {
         if(aiStatusIndicator) {
             aiStatusIndicator.classList.remove('bg-green-400', 'animate-pulse');
             aiStatusIndicator.classList.add('bg-red-500');
+        }
+        if (removeApiKeyBtn) {
+            removeApiKeyBtn.classList.toggle('hidden', !apiKey);
         }
     } else {
         apiKeyOverlay.classList.add('hidden');
@@ -146,7 +150,15 @@ function handleSaveInlineApiKey() {
     updateApiKeyUI();
     input.value = ''; // Clear for security
     
-    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada para esta sesión. El asistente se activará y validará en tu primer chat.');
+    showNotification('success', 'API Key Guardada', 'Tu clave ha sido configurada y guardada en tu navegador para futuras sesiones.');
+}
+
+function handleRemoveApiKey() {
+    if (confirm('¿Estás seguro de que quieres eliminar la API Key guardada?')) {
+        state.setSessionApiKey(null);
+        updateApiKeyUI(true);
+        showNotification('info', 'API Key Eliminada', 'La clave ha sido eliminada.');
+    }
 }
 
 
@@ -168,6 +180,7 @@ function initializeEventListeners() {
     document.getElementById('cancel-tiered-builder-btn')?.addEventListener('click', closeTieredBuilderModal);
     document.getElementById('add-tiered-proposal-btn')?.addEventListener('click', addTieredProposal);
     document.getElementById('save-inline-api-key-btn')?.addEventListener('click', handleSaveInlineApiKey);
+    document.getElementById('remove-api-key-btn')?.addEventListener('click', handleRemoveApiKey);
     document.getElementById('close-exchange-rate-modal-btn')?.addEventListener('click', closeExchangeRateModal);
     document.getElementById('save-exchange-rate-btn')?.addEventListener('click', handleSaveExchangeRate);
     document.getElementById('close-content-studio-modal-btn')?.addEventListener('click', closeContentStudioModal);
@@ -347,6 +360,7 @@ function initializeEventListeners() {
 // --- APP INITIALIZATION ---
 
 document.addEventListener('DOMContentLoaded', () => {
+    state.loadApiKeyFromStorage();
     initializeSplashScreen();
     initializeBranding();
     loadLocalData();
