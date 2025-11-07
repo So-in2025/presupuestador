@@ -36,6 +36,7 @@ import { initializeBranding, rerenderAllPrices, updateCurrencyToggleButton, save
 import { initializeChatAssistant } from './chat-frontend.js';
 import { generatePdf } from './pdf.js';
 import { ttsManager } from './tts.js'; // Importar el gestor centralizado
+import { playStartSound, playRevealSound, playClickSound } from './audio.js'; // NUEVO: Importar sonidos
 
 // --- LÓGICA MODO ENFOQUE CHAT ---
 const chatContainer = document.getElementById('ai-assistant-container');
@@ -83,6 +84,7 @@ function initializeSplashScreen() {
     const readAloudBtn = document.getElementById('read-aloud-btn');
 
     startBtn.addEventListener('click', () => {
+        playStartSound(); // Reproducir sonido de inicio
         ttsManager.stop();
         splashScreen.style.opacity = '0';
         splashScreen.style.pointerEvents = 'none';
@@ -90,12 +92,14 @@ function initializeSplashScreen() {
         setTimeout(() => {
             splashScreen.classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
+            playRevealSound(); // Reproducir sonido al revelar la app
             updateApiKeyUI();
             updateCurrencyToggleButton();
         }, 500);
     });
 
     detailsBtn.addEventListener('click', () => {
+        playClickSound(); // Reproducir sonido de clic
         detailsSection.classList.toggle('open');
     });
 
